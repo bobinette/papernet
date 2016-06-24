@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<link href="/public/css/materialdesignicons.min.css" media="all" rel="stylesheet" type="text/css" />
+	<link rel="stylesheet" type="text/css" href="/public/css/materialize.min.css"  media="screen,projection"/>
+	<link rel="stylesheet" type="text/css" href="/public/css/style.css" />
+	<title>Papernet</title>
+</head>
+<body class="light-blue lighten-5">
+	<h1>Papernet</h1>
+
+	<div class="container">
+		<h4>Edit</h4>
+		<form action="/papers/{{ .ID }}" method="POST">
+			<div><input type="text" placeholder="Title" name="title"  value="{{ printf `%s` .Title }}"></div>
+			<div><textarea name="summary" rows="40" cols="100" class="summary-edit">{{ printf "%s" .Summary }}</textarea></div>
+			<div><input type="text" placeholder="References" name="references"  value="{{ .References }}"></div>
+			<div><input type="text" placeholder="Authors" name="authors"  value="{{ .Authors }}"></div>
+			<div><input type="checkbox" name="read" {{ if .Read }}checked="checked"{{ end }}>I have read this paper</div>
+			<div><input type="submit" value="Save"></div>
+		</form>
+	</div>
+</body>
+</html>

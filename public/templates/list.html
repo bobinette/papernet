@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<link href="/public/css/materialdesignicons.min.css" media="all" rel="stylesheet" type="text/css" />
+	<link rel="stylesheet" type="text/css" href="/public/css/materialize.min.css"  media="screen,projection"/>
+	<link rel="stylesheet" type="text/css" href="/public/css/style.css" />
+	<title>Papernet</title>
+</head>
+<body class="light-blue lighten-5">
+	<h1>Papernet</h1>
+
+	<div class="container">
+		<p class="list-header"><strong>Total: {{ len . }}</strong></p>
+		<ul class="papers">
+			{{ range . }}
+			<li class="card-panel paper">
+				<span>
+					<a href="/papers/{{ .ID }}">
+						<i class="mdi mdi-checkbox-{{ if .Read }}marked{{else}}blank{{end}}-circle-outline"></i>
+						{{ if .Title }} {{ printf "%s" .Title}} {{ else }} <em>No title</em> {{ end }}
+					</a>
+				</span>
+				<span>
+					<a href="/papers/{{ .ID }}/refgraph" class="mdi mdi-google-circles-extended hoverable-icon button-icon"></a>
+					<form class="inline-form" action="/papers/{{ .ID }}/delete" method="POST">
+						<button
+						type="submit"
+						name="submit_param"
+						value="submit_value"
+						class="mdi mdi-delete hoverable-icon button-icon"
+						/>
+					</form>
+				</span>
+			</li>
+			{{ end }}
+		</ul>
+		<div class="new-paper">
+			<form action="/papers" method="POST">
+				<button
+				type="submit"
+				name="submit_param"
+				value="submit_value"
+				>
+				<i class="mdi mdi-plus-circle-outline"></i>
+				New paper
+			</button>
+		</form>
+	</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<link href="/public/css/materialdesignicons.min.css" media="all" rel="stylesheet" type="text/css" />
+	<link rel="stylesheet" type="text/css" href="/public/css/materialize.min.css"  media="screen,projection"/>
+	<link rel="stylesheet" type="text/css" href="/public/css/style.css" />
+	<title>Papernet</title>
+</head>
+<body class="light-blue lighten-5">
+	<h1>{{ printf "%s" .Title }}</h1>
+
+	<div class="container">
+		<h5 class="card-panel">References Graph</h5>
+
+		<div class="ref-graph">
+			<img src="/public/images/{{ .GraphPath }}">
+		</div>
+	</div>
+</body>
+</html>
