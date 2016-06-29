@@ -21,6 +21,18 @@ func NewBoltDB(dbpath string) (DB, error) {
 		return nil, err
 	}
 
+	// Check buckets
+	err = store.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("papers"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &boltDB{
 		store: store,
 	}, nil
