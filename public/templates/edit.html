@@ -17,6 +17,7 @@
 			<div><textarea name="summary" rows="40" cols="100" class="summary-edit">{{ printf "%s" .Summary }}</textarea></div>
 			<div><input type="text" placeholder="References" name="references"  value="{{ .References }}"></div>
 			<div><input type="text" placeholder="Authors" name="authors"  value="{{ .Authors }}"></div>
+			<div><input type="text" placeholder="Tags" name="tags"  value="{{ .Tags }}"></div>
 			<div><input type="checkbox" name="read" {{ if .Read }}checked="checked"{{ end }}>I have read this paper</div>
 			<div><input type="submit" value="Save"></div>
 		</form>

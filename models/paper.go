@@ -8,4 +8,13 @@ type Paper struct {
 
 	Authors    []string
 	References []int
+	Tags       []string
+}
+
+func (p *Paper) Node() Node {
+	return Node{
+		ID:    p.ID,
+		Label: string(p.Title),
+		Type:  NodePaper,
+	}
 }

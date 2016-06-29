@@ -1,8 +1,11 @@
 package papernet
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -49,7 +52,7 @@ func (h *handler) Register(r *gin.Engine) {
 	r.POST("/papers/:id", h.save)
 
 	r.GET("/papers/:id/edit", h.edit)
-	r.GET("/papers/:id/refgraph", h.referencesGraph)
+	r.GET("/papers/:id/graph", h.graph)
 	r.POST("/papers/:id/delete", h.delete)
 }
 
@@ -120,10 +123,12 @@ func (h *handler) edit(c *gin.Context) {
 		*models.Paper
 		References string
 		Authors    string
+		Tags       string
 	}{
 		p,
 		refs,
 		strings.Join(p.Authors, ","),
+		strings.Join(p.Tags, ","),
 	}
 
 	c.HTML(http.StatusOK, "edit.html", d)
@@ -141,6 +146,7 @@ func (h *handler) save(c *gin.Context) {
 		Summary    string `form:"summary" binding:"required"`
 		References string `form:"references" bindings:"required"`
 		Authors    string `form:"authors" bindings:"required"`
+		Tags       string `form:"tags" bindings:"required"`
 		Read       string `form:"read" bindings:"required"`
 	}
 	err = c.Bind(&form)
@@ -174,6 +180,7 @@ func (h *handler) save(c *gin.Context) {
 		Summary:    []byte(form.Summary),
 		References: refs,
 		Authors:    strings.Split(form.Authors, ","),
+		Tags:       strings.Split(form.Tags, ","),
 		Read:       form.Read == "on",
 	}
 
@@ -202,7 +209,7 @@ func (h *handler) delete(c *gin.Context) {
 
 }
 
-func (h *handler) referencesGraph(c *gin.Context) {
+func (h *handler) graph(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.String(http.StatusBadRequest, "invalid id")
@@ -215,6 +222,28 @@ func (h *handler) referencesGraph(c *gin.Context) {
 		return
 	}
 
+	g := dot.NewGraph()
+	node := p.Node()
+	re := models.Edge{Style: models.EdgeReference}
+	for _, r := range p.References {
+		rp, err := h.db.Get(r)
+		if err != nil {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+		g.AddEdge(node, rp.Node(), re)
+	}
+
+	te := models.Edge{Style: models.EdgeTag}
+	for i, t := range p.Tags {
+		tn := models.Node{
+			ID:    i,
+			Label: t,
+			Type:  models.NodeTag,
+		}
+		g.AddEdge(node, tn, te)
+	}
+
 	filedir := "./public/images"
 	filename := fmt.Sprintf("%d_refs.dot", p.ID)
 	filepath := path.Join(filedir, filename)
@@ -223,26 +252,81 @@ func (h *handler) referencesGraph(c *gin.Context) {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+	defer f.Close()
 
-	g := dot.NewGraph()
-	for _, r := range p.References {
-		g.AddEdge(p.ID, r)
+	_, err = g.WriteTo(f)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
 	}
-	g.WriteTo(f)
 
-	err = exec.Command("dot", "-T", "svg", "-O", filepath).Run()
+	svg, err := h.dotSVG(g)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	var v = struct {
-		Title     string
-		GraphPath string
+		Title string
+		Graph template.HTML
 	}{
-		Title:     string(p.Title),
-		GraphPath: fmt.Sprintf("%s.svg", filename),
+		Title: string(p.Title),
+		Graph: template.HTML(svg),
 	}
 
-	c.HTML(http.StatusOK, "refgraph.html", v)
+	c.HTML(http.StatusOK, "graph.html", v)
+}
+
+func (h *handler) dotSVG(g *dot.Graph) (string, error) {
+	f, err := ioutil.TempFile("./tmp", "papernet")
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		f.Close()
+		if err := os.Remove(f.Name()); err != nil {
+			log.Printf("%v", err)
+		}
+	}()
+
+	_, err = g.WriteTo(f)
+	if err != nil {
+		return "", err
+	}
+
+	dotCmd := exec.Command("dot", "-T", "svg", "-Kneato", f.Name())
+	tailCmd := exec.Command("tail", "+4")
+	r, w := io.Pipe()
+	dotCmd.Stdout = w
+	tailCmd.Stdin = r
+
+	var b bytes.Buffer
+	tailCmd.Stdout = &b
+
+	err = dotCmd.Start()
+	if err != nil {
+		return "", nil
+	}
+
+	err = tailCmd.Start()
+	if err != nil {
+		return "", nil
+	}
+
+	err = dotCmd.Wait()
+	if err != nil {
+		return "", nil
+	}
+
+	err = w.Close()
+	if err != nil {
+		return "", nil
+	}
+
+	err = tailCmd.Wait()
+	if err != nil {
+		return "", nil
+	}
+
+	return b.String(), nil
 }
