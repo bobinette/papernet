@@ -13,15 +13,9 @@
 	<div class="container">
 		<div class="searchbar">
 			<form action="/papers" method="GET">
-				<input type="text" name="q" value="{{ .Search }} "><input type="submit" value="search">
+				<input type="text" name="q" value="{{ .Search }}"><input type="submit" value="search">
 			</form>
 		</div>
-		<!-- <div id="tfheader">
-			<form id="tfnewsearch" method="get" action="http://www.google.com">
-				<input type="text" class="tftextinput" name="q" size="21" maxlength="120"><input type="submit" value="search" class="tfbutton">
-			</form>
-			<div class="tfclear"></div>
-		</div> -->
 
 		<p class="list-header"><strong>Total: {{ len .Papers }}</strong></p>
 		<ul class="papers">
@@ -35,14 +29,6 @@
 				</span>
 				<span>
 					<a href="/papers/{{ .ID }}/graph" class="mdi mdi-google-circles-extended hoverable-icon button-icon"></a>
-					<!-- <form class="inline-form" action="/papers/{{ .ID }}/delete" method="POST">
-						<button
-						type="submit"
-						name="submit_param"
-						value="submit_value"
-						class="mdi mdi-delete hoverable-icon button-icon"
-						/>
-					</form> -->
 				</span>
 			</li>
 			{{ end }}

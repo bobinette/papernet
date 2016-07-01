@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/blevesearch/bleve"
-	"github.com/blevesearch/bleve/analysis/language/en"
 
 	"github.com/bobinette/papernet/models"
 )
@@ -17,14 +16,10 @@ type bleveSearch struct {
 func NewBleveSearch(searchpath string) (Search, error) {
 	index, err := bleve.Open(searchpath)
 	if err == bleve.ErrorIndexPathDoesNotExist {
-		em := bleve.NewTextFieldMapping()
-		em.Analyzer = en.AnalyzerName
-		dm := bleve.NewDocumentMapping()
-		dm.AddFieldMappingsAt("title", em)
-
+		log.Print("Creating index...")
 		mapping := bleve.NewIndexMapping()
-		mapping.AddDocumentMapping("paper", dm)
 		index, err = bleve.New(searchpath, mapping)
+		log.Println("Done")
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +52,23 @@ func (s *bleveSearch) Find(q string) ([]int, error) {
 }
 
 func (s *bleveSearch) Index(p *models.Paper) error {
-	return s.index.Index(strconv.Itoa(p.ID), string(p.Title))
+	data := map[string]interface{}{
+		"title": string(p.Title),
+		"tags":  p.Tags,
+	}
+
+	// Index title
+	err := s.index.Index(strconv.Itoa(p.ID), data)
+	if err != nil {
+		return err
+	}
+
+	// Index tags
+	// err = s.index.Index(strconv.Itoa(p.ID), p.Tags)
+	// if err != nil {
+	// 	return err
+	// }
+	return nil
 }
 
 func (s *bleveSearch) Close() error {
