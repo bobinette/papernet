@@ -42,13 +42,18 @@ func (db *boltDB) Close() error {
 	return db.store.Close()
 }
 
-func (db *boltDB) Get(id int) (*models.Paper, error) {
-	var p models.Paper
+func (db *boltDB) Get(ids ...int) ([]*models.Paper, error) {
+	ps := make([]*models.Paper, 0, len(ids))
 	err := db.store.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("papers"))
-		data := b.Get(itob(id))
-		if err := json.Unmarshal(data, &p); err != nil {
-			return err
+		for _, id := range ids {
+			data := b.Get(itob(id))
+
+			var p models.Paper
+			if err := json.Unmarshal(data, &p); err != nil {
+				return err
+			}
+			ps = append(ps, &p)
 		}
 		return nil
 	})
@@ -57,7 +62,7 @@ func (db *boltDB) Get(id int) (*models.Paper, error) {
 		return nil, err
 	}
 
-	return &p, nil
+	return ps, nil
 }
 
 func (db *boltDB) List() ([]*models.Paper, error) {

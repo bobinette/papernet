@@ -27,12 +27,14 @@ type WebHandler interface {
 }
 
 type handler struct {
-	db database.DB
+	db     database.DB
+	search database.Search
 }
 
-func NewHandler(db database.DB) WebHandler {
+func NewHandler(db database.DB, s database.Search) WebHandler {
 	return &handler{
-		db: db,
+		db:     db,
+		search: s,
 	}
 }
 
@@ -63,11 +65,15 @@ func (h *handler) show(c *gin.Context) {
 		return
 	}
 
-	p, err := h.db.Get(id)
+	ps, err := h.db.Get(id)
 	if err != nil {
-		log.Printf("retrieve paper: %v", err)
+		c.String(http.StatusBadRequest, "invalid id")
+		return
+	} else if len(ps) == 0 {
+		c.String(http.StatusNotFound, fmt.Sprintf("no Paper for id %d", id))
 		return
 	}
+	p := ps[0]
 
 	s := blackfriday.MarkdownCommon(p.Summary)
 	var hp = struct {
@@ -81,13 +87,35 @@ func (h *handler) show(c *gin.Context) {
 }
 
 func (h *handler) list(c *gin.Context) {
-	ps, err := h.db.List()
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
+	q := c.Query("q")
+	var d = struct {
+		Papers []*models.Paper
+		Search string
+	}{}
+	if q != "" {
+		ids, err := h.search.Find(q)
+		if err != nil {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+		ps, err := h.db.Get(ids...)
+		if err != nil {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+		d.Papers = ps
+		d.Search = q
+	} else {
+		ps, err := h.db.List()
+		if err != nil {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+		d.Papers = ps
+		d.Search = ""
 	}
 
-	c.HTML(http.StatusOK, "list.html", ps)
+	c.HTML(http.StatusOK, "list.html", d)
 }
 
 func (h *handler) new(c *gin.Context) {
@@ -106,11 +134,15 @@ func (h *handler) edit(c *gin.Context) {
 		return
 	}
 
-	p, err := h.db.Get(id)
+	ps, err := h.db.Get(id)
 	if err != nil {
-		log.Printf("retrieve paper: %v", err)
+		c.String(http.StatusBadRequest, "invalid id")
+		return
+	} else if len(ps) == 0 {
+		c.String(http.StatusNotFound, fmt.Sprintf("no Paper for id %d", id))
 		return
 	}
+	p := ps[0]
 
 	refs := strings.Join(func(a []int) []string {
 		var s []string
@@ -154,9 +186,12 @@ func (h *handler) save(c *gin.Context) {
 		c.String(http.StatusBadRequest, fmt.Sprintf("invalid form %v", err))
 		return
 	}
-	log.Println(form)
 
 	refs, err := func(s string) ([]int, error) {
+		if s == "" {
+			return []int{}, nil
+		}
+
 		var ids []int
 		for _, r := range strings.Split(s, ",") {
 			// @TODO: better handle error
@@ -189,6 +224,13 @@ func (h *handler) save(c *gin.Context) {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	err = h.search.Index(&p)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	c.Redirect(http.StatusSeeOther, fmt.Sprintf("/papers/%d", p.ID))
 }
 
@@ -216,21 +258,25 @@ func (h *handler) graph(c *gin.Context) {
 		return
 	}
 
-	p, err := h.db.Get(id)
+	ps, err := h.db.Get(id)
 	if err != nil {
-		log.Printf("retrieve paper: %v", err)
+		c.String(http.StatusBadRequest, "invalid id")
+		return
+	} else if len(ps) == 0 {
+		c.String(http.StatusNotFound, fmt.Sprintf("no Paper for id %d", id))
 		return
 	}
+	p := ps[0]
 
 	g := dot.NewGraph()
 	node := p.Node()
 	re := models.Edge{Style: models.EdgeReference}
-	for _, r := range p.References {
-		rp, err := h.db.Get(r)
-		if err != nil {
-			c.String(http.StatusInternalServerError, err.Error())
-			return
-		}
+	refs, err := h.db.Get(p.References...)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	for _, rp := range refs {
 		g.AddEdge(node, rp.Node(), re)
 	}
 
