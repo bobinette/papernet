@@ -33,19 +33,8 @@ func main() {
 	}
 	defer search.Close()
 
-	// graphDBPath := fmt.Sprintf("%s.cayley", dbpath)
-	// err = graph.InitQuadStore("bolt", graphDBPath, graph.Options{"ignore_duplicate": true})
-	// if err != nil && err != graph.ErrDatabaseExists {
-	// 	log.Fatalf("could not init quadstore: %v", err)
-	// }
-	// g, err := cayley.NewGraph("bolt", graphDBPath, nil)
-	// if err != nil {
-	// 	log.Fatalf("could not open cayley: %v", err)
-	// }
-	// defer g.Close()
-
 	r := gin.Default()
 	h := papernet.NewHandler(db, search)
 	h.Register(r)
-	r.Run(":8080")
+	r.Run(":8081")
 }

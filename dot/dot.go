@@ -90,7 +90,7 @@ func (g *Graph) formatNode(n node) string {
 	}
 
 	if n.Type == models.NodePaper {
-		attr["URL"] = fmt.Sprintf("/papers/%d", n.ID)
+		attr["URL"] = fmt.Sprintf("/papers/%d/show", n.ID)
 	}
 
 	attrl := make([]string, len(attr))

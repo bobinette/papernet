@@ -1,14 +1,14 @@
 package models
 
 type Paper struct {
-	ID      int
-	Title   []byte
-	Read    bool
-	Summary []byte
+	ID      int    `json:"id"`
+	Title   string `json:"title"`
+	Read    bool   `json:"read"`
+	Summary string `json:"summary"`
 
-	Authors    []string
-	References []int
-	Tags       []string
+	Authors    []string `json:"authors"`
+	References []int    `json:"references"`
+	Tags       []string `json:"tags"`
 }
 
 func (p *Paper) Node() Node {
