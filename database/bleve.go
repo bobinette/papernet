@@ -46,7 +46,6 @@ func (s *bleveSearch) Find(q string) ([]int, error) {
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("%+v", hit)
 	}
 	return ids, nil
 }
@@ -57,17 +56,10 @@ func (s *bleveSearch) Index(p *models.Paper) error {
 		"tags":  p.Tags,
 	}
 
-	// Index title
 	err := s.index.Index(strconv.Itoa(p.ID), data)
 	if err != nil {
 		return err
 	}
-
-	// Index tags
-	// err = s.index.Index(strconv.Itoa(p.ID), p.Tags)
-	// if err != nil {
-	// 	return err
-	// }
 	return nil
 }
 

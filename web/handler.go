@@ -80,6 +80,65 @@ func (h *handler) show(c *gin.Context) {
 	})
 }
 
+func (h *handler) list(c *gin.Context) {
+	q := c.Query("q")
+
+	var ps []*models.Paper
+	if q != "" {
+		ids, err := h.search.Find(q)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"data":    "ko",
+				"message": err.Error(),
+			})
+			return
+		}
+		ps, err = h.db.Get(ids...)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"data":    "ko",
+				"message": err.Error(),
+			})
+			return
+		}
+	} else {
+		var err error
+		ps, err = h.db.List()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"data":    "ko",
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"data": ps,
+	})
+}
+
+func (h *handler) create(c *gin.Context) {
+	p := models.Paper{
+		Title:      "",
+		Authors:    []string{},
+		References: []models.Reference{},
+		Tags:       []string{},
+	}
+	err := h.db.Insert(&p)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]string{
+			"data":    "ko",
+			"message": fmt.Sprintf("error inserting %v", err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"data": p,
+	})
+}
+
 func (h *handler) update(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -125,44 +184,6 @@ func (h *handler) update(c *gin.Context) {
 	})
 }
 
-func (h *handler) list(c *gin.Context) {
-	q := c.Query("q")
-
-	var ps []*models.Paper
-	if q != "" {
-		ids, err := h.search.Find(q)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"data":    "ko",
-				"message": err.Error(),
-			})
-			return
-		}
-		ps, err = h.db.Get(ids...)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"data":    "ko",
-				"message": err.Error(),
-			})
-			return
-		}
-	} else {
-		var err error
-		ps, err = h.db.List()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"data":    "ko",
-				"message": err.Error(),
-			})
-			return
-		}
-	}
-
-	c.JSON(http.StatusOK, map[string]interface{}{
-		"data": ps,
-	})
-}
-
 func (h *handler) delete(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -181,26 +202,5 @@ func (h *handler) delete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"data": "ok",
-	})
-}
-
-func (h *handler) create(c *gin.Context) {
-	p := models.Paper{
-		Title:      "",
-		Authors:    []string{},
-		References: []int{},
-		Tags:       []string{},
-	}
-	err := h.db.Insert(&p)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]string{
-			"data":    "ko",
-			"message": fmt.Sprintf("error inserting %v", err),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, map[string]interface{}{
-		"data": p,
 	})
 }

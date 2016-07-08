@@ -6,9 +6,14 @@ type Paper struct {
 	Read    bool   `json:"read"`
 	Summary string `json:"summary"`
 
-	Authors    []string `json:"authors"`
-	References []int    `json:"references"`
-	Tags       []string `json:"tags"`
+	Authors    []string    `json:"authors"`
+	References []Reference `json:"references"`
+	Tags       []string    `json:"tags"`
+}
+
+type Reference struct {
+	ID    int    `json:"id"`
+	Title string `json:"title"`
 }
 
 func (p *Paper) Node() Node {
