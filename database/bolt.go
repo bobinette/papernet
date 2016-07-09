@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/google/cayley"
-	"github.com/google/cayley/graph"
-	_ "github.com/google/cayley/graph/bolt"
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/graph"
+	_ "github.com/cayleygraph/cayley/graph/bolt"
 
 	"github.com/bobinette/papernet/models"
 )
@@ -40,7 +40,7 @@ func NewBoltDB(dbpath string) (DB, error) {
 
 	// Open graph db next to the main db
 	graphDBPath := fmt.Sprintf("%s.cayley", dbpath)
-	*graph.IgnoreDup = true
+	*graph.IgnoreDup = true // Hack to actually ignore dups...
 	err = graph.InitQuadStore("bolt", graphDBPath, graph.Options{"ignore_duplicate": true})
 	if err != nil && err != graph.ErrDatabaseExists {
 		return nil, err
@@ -57,7 +57,7 @@ func NewBoltDB(dbpath string) (DB, error) {
 }
 
 func (db *boltDB) Close() error {
-	db.graph.Close() // As surprising as it is, Close does not return an error...
+	db.graph.Close() // As surprising as it is, this does not return an error...
 	return db.store.Close()
 }
 
@@ -88,6 +88,11 @@ func (db *boltDB) Get(ids ...int) ([]*models.Paper, error) {
 	return ps, nil
 }
 
+// List retrieves all the papers from the database. If an error is encountered it is returned along
+// with a nil array
+//
+// For now, it takes no parameters and simply returns the whole database. This is because the
+// number of elements in the db is not expected to be more than a 100 and we can use the search.
 func (db *boltDB) List() ([]*models.Paper, error) {
 	var ps []*models.Paper
 	err := db.store.View(func(tx *bolt.Tx) error {
@@ -111,6 +116,7 @@ func (db *boltDB) List() ([]*models.Paper, error) {
 	return ps, nil
 }
 
+// Insert inserts a paper in the database.
 func (db *boltDB) Insert(p *models.Paper) error {
 	err := db.updateReferences(p)
 	if err != nil {
@@ -181,6 +187,8 @@ func (db *boltDB) Update(p *models.Paper) error {
 		return err
 	}
 
+	// TODO: update papers referencing this paper if name is different
+
 	return nil
 }
 
@@ -207,15 +215,12 @@ func (db *boltDB) updateReferences(p *models.Paper) error {
 			}
 
 			p.References[i].Title = rp.Title
-			fmt.Printf("%+v", p)
 		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-
-	// TODO: update papers referencing this paper
 
 	return nil
 }
