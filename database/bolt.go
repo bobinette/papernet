@@ -71,6 +71,10 @@ func (db *boltDB) Get(ids ...int) ([]*models.Paper, error) {
 		for _, id := range ids {
 			data := b.Get(itob(id))
 
+			if data == nil {
+				continue
+			}
+
 			var p models.Paper
 			if err := json.Unmarshal(data, &p); err != nil {
 				return err

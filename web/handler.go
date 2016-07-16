@@ -61,16 +61,22 @@ func (h *handler) Register(r *gin.Engine) {
 func (h *handler) show(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.String(http.StatusBadRequest, "invalid id")
+		c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"message": fmt.Sprintf("invalid id: %s", c.Param("id")),
+		})
 		return
 	}
 
 	ps, err := h.db.Get(id)
 	if err != nil {
-		c.String(http.StatusBadRequest, "invalid id")
+		c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"message": fmt.Sprintf("Error retrieving in db: %v", err),
+		})
 		return
 	} else if len(ps) == 0 {
-		c.String(http.StatusNotFound, fmt.Sprintf("no Paper for id %d", id))
+		c.JSON(http.StatusNotFound, map[string]interface{}{
+			"message": fmt.Sprintf("No paper found for id %d", id),
+		})
 		return
 	}
 	p := ps[0]

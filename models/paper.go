@@ -10,6 +10,7 @@ type Paper struct {
 	Read bool      `json:"read"`
 	Type PaperType `json:"type"`
 	Year int       `json:"year"`
+	URLs []string  `json:"urls"`
 
 	// Relations
 	Authors    []string    `json:"authors"`
