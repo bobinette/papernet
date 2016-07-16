@@ -125,17 +125,30 @@ func (h *handler) list(c *gin.Context) {
 }
 
 func (h *handler) create(c *gin.Context) {
-	p := models.Paper{
-		Title:      "",
-		Authors:    []string{},
-		References: []models.Reference{},
-		Tags:       []string{},
+	var p models.Paper
+	err := c.BindJSON(&p)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]string{
+			"data":    "ko",
+			"message": fmt.Sprintf("invalid data %v", err),
+		})
+		return
 	}
-	err := h.db.Insert(&p)
+
+	err = h.db.Insert(&p)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, map[string]string{
 			"data":    "ko",
 			"message": fmt.Sprintf("error inserting %v", err),
+		})
+		return
+	}
+
+	err = h.search.Index(&p)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]string{
+			"data":    "ko",
+			"message": fmt.Sprintf("error indexing %v", err),
 		})
 		return
 	}
