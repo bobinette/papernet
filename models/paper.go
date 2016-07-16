@@ -1,5 +1,13 @@
 package models
 
+type Reading int
+
+const (
+	ReadingNotRead Reading = iota
+	ReadingRead
+	ReadingInProgress
+)
+
 type Paper struct {
 	// Core attributes
 	ID      int    `json:"id"`
@@ -7,7 +15,7 @@ type Paper struct {
 	Summary string `json:"summary"`
 
 	// Fancy attributes
-	Read bool      `json:"read"`
+	Read Reading   `json:"read"`
 	Type PaperType `json:"type"`
 	Year int       `json:"year"`
 	URLs []string  `json:"urls"`
