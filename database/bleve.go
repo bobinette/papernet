@@ -33,7 +33,7 @@ func NewBleveSearch(searchpath string) (Search, error) {
 }
 
 func (s *bleveSearch) Find(q string) ([]int, error) {
-	query := bleve.NewMatchQuery(q)
+	query := bleve.NewPrefixQuery(q)
 	search := bleve.NewSearchRequest(query)
 	searchResults, err := s.index.Search(search)
 	if err != nil {
