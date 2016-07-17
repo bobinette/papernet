@@ -45,4 +45,5 @@ const (
 	PaperTypePaper PaperType = iota
 	PaperTypeBook
 	PaperTypeSlides
+	PaperTypeWebPage
 )
