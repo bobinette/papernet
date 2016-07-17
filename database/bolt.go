@@ -40,7 +40,7 @@ func NewBoltDB(dbpath string) (DB, error) {
 
 	// Open graph db next to the main db
 	graphDBPath := fmt.Sprintf("%s.cayley", dbpath)
-	*graph.IgnoreDup = true // Hack to actually ignore dups...
+	graph.IgnoreDuplicates = true // Hack to actually ignore dups...
 	err = graph.InitQuadStore("bolt", graphDBPath, graph.Options{"ignore_duplicate": true})
 	if err != nil && err != graph.ErrDatabaseExists {
 		return nil, err
