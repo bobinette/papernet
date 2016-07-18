@@ -1,12 +1,4 @@
-package models
-
-type Reading int
-
-const (
-	ReadingNotRead Reading = iota
-	ReadingRead
-	ReadingInProgress
-)
+package paper
 
 type Paper struct {
 	// Core attributes
@@ -15,23 +7,16 @@ type Paper struct {
 	Summary string `json:"summary"`
 
 	// Fancy attributes
-	Read Reading   `json:"read"`
-	Type PaperType `json:"type"`
-	Year int       `json:"year"`
-	URLs []string  `json:"urls"`
+	Read       Reading   `json:"read"`
+	Type       PaperType `json:"type"`
+	Year       int       `json:"year"`
+	URLs       []string  `json:"urls"`
+	Bookmarked bool      `json:"bookmarked"`
 
 	// Relations
 	Authors    []string    `json:"authors"`
 	References []Reference `json:"references"`
 	Tags       []string    `json:"tags"`
-}
-
-func (p *Paper) Node() Node {
-	return Node{
-		ID:    p.ID,
-		Label: string(p.Title),
-		Type:  NodePaper,
-	}
 }
 
 type Reference struct {
@@ -46,4 +31,12 @@ const (
 	PaperTypeBook
 	PaperTypeSlides
 	PaperTypeWebPage
+)
+
+type Reading int
+
+const (
+	ReadingNotRead Reading = iota
+	ReadingRead
+	ReadingInProgress
 )

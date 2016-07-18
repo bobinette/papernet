@@ -1,24 +1,23 @@
-package database
+package paper
 
 import (
 	"log"
 	"strconv"
 
 	"github.com/blevesearch/bleve"
-
-	"github.com/bobinette/papernet/models"
 )
 
-type bleveSearch struct {
+type Search struct {
 	index bleve.Index
 }
 
-func NewBleveSearch(searchpath string) (Search, error) {
-	index, err := bleve.Open(searchpath)
+func NewSearch(indexPath string) (*Search, error) {
+	index, err := bleve.Open(indexPath)
+
 	if err == bleve.ErrorIndexPathDoesNotExist {
 		log.Print("Creating index...")
-		mapping := bleve.NewIndexMapping()
-		index, err = bleve.New(searchpath, mapping)
+		mapping := createMapping()
+		index, err = bleve.New(indexPath, mapping)
 		log.Println("Done")
 		if err != nil {
 			return nil, err
@@ -27,12 +26,12 @@ func NewBleveSearch(searchpath string) (Search, error) {
 		return nil, err
 	}
 
-	return &bleveSearch{
+	return &Search{
 		index: index,
 	}, nil
 }
 
-func (s *bleveSearch) Find(q string) ([]int, error) {
+func (s *Search) Find(q string) ([]int, error) {
 	query := bleve.NewPrefixQuery(q)
 	search := bleve.NewSearchRequest(query)
 	searchResults, err := s.index.Search(search)
@@ -50,7 +49,7 @@ func (s *bleveSearch) Find(q string) ([]int, error) {
 	return ids, nil
 }
 
-func (s *bleveSearch) Index(p *models.Paper) error {
+func (s *Search) Index(p *Paper) error {
 	data := map[string]interface{}{
 		"title": string(p.Title),
 		"tags":  p.Tags,
@@ -63,6 +62,14 @@ func (s *bleveSearch) Index(p *models.Paper) error {
 	return nil
 }
 
-func (s *bleveSearch) Close() error {
+func (s *Search) Close() error {
 	return s.index.Close()
+}
+
+// ------------------------------------------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------------------------------------------
+
+func createMapping() *bleve.IndexMapping {
+	return bleve.NewIndexMapping()
 }
