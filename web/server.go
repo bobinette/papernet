@@ -19,6 +19,11 @@ func NewServer(dbPath, indexPath string) (http.Handler, error) {
 		return nil, err
 	}
 
+	uh, err := NewUserHandler(store)
+	if err != nil {
+		return nil, err
+	}
+
 	uptime := UptimeHandler{f: Formatter{}}
 
 	// Create router
@@ -35,6 +40,7 @@ func NewServer(dbPath, indexPath string) (http.Handler, error) {
 	// Register routes
 	uptime.Register(router)
 	ph.Register(router)
+	uh.Register(router)
 
 	// Basic response in JSON if route not found
 	router.NoRoute(func(c *gin.Context) {
