@@ -91,7 +91,6 @@ func (h *PaperHandler) Update(c *gin.Context) (interface{}, int, error) {
 	}
 
 	if id != p.ID {
-		c.JSON(http.StatusBadRequest, map[string]string{"data": "ko", "message": "ids do not match"})
 		return nil, http.StatusBadRequest, fmt.Errorf("ids do not match: %d (url) and %d (data)", id, p.ID)
 	}
 

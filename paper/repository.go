@@ -18,7 +18,7 @@ func NewRepository(store *bolt.DB) (*Repository, error) {
 		// Create papers bucket
 		_, err := tx.CreateBucketIfNotExists([]byte("papers"))
 		if err != nil {
-			return fmt.Errorf("create bucket: %s", err)
+			return fmt.Errorf("error creating papers bucket: %s", err)
 		}
 
 		return nil

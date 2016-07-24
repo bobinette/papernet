@@ -36,5 +36,10 @@ func NewServer(dbPath, indexPath string) (http.Handler, error) {
 	uptime.Register(router)
 	ph.Register(router)
 
+	// Basic response in JSON if route not found
+	router.NoRoute(func(c *gin.Context) {
+		c.JSON(404, gin.H{"message": "Page not found"})
+	})
+
 	return router, nil
 }
