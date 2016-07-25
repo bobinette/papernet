@@ -8,6 +8,7 @@ import (
 
 type ListOptions struct {
 	Search string
+	IDs    []int
 }
 
 type Service struct {
@@ -46,19 +47,25 @@ func (s *Service) Get(id int) (*Paper, error) {
 func (s *Service) List(opt ListOptions) ([]*Paper, error) {
 	var ps []*Paper
 
-	if opt.Search == "" {
-		var err error
-		ps, err = s.repo.List()
-		if err != nil {
-			return nil, err
-		}
-	} else {
+	if opt.Search != "" {
 		ids, err := s.search.Find(opt.Search)
 		if err != nil {
 			return nil, err
 		}
 
 		ps, err = s.repo.Get(ids...)
+		if err != nil {
+			return nil, err
+		}
+	} else if len(opt.IDs) > 0 {
+		var err error
+		ps, err = s.repo.Get(opt.IDs...)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+		ps, err = s.repo.List()
 		if err != nil {
 			return nil, err
 		}

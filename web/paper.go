@@ -50,8 +50,30 @@ func (h *PaperHandler) Get(c *gin.Context) (interface{}, int, error) {
 }
 
 func (h *PaperHandler) List(c *gin.Context) (interface{}, int, error) {
+	ids, err := func(a []string) ([]int, error) {
+		ids := make([]int, len(a))
+
+		if len(a) == 1 && a[0] == "" {
+			return nil, nil
+		}
+
+		for i, s := range a {
+			id, err := strconv.Atoi(s)
+			if err != nil {
+				return nil, err
+			}
+			ids[i] = id
+		}
+		return ids, nil
+	}(c.Request.URL.Query()["ids[]"])
+
+	if err != nil {
+		return nil, http.StatusBadRequest, err
+	}
+
 	opt := paper.ListOptions{
 		Search: c.Query("q"),
+		IDs:    ids,
 	}
 
 	ps, err := h.service.List(opt)
