@@ -1,0 +1,6 @@
+language: go
+go:
+  - '1.6.1'
+install: make install
+# Default to `make`
+script: make test
