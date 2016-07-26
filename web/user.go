@@ -27,9 +27,9 @@ func NewUserHandler(store *bolt.DB) (*UserHandler, error) {
 }
 
 func (h *UserHandler) Register(r *gin.Engine) {
-	r.POST("/users", h.f.Wrap(h.Create))
-	r.GET("/users/:name", h.f.Wrap(h.Get))
-	r.PUT("/users/:name", h.f.Wrap(h.Update))
+	r.POST("/api/users", h.f.Wrap(h.Create))
+	r.GET("/api/users/:name", h.f.Wrap(h.Get))
+	r.PUT("/api/users/:name", h.f.Wrap(h.Update))
 }
 
 func (h *UserHandler) Get(c *gin.Context) (interface{}, int, error) {

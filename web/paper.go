@@ -28,11 +28,11 @@ func NewPaperHandler(store *bolt.DB, indexPath string) (*PaperHandler, error) {
 }
 
 func (h *PaperHandler) Register(r *gin.Engine) {
-	r.GET("/papers/:id", h.f.Wrap(h.Get))
-	r.GET("/papers", h.f.Wrap(h.List))
-	r.POST("/papers", h.f.Wrap(h.Insert))
-	r.PUT("/papers/:id", h.f.Wrap(h.Update))
-	r.DELETE("/papers/:id", h.f.Wrap(h.Delete))
+	r.GET("/api/papers/:id", h.f.Wrap(h.Get))
+	r.GET("/api/papers", h.f.Wrap(h.List))
+	r.POST("/api/papers", h.f.Wrap(h.Insert))
+	r.PUT("/api/papers/:id", h.f.Wrap(h.Update))
+	r.DELETE("/api/papers/:id", h.f.Wrap(h.Delete))
 }
 
 func (h *PaperHandler) Get(c *gin.Context) (interface{}, int, error) {

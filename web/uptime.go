@@ -11,7 +11,7 @@ type UptimeHandler struct {
 }
 
 func (h *UptimeHandler) Register(r *gin.Engine) {
-	r.GET("/ping", h.f.Wrap(h.Ping))
+	r.GET("/api/ping", h.f.Wrap(h.Ping))
 }
 
 func (h *UptimeHandler) Ping(c *gin.Context) (interface{}, int, error) {
