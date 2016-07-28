@@ -42,6 +42,8 @@ func NewServer(dbPath, indexPath string) (http.Handler, error) {
 	ph.Register(router)
 	uh.Register(router)
 
+	router.Static("/app", "./app")
+
 	// Basic response in JSON if route not found
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(404, gin.H{"message": "Page not found"})

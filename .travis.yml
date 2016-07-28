@@ -1,6 +1,28 @@
 language: go
 go:
-  - '1.6.1'
+  - 1.6.1
+
 install: make install
-# Default to `make`
+
+# Default is `make`
 script: make test
+
+# Deployment
+before_deploy:
+  - GOARCH=darwin GOARCH=amd64 go build -o bin/papernet-darwin-amd64
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key:
+    secure: C7wT7AAU9HLt5Ua74u0RVs/rpBHPIv5+n0rfdzKapISMbrFGM9jenoyHoz4vPXO7DVWR5sBOX9TI8l8Eh4LrarVhVaxlIBzSNJrB+qs6mBD7pN3D8PH/mLS92jsM6qaE45es0AAhgWww8oQIOmcbr2FtVhjG5j1r8OrXRZf4g4blFncsYVuVJvZlF2r9Y0gAR5ntYczsUPV8Yo1rLisMBT3Bgi7DgarYumpWKzwh6YWrL70cirHeZjDvwxwkPBFk5jlUnJJMyD80/4AqNU4BYjw9XrUUqPMAKmfVkZ0l0f/jVmKxLq/JXS4EEaF+lutIJ8UDXUuVFWCoTlK6Jhj1CteI7Je4QH3I20kS5OaCkBnmqSV2eEDtrbAQwEQ/o5TllChqYpSzAsPN8QuicXJAwg0jiS2BwNLNoWfUhL8172igcvRw2V+Tqw3bA15JnjiSI/aMZOtRiSLEpyMKv3d24RjNyYifVp9AOPCh/A3JiaHuBGVQoa4wHxlNtPQ2Bd1hbu6/6b4Vv/bmo4QymJQkf3a8EBi0iWqJ0uHt6RPAW+lmCY5tA6p3twexSTs1wLVrs6rbaQtdohhY3J6ux+PZ4x0IDrlAOFHws/zuECa/NXd7cdQk2mlBXggseZ3OWOxUoB+uB4JZnrgZL8HrkBjRq9K/b1ifLWfngSiHn478M9c=
+  file:
+    - bin/papernet-darwin-amd64
+  on:
+    tags: true
+    repo: bobinette/papernet
+
+notifications:
+  email:
+    on_success: change
+    on_failure: change
