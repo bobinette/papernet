@@ -1,11 +1,11 @@
 language: go
 go:
   - 1.6.1
+  - 1.7.1
 
 install:
-  - go get -u github.com/blevesearch/bleve
-  - go get -u github.com/boltdb/bolt
-  - go get -u github.com/gin-gonic/gin
+  - go get -u github.com/tools/godep
+  - godep restore
 
 # Default is `make`
 script: go test ./...

@@ -1,0 +1,55 @@
+{
+	"ImportPath": "github.com/bobinette/papernet",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v75",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/boltdb/bolt",
+			"Comment": "v1.2.1-5-g05e441d",
+			"Rev": "05e441d7b3ded9164c5b912521504e7711dd0ba2"
+		},
+		{
+			"ImportPath": "github.com/gin-gonic/gin",
+			"Comment": "v1.0rc1-278-g3ad4c71",
+			"Rev": "3ad4c714a76ab83e3cc71fb6e532fb9c0e6e2d5a"
+		},
+		{
+			"ImportPath": "github.com/gin-gonic/gin/binding",
+			"Comment": "v1.0rc1-278-g3ad4c71",
+			"Rev": "3ad4c714a76ab83e3cc71fb6e532fb9c0e6e2d5a"
+		},
+		{
+			"ImportPath": "github.com/gin-gonic/gin/render",
+			"Comment": "v1.0rc1-278-g3ad4c71",
+			"Rev": "3ad4c714a76ab83e3cc71fb6e532fb9c0e6e2d5a"
+		},
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "2bc9827a78f95c6665b5fe0abd1fd66b496ae2d8"
+		},
+		{
+			"ImportPath": "github.com/manucorporat/sse",
+			"Rev": "ee05b128a739a0fb76c7ebd3ae4810c1de808d6d"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "55a3084c9119aeb9ba2437d595b0a7e9cb635da9"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "c200b10b5d5e122be351b67af224adc6128af5bf"
+		},
+		{
+			"ImportPath": "gopkg.in/go-playground/validator.v8",
+			"Comment": "v8.18.1",
+			"Rev": "5f57d2222ad794d0dffb07e664ea05e2ee07d60c"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "a5b47d31c556af34a302ce5d659e6fea44d90de0"
+		}
+	]
+}
