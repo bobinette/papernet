@@ -7,4 +7,4 @@ Papernet is a very simple tool to keep track of the papers you read.
 ## Setup
 
 ### Go
-Usual go installation (1.6.1)
+Usual go installation (1.7.1)
