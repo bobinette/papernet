@@ -21,6 +21,11 @@ func New(pr papernet.PaperRepository) (http.Handler, error) {
 		c.Next()
 	})
 
+	// Unknown route
+	router.NoRoute(func(c *gin.Context) {
+		c.JSON(404, gin.H{"message": "Page not found"})
+	})
+
 	// Ping
 	router.GET("/papernet/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{"data": "ok"})
