@@ -21,7 +21,7 @@ lists:
 
 * paper
 * rock
-* cisor
+* scissors
 
 1. and
 2. numbered
