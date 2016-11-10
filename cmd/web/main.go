@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/bobinette/papernet"
+	// "github.com/bobinette/papernet"
 	"github.com/bobinette/papernet/bolt"
 	"github.com/bobinette/papernet/gin"
 )
@@ -60,14 +60,14 @@ func main() {
 		log.Fatalln("could not open db:", err)
 	}
 
-	paper := papernet.Paper{
-		ID:      1,
-		Title:   "Dev paper",
-		Summary: md,
-	}
-	if err := repo.Upsert(&paper); err != nil {
-		log.Fatalln("error inserting dev paper", err)
-	}
+	// paper := papernet.Paper{
+	// 	ID:      1,
+	// 	Title:   "Dev paper",
+	// 	Summary: md,
+	// }
+	// if err := repo.Upsert(&paper); err != nil {
+	// 	log.Fatalln("error inserting dev paper", err)
+	// }
 
 	// Start web server
 	handler, err := gin.New(&repo)

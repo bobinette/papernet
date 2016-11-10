@@ -5,15 +5,17 @@ import (
 )
 
 type PaperRepository struct {
-	db    map[int]*papernet.Paper
+	db    []*papernet.Paper
 	maxId int
 }
 
 func (r PaperRepository) Get(id int) (*papernet.Paper, error) {
-	if r.db == nil {
-		r.db = make(map[int]*papernet.Paper)
+	for _, paper := range r.db {
+		if paper.ID == id {
+			return paper, nil
+		}
 	}
-	return r.db[id], nil
+	return nil, nil
 }
 
 func (r *PaperRepository) Upsert(paper *papernet.Paper) error {
@@ -27,8 +29,37 @@ func (r *PaperRepository) Upsert(paper *papernet.Paper) error {
 	}
 
 	if r.db == nil {
-		r.db = make(map[int]*papernet.Paper)
+		r.db = make([]*papernet.Paper, 0)
 	}
-	r.db[paper.ID] = paper
+
+	index := -1
+	for i, dbPaper := range r.db {
+		if dbPaper.ID == paper.ID {
+			index = i
+			break
+		}
+	}
+	if index >= 0 && index < len(r.db) {
+		r.db[index] = paper
+	} else {
+		r.db = append(r.db, paper)
+	}
+
 	return nil
+}
+
+func (r *PaperRepository) Delete(id int) error {
+	index := -1
+	for i, paper := range r.db {
+		if paper.ID == id {
+			index = i
+			break
+		}
+	}
+	r.db = append(r.db[:index], r.db[index+1:]...)
+	return nil
+}
+
+func (r *PaperRepository) List() ([]*papernet.Paper, error) {
+	return r.db, nil
 }

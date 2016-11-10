@@ -25,7 +25,7 @@ func (r *PaperRepository) Get(id int) (*papernet.Paper, error) {
 	var paper *papernet.Paper
 
 	err := r.store.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("papers"))
+		bucket := tx.Bucket([]byte(bucketName))
 
 		data := bucket.Get(itob(id))
 		if data == nil {
@@ -45,7 +45,7 @@ func (r *PaperRepository) Get(id int) (*papernet.Paper, error) {
 // Upsert inserts or update a paper in the database, depending on paper.ID.
 func (r *PaperRepository) Upsert(paper *papernet.Paper) error {
 	return r.store.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("papers"))
+		bucket := tx.Bucket([]byte(bucketName))
 
 		if paper.ID <= 0 {
 			id, err := bucket.NextSequence()
@@ -62,6 +62,37 @@ func (r *PaperRepository) Upsert(paper *papernet.Paper) error {
 
 		return bucket.Put(itob(paper.ID), data)
 	})
+}
+
+func (r *PaperRepository) Delete(id int) error {
+	return r.store.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(bucketName))
+		return bucket.Delete(itob(id))
+	})
+}
+
+func (r *PaperRepository) List() ([]*papernet.Paper, error) {
+	var papers []*papernet.Paper
+
+	err := r.store.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucketName))
+		c := b.Cursor()
+
+		for id, data := c.First(); id != nil; id, data = c.Next() {
+			var paper papernet.Paper
+			if err := json.Unmarshal(data, &paper); err != nil {
+				return err
+			}
+			papers = append(papers, &paper)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return papers, nil
 }
 
 // ------------------------------------------------------------------------------------------------
