@@ -5,51 +5,10 @@ import (
 	"net/http"
 
 	// "github.com/bobinette/papernet"
+	"github.com/bobinette/papernet/bleve"
 	"github.com/bobinette/papernet/bolt"
 	"github.com/bobinette/papernet/gin"
 )
-
-var md = `# Papernet example
-
-## Markdown
-
-In papernet, a paper summary is written in markdown. It is the rendered pretty well by
-the front as you can see.
-
-Markdown allows you to put **some text in bold**, other parts *in italic*. You can even add
-lists:
-
-* paper
-* rock
-* scissors
-
-1. and
-2. numbered
-3. lists
-
-> You can have some blocks
-
-and some code:
-	` + "```" + `python
-	a = 1
-	b = a + 2
-	` + "```" + `
-is rendered as
-` + "```" + ` python
-a = 1
-b = a + 2
-` + "```" + `
-
-## Equations
-
-The interface enhances basic markdown with latex equation support through code blocks:
-	` + "```" + `equation
-	\sum_{i=0}^{n}{i}
-	` + "```" + `
-is rendered as
-` + "```" + `equation
-\sum_{i=0}^{n}{i}
-` + "```"
 
 func main() {
 	// Create repository
@@ -60,17 +19,16 @@ func main() {
 		log.Fatalln("could not open db:", err)
 	}
 
-	// paper := papernet.Paper{
-	// 	ID:      1,
-	// 	Title:   "Dev paper",
-	// 	Summary: md,
-	// }
-	// if err := repo.Upsert(&paper); err != nil {
-	// 	log.Fatalln("error inserting dev paper", err)
-	// }
+	// Create index
+	index := bleve.PaperSearch{}
+	err = index.Open("data/papernet.index")
+	defer index.Close()
+	if err != nil {
+		log.Fatalln("could not open index:", err)
+	}
 
 	// Start web server
-	handler, err := gin.New(&repo)
+	handler, err := gin.New(&repo, &index)
 	if err != nil {
 		log.Fatalln("could not start server:", err)
 	}

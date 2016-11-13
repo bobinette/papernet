@@ -12,6 +12,7 @@ import (
 
 type PaperHandler struct {
 	Repository papernet.PaperRepository
+	Searcher   papernet.PaperSearch
 }
 
 func (h *PaperHandler) RegisterRoutes(router *gin.Engine) {
@@ -74,6 +75,14 @@ func (h *PaperHandler) Insert(c *gin.Context) {
 		return
 	}
 
+	err = h.Searcher.Index(&paper)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"data": paper,
 	})
@@ -125,6 +134,14 @@ func (h *PaperHandler) Update(c *gin.Context) {
 		return
 	}
 
+	err = h.Searcher.Index(&paper)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"data": paper,
 	})
@@ -166,7 +183,16 @@ func (h *PaperHandler) Delete(c *gin.Context) {
 }
 
 func (h *PaperHandler) List(c *gin.Context) {
-	papers, err := h.Repository.List()
+	q := c.Query("q")
+	ids, err := h.Searcher.Search(q)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	papers, err := h.Repository.Get(ids...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"error": err.Error(),

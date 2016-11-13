@@ -12,3 +12,8 @@ type PaperRepository interface {
 	Upsert(*Paper) error
 	Delete(int) error
 }
+
+type PaperSearch interface {
+	Index(*Paper) error
+	Search(titlePrefix string) ([]int, error)
+}

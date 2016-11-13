@@ -4,25 +4,49 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http/httptest"
+	"os"
+	"path"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/bobinette/papernet"
+	"github.com/bobinette/papernet/bleve"
 	"github.com/bobinette/papernet/mock"
 )
 
-func createRouter(t *testing.T) (*gin.Engine, *PaperHandler) {
+func createRouter(t *testing.T) (*gin.Engine, *PaperHandler, func()) {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatal("could not create tmp file:", err)
+	}
+
+	// Too lazy to mock the search now...
+	index := &bleve.PaperSearch{}
+	err = index.Open(path.Join(dir, "test"))
+	if err != nil {
+		t.Fatal("error creating index", err)
+	}
+
 	handler := &PaperHandler{
 		Repository: &mock.PaperRepository{},
+		Searcher:   index,
 	}
 
 	gin.SetMode(gin.ReleaseMode) // avoid unnecessary log
 	router := gin.New()
 	handler.RegisterRoutes(router)
 
-	return router, handler
+	return router, handler, func() {
+		if err := index.Close(); err != nil {
+			t.Log(err)
+		}
+		if err := os.RemoveAll(dir); err != nil {
+			t.Log(err)
+		}
+	}
 }
 
 func createReader(i interface{}, t *testing.T) io.Reader {
@@ -41,7 +65,8 @@ func createReader(i interface{}, t *testing.T) io.Reader {
 }
 
 func TestGet(t *testing.T) {
-	router, handler := createRouter(t)
+	router, handler, f := createRouter(t)
+	defer f()
 
 	// Load fixtures
 	err := handler.Repository.Upsert(&papernet.Paper{
@@ -91,7 +116,8 @@ func TestGet(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	router, _ := createRouter(t)
+	router, _, f := createRouter(t)
+	defer f()
 
 	url := "/papernet/papers"
 	var tts = []struct {
@@ -143,7 +169,8 @@ func TestInsert(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	router, handler := createRouter(t)
+	router, handler, f := createRouter(t)
+	defer f()
 
 	// Load fixtures
 	err := handler.Repository.Upsert(&papernet.Paper{
@@ -216,13 +243,14 @@ func TestUpdate(t *testing.T) {
 		r := make(map[string]interface{})
 		err := json.Unmarshal(resp.Body.Bytes(), &r)
 		if err != nil {
-			t.Error("%s - could not decode response as JSON:", tt.Name, err)
+			t.Errorf("%s - could not decode response as JSON:", tt.Name, err)
 		}
 	}
 }
 
 func TestDelete(t *testing.T) {
-	router, handler := createRouter(t)
+	router, handler, f := createRouter(t)
+	defer f()
 
 	// Load fixtures
 	err := handler.Repository.Upsert(&papernet.Paper{
@@ -283,17 +311,23 @@ func TestDelete(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	router, handler := createRouter(t)
+	router, handler, f := createRouter(t)
+	defer f()
 
 	// Load fixtures
 	papers := []*papernet.Paper{
 		&papernet.Paper{ID: 1, Title: "Test", Summary: "Test"},
-		&papernet.Paper{ID: 2, Title: "Test 2", Summary: "Summary"},
+		&papernet.Paper{ID: 2, Title: "Pizza yolo", Summary: "Summary"},
 	}
 	for _, paper := range papers {
 		err := handler.Repository.Upsert(paper)
 		if err != nil {
 			t.Fatal("could not insert paper:", err)
+		}
+
+		err = handler.Searcher.Index(paper)
+		if err != nil {
+			t.Fatal("could not index paper:", err)
 		}
 	}
 
@@ -307,6 +341,12 @@ func TestList(t *testing.T) {
 			Query: "/papernet/papers",
 			Code:  200,
 			Len:   2,
+		},
+		{
+			// List all papers with title starting by piz
+			Query: "/papernet/papers?q=piz",
+			Code:  200,
+			Len:   1,
 		},
 	}
 
@@ -327,7 +367,7 @@ func TestList(t *testing.T) {
 		}
 
 		if len(r.Data) != tt.Len {
-			t.Error("wrong number of papers extracted: expected %d got %d", tt.Len, len(r.Data))
+			t.Errorf("wrong number of papers extracted: expected %d got %d", tt.Len, len(r.Data))
 		}
 	}
 }
