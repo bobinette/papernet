@@ -31,13 +31,13 @@ func (h *PaperHandler) Get(c *gin.Context) {
 		return
 	}
 
-	paper, err := h.Repository.Get(id)
+	papers, err := h.Repository.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"error": err,
 		})
 		return
-	} else if paper == nil {
+	} else if len(papers) == 0 {
 		c.JSON(http.StatusNotFound, map[string]interface{}{
 			"error": fmt.Sprintf("Paper %d not found", id),
 		})
@@ -45,7 +45,7 @@ func (h *PaperHandler) Get(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, map[string]interface{}{
-		"data": paper,
+		"data": papers[0],
 	})
 }
 
@@ -97,13 +97,13 @@ func (h *PaperHandler) Update(c *gin.Context) {
 		return
 	}
 
-	paperFromID, err := h.Repository.Get(id)
+	papersFromID, err := h.Repository.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"error": err,
 		})
 		return
-	} else if paperFromID == nil {
+	} else if len(papersFromID) == 0 {
 		c.JSON(http.StatusNotFound, map[string]interface{}{
 			"error": fmt.Sprintf("Paper %d not found", id),
 		})
@@ -139,13 +139,13 @@ func (h *PaperHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	paper, err := h.Repository.Get(id)
+	papers, err := h.Repository.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"error": err.Error(),
 		})
 		return
-	} else if paper == nil {
+	} else if len(papers) == 0 {
 		c.JSON(http.StatusNotFound, map[string]interface{}{
 			"error": fmt.Sprintf("Paper %d not found", id),
 		})

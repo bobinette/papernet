@@ -9,13 +9,16 @@ type PaperRepository struct {
 	maxId int
 }
 
-func (r PaperRepository) Get(id int) (*papernet.Paper, error) {
-	for _, paper := range r.db {
-		if paper.ID == id {
-			return paper, nil
+func (r PaperRepository) Get(ids ...int) ([]*papernet.Paper, error) {
+	papers := make([]*papernet.Paper, 0, len(ids))
+	for _, id := range ids {
+		for _, paper := range r.db {
+			if paper.ID == id {
+				papers = append(papers, paper)
+			}
 		}
 	}
-	return nil, nil
+	return papers, nil
 }
 
 func (r *PaperRepository) Upsert(paper *papernet.Paper) error {
@@ -56,7 +59,11 @@ func (r *PaperRepository) Delete(id int) error {
 			break
 		}
 	}
-	r.db = append(r.db[:index], r.db[index+1:]...)
+	if index+1 < len(r.db) {
+		r.db = append(r.db[:index], r.db[index+1:]...)
+	} else {
+		r.db = r.db[:index]
+	}
 	return nil
 }
 

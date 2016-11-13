@@ -21,25 +21,31 @@ type PaperRepository struct {
 
 // Get retrieves the paper defined by id in the database. If no paper can be found with the
 // given id, Get returns nil.
-func (r *PaperRepository) Get(id int) (*papernet.Paper, error) {
-	var paper *papernet.Paper
-
+func (r *PaperRepository) Get(ids ...int) ([]*papernet.Paper, error) {
+	papers := make([]*papernet.Paper, 0, len(ids))
 	err := r.store.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(bucketName))
 
-		data := bucket.Get(itob(id))
-		if data == nil {
-			return nil
+		for _, id := range ids {
+			data := bucket.Get(itob(id))
+			if data == nil {
+				continue
+			}
+
+			var paper papernet.Paper
+			if err := json.Unmarshal(data, &paper); err != nil {
+				return err
+			}
+			papers = append(papers, &paper)
 		}
 
-		paper = new(papernet.Paper)
-		return json.Unmarshal(data, paper)
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return paper, nil
+	return papers, nil
 }
 
 // Upsert inserts or update a paper in the database, depending on paper.ID.
@@ -75,9 +81,9 @@ func (r *PaperRepository) List() ([]*papernet.Paper, error) {
 	var papers []*papernet.Paper
 
 	err := r.store.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucketName))
-		c := b.Cursor()
+		bucket := tx.Bucket([]byte(bucketName))
 
+		c := bucket.Cursor()
 		for id, data := c.First(); id != nil; id, data = c.Next() {
 			var paper papernet.Paper
 			if err := json.Unmarshal(data, &paper); err != nil {

@@ -7,7 +7,7 @@ type Paper struct {
 }
 
 type PaperRepository interface {
-	Get(int) (*Paper, error)
+	Get(...int) ([]*Paper, error)
 	List() ([]*Paper, error)
 	Upsert(*Paper) error
 	Delete(int) error
