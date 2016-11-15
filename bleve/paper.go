@@ -3,6 +3,7 @@ package bleve
 import (
 	"encoding/binary"
 	"strconv"
+	"strings"
 
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/analysis/lang/en"
@@ -53,14 +54,21 @@ func (s *PaperSearch) Index(paper *papernet.Paper) error {
 func (s *PaperSearch) Search(titlePrefix string) ([]int, error) {
 	var q query.Query
 	if titlePrefix != "" {
-		titleQuery := query.NewPrefixQuery(titlePrefix)
-		titleQuery.Field = "title"
-		q = titleQuery
+		tokens := splitNonEmpty(titlePrefix, " ")
+		conjuncts := make([]query.Query, len(tokens))
+		for i, token := range tokens {
+			conjuncts[i] = &query.PrefixQuery{
+				Prefix: token,
+				Field:  "title",
+			}
+		}
+		q = query.NewConjunctionQuery(conjuncts)
 	} else {
 		q = query.NewMatchAllQuery()
 	}
 
 	search := bleve.NewSearchRequest(q)
+	search.SortBy([]string{"id"})
 	searchResults, err := s.index.Search(search)
 	if err != nil {
 		return nil, err
@@ -104,4 +112,17 @@ func itob(v int) []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, uint64(v))
 	return b
+}
+
+func splitNonEmpty(s string, sep string) []string {
+	splitted := strings.Split(s, sep)
+	res := make([]string, 0, len(splitted))
+	for _, str := range splitted {
+		if str == "" {
+			continue
+		}
+
+		res = append(res, str)
+	}
+	return res
 }

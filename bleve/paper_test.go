@@ -46,6 +46,8 @@ func TestFind(t *testing.T) {
 		"Pizza yolo",
 		"titi et rominet",
 		"pizza",
+		"mysuperlongwordthat Iwanttomatch",
+		"mysuperlongwordthat Idonotwanttomatch",
 	}
 	for i, title := range titles {
 		data := map[string]interface{}{
@@ -56,12 +58,42 @@ func TestFind(t *testing.T) {
 		}
 	}
 
-	expected := []int{0, 2}
-	ids, err := index.Search("ti")
-	if err != nil {
-		t.Fatal(err)
+	var tts = map[string]struct {
+		Q        string
+		Expected []int
+	}{
+		"one word": {
+			Q:        "pizza",
+			Expected: []int{1, 3},
+		},
+		"partial word": {
+			Q:        "ti",
+			Expected: []int{0, 2},
+		},
+		"two words": {
+			Q:        "pizza yolo",
+			Expected: []int{1},
+		},
+		"long words": {
+			Q:        "mysuperlong",
+			Expected: []int{4, 5},
+		},
+		"long words spelling": {
+			Q:        "mysuperlnog",
+			Expected: []int{},
+		},
+		"trailing space": {
+			Q:        "titi ",
+			Expected: []int{2},
+		},
 	}
-	if !reflect.DeepEqual(ids, expected) {
-		t.Errorf("got wrong ids: expected %v got %v", expected, ids)
+
+	for name, tt := range tts {
+		ids, err := index.Search(tt.Q)
+		if err != nil {
+			t.Errorf("%s - search failed with error: %v", name, err)
+		} else if !reflect.DeepEqual(tt.Expected, ids) {
+			t.Errorf("%s - got wrong ids: expected %v got %v", name, tt.Expected, ids)
+		}
 	}
 }
