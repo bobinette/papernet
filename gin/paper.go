@@ -13,6 +13,8 @@ import (
 type PaperHandler struct {
 	Repository papernet.PaperRepository
 	Searcher   papernet.PaperSearch
+
+	TagIndex papernet.TagSearcher
 }
 
 func (h *PaperHandler) RegisterRoutes(router *gin.Engine) {
@@ -83,6 +85,16 @@ func (h *PaperHandler) Insert(c *gin.Context) {
 		return
 	}
 
+	for _, tag := range paper.Tags {
+		err = h.TagIndex.Index(tag)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"error": err.Error(),
+			})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"data": paper,
 	})
@@ -140,6 +152,16 @@ func (h *PaperHandler) Update(c *gin.Context) {
 			"error": err.Error(),
 		})
 		return
+	}
+
+	for _, tag := range paper.Tags {
+		err = h.TagIndex.Index(tag)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"error": err.Error(),
+			})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, map[string]interface{}{

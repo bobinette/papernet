@@ -1,7 +1,6 @@
 package bleve
 
 import (
-	"encoding/binary"
 	"strconv"
 	"strings"
 
@@ -96,23 +95,15 @@ func createMapping() mapping.IndexMapping {
 	// Paper mapping
 	paperMapping := bleve.NewDocumentMapping()
 	paperMapping.AddFieldMappingsAt("title", englishTextFieldMapping)
-	paperMapping.AddFieldMappingsAt("version", bleve.NewNumericFieldMapping())
 
 	indexMapping := bleve.NewIndexMapping()
-	indexMapping.AddDocumentMapping("paper", paperMapping)
+	indexMapping.DefaultMapping = paperMapping
 	return indexMapping
 }
 
 // ------------------------------------------------------------------------------------------------
 // Helpers
 // ------------------------------------------------------------------------------------------------
-
-// itob returns an 8-byte big endian representation of v.
-func itob(v int) []byte {
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, uint64(v))
-	return b
-}
 
 func splitNonEmpty(s string, sep string) []string {
 	splitted := strings.Split(s, sep)

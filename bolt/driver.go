@@ -25,6 +25,7 @@ func (d *Driver) Open(path string) error {
 	err = store.Update(func(tx *bolt.Tx) error {
 		buckets := [][]byte{
 			paperBucket,
+			tagBucket,
 		}
 		for _, bucket := range buckets {
 			_, err := tx.CreateBucketIfNotExists(bucket)

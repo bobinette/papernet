@@ -20,6 +20,7 @@ func main() {
 	}
 
 	paperRepo := bolt.PaperRepository{Driver: &driver}
+	tagIndex := bolt.TagSearcher{Driver: &driver}
 
 	// Create index
 	index := bleve.PaperSearch{}
@@ -30,7 +31,7 @@ func main() {
 	}
 
 	// Start web server
-	handler, err := gin.New(&paperRepo, &index)
+	handler, err := gin.New(&paperRepo, &index, &tagIndex)
 	if err != nil {
 		log.Fatalln("could not start server:", err)
 	}
