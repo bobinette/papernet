@@ -15,12 +15,13 @@ func main() {
 	flag.Parse()
 
 	// Create repository
-	repo := bolt.PaperRepository{}
-	err := repo.Open("data/papernet.db")
-	defer repo.Close()
+	driver := bolt.Driver{}
+	defer driver.Close()
+	err := driver.Open("data/papernet.db")
 	if err != nil {
 		log.Fatalln("could not open db:", err)
 	}
+	repo := bolt.PaperRepository{Driver: &driver}
 
 	// Create index
 	index := bleve.PaperSearch{}

@@ -26,16 +26,17 @@ func createRepository(t *testing.T) (*PaperRepository, func()) {
 	}
 
 	err = store.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(bucketName))
+		_, err := tx.CreateBucketIfNotExists(paperBucket)
 		return err
 	})
 	if err != nil {
 		os.Remove(filename)
 		t.Fatal("could not create bucket: ", err)
 	}
-	repo := &PaperRepository{store: store}
+	driver := Driver{store: store}
+	repo := PaperRepository{Driver: &driver}
 
-	return repo, func() {
+	return &repo, func() {
 		store.Close()
 		os.Remove(filename)
 	}

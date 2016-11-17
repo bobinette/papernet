@@ -3,28 +3,26 @@ package bolt
 import (
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"time"
 
 	"github.com/boltdb/bolt"
 
 	"github.com/bobinette/papernet"
 )
 
-var bucketName = "papers"
+var paperBucket = []byte("papers")
 
 // PaperRepository is used to store and retrieve papers from a bolt database.
 type PaperRepository struct {
-	store *bolt.DB
+	Driver *Driver
 }
 
 // Get retrieves the paper defined by id in the database. If no paper can be found with the
 // given id, Get returns nil.
 func (r *PaperRepository) Get(ids ...int) ([]*papernet.Paper, error) {
 	papers := make([]*papernet.Paper, 0, len(ids))
-	err := r.store.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(bucketName))
+	err := r.Driver.store.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(paperBucket)
 
 		for _, id := range ids {
 			data := bucket.Get(itob(id))
@@ -50,8 +48,8 @@ func (r *PaperRepository) Get(ids ...int) ([]*papernet.Paper, error) {
 
 // Upsert inserts or update a paper in the database, depending on paper.ID.
 func (r *PaperRepository) Upsert(paper *papernet.Paper) error {
-	return r.store.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(bucketName))
+	return r.Driver.store.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(paperBucket)
 
 		if paper.ID <= 0 {
 			id, err := bucket.NextSequence()
@@ -71,8 +69,8 @@ func (r *PaperRepository) Upsert(paper *papernet.Paper) error {
 }
 
 func (r *PaperRepository) Delete(id int) error {
-	return r.store.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(bucketName))
+	return r.Driver.store.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(paperBucket)
 		return bucket.Delete(itob(id))
 	})
 }
@@ -80,8 +78,8 @@ func (r *PaperRepository) Delete(id int) error {
 func (r *PaperRepository) List() ([]*papernet.Paper, error) {
 	var papers []*papernet.Paper
 
-	err := r.store.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(bucketName))
+	err := r.Driver.store.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(paperBucket)
 
 		c := bucket.Cursor()
 		for id, data := c.First(); id != nil; id, data = c.Next() {
@@ -99,40 +97,6 @@ func (r *PaperRepository) List() ([]*papernet.Paper, error) {
 	}
 
 	return papers, nil
-}
-
-// ------------------------------------------------------------------------------------------------
-// Connection
-// ------------------------------------------------------------------------------------------------
-
-// Open opens the connection to the bolt database defined by path.
-func (r *PaperRepository) Open(path string) error {
-	if r.store != nil {
-		return errors.New("repository alread open")
-	}
-
-	store, err := bolt.Open(path, 0600, &bolt.Options{Timeout: 1 * time.Second})
-	if err != nil {
-		return err
-	}
-
-	err = store.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(bucketName))
-		return err
-	})
-
-	r.store = store
-	return nil
-}
-
-// Close closes the underlying database.
-func (r *PaperRepository) Close() error {
-	if r.store != nil {
-		err := r.store.Close()
-		r.store = nil
-		return err
-	}
-	return nil
 }
 
 // ------------------------------------------------------------------------------------------------

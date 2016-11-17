@@ -11,13 +11,15 @@ import (
 )
 
 func main() {
-	// Create repository
-	repo := bolt.PaperRepository{}
-	err := repo.Open("data/papernet.db")
-	defer repo.Close()
+	// Create repositories
+	driver := bolt.Driver{}
+	defer driver.Close()
+	err := driver.Open("data/papernet.db")
 	if err != nil {
 		log.Fatalln("could not open db:", err)
 	}
+
+	paperRepo := bolt.PaperRepository{Driver: &driver}
 
 	// Create index
 	index := bleve.PaperSearch{}
@@ -28,7 +30,7 @@ func main() {
 	}
 
 	// Start web server
-	handler, err := gin.New(&repo, &index)
+	handler, err := gin.New(&paperRepo, &index)
 	if err != nil {
 		log.Fatalln("could not start server:", err)
 	}
