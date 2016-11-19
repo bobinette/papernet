@@ -41,20 +41,24 @@ func TestFind(t *testing.T) {
 	index, f := createIndex(t)
 	defer f()
 
-	titles := []string{
-		"Title 1",
-		"Pizza yolo",
-		"titi et rominet",
-		"pizza",
-		"mysuperlongwordthat Iwanttomatch",
-		"mysuperlongwordthat Idonotwanttomatch",
+	papers := []struct {
+		Title string
+		Tags  []string
+	}{
+		{Title: "Title 1", Tags: []string{"tag"}},
+		{Title: "Pizza yolo", Tags: []string{"tag"}},
+		{Title: "titi et rominet", Tags: []string{"tag", "test"}},
+		{Title: "pizza", Tags: []string{"tag", "tech"}},
+		{Title: "mysuperlongwordthat Iwanttomatch", Tags: []string{"tag"}},
+		{Title: "mysuperlongwordthat Idonotwanttomatch", Tags: []string{"tag"}},
 	}
-	for i, title := range titles {
+	for i, paper := range papers {
 		data := map[string]interface{}{
-			"title": title,
+			"title": paper.Title,
+			"tags":  paper.Tags,
 		}
 		if err := index.index.Index(strconv.Itoa(i), data); err != nil {
-			t.Fatal("error indexing", title, err)
+			t.Fatal("error indexing", i, err)
 		}
 	}
 
@@ -85,6 +89,10 @@ func TestFind(t *testing.T) {
 		"trailing space": {
 			Q:        "titi ",
 			Expected: []int{2},
+		},
+		"by tags": {
+			Q:        "te",
+			Expected: []int{2, 3},
 		},
 	}
 

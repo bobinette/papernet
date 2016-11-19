@@ -45,6 +45,7 @@ func (s *PaperSearch) Close() error {
 func (s *PaperSearch) Index(paper *papernet.Paper) error {
 	data := map[string]interface{}{
 		"title": paper.Title,
+		"tags":  paper.Tags,
 	}
 
 	return s.index.Index(strconv.Itoa(paper.ID), data)
@@ -54,14 +55,23 @@ func (s *PaperSearch) Search(titlePrefix string) ([]int, error) {
 	var q query.Query
 	if titlePrefix != "" {
 		tokens := splitNonEmpty(titlePrefix, " ")
-		conjuncts := make([]query.Query, len(tokens))
+		titleConjuncts := make([]query.Query, len(tokens))
+		tagConjuncs := make([]query.Query, len(tokens))
 		for i, token := range tokens {
-			conjuncts[i] = &query.PrefixQuery{
+			titleConjuncts[i] = &query.PrefixQuery{
 				Prefix: token,
 				Field:  "title",
 			}
+
+			tagConjuncs[i] = &query.PrefixQuery{
+				Prefix: token,
+				Field:  "tags",
+			}
 		}
-		q = query.NewConjunctionQuery(conjuncts)
+		q = query.NewDisjunctionQuery([]query.Query{
+			query.NewConjunctionQuery(titleConjuncts),
+			query.NewConjunctionQuery(tagConjuncs),
+		})
 	} else {
 		q = query.NewMatchAllQuery()
 	}
@@ -95,6 +105,7 @@ func createMapping() mapping.IndexMapping {
 	// Paper mapping
 	paperMapping := bleve.NewDocumentMapping()
 	paperMapping.AddFieldMappingsAt("title", englishTextFieldMapping)
+	paperMapping.AddFieldMappingsAt("tags", englishTextFieldMapping)
 
 	indexMapping := bleve.NewIndexMapping()
 	indexMapping.DefaultMapping = paperMapping
