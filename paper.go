@@ -15,12 +15,12 @@ type PaperRepository interface {
 	Delete(int) error
 }
 
-type PaperSearch interface {
+type PaperIndex interface {
 	Index(*Paper) error
 	Search(titlePrefix string) ([]int, error)
 }
 
-type TagSearcher interface {
+type TagIndex interface {
 	Index(string) error
 	Search(string) ([]string, error)
 }

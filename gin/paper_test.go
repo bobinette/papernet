@@ -24,7 +24,7 @@ func createRouter(t *testing.T) (*gin.Engine, *PaperHandler, func()) {
 	}
 
 	// Too lazy to mock the search now...
-	index := &bleve.PaperSearch{}
+	index := &bleve.PaperIndex{}
 	err = index.Open(path.Join(dir, "test"))
 	if err != nil {
 		t.Fatal("error creating index", err)

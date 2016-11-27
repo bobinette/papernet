@@ -20,10 +20,10 @@ func main() {
 	}
 
 	paperRepo := bolt.PaperRepository{Driver: &driver}
-	tagIndex := bolt.TagSearcher{Driver: &driver}
+	tagIndex := bolt.TagIndex{Driver: &driver}
 
 	// Create index
-	index := bleve.PaperSearch{}
+	index := bleve.PaperIndex{}
 	err = index.Open("data/papernet.index")
 	defer index.Close()
 	if err != nil {

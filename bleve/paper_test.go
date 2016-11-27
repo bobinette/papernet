@@ -10,7 +10,7 @@ import (
 	"github.com/blevesearch/bleve"
 )
 
-func createIndex(t *testing.T) (*PaperSearch, func()) {
+func createIndex(t *testing.T) (*PaperIndex, func()) {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal("could not create tmp file:", err)
@@ -27,7 +27,7 @@ func createIndex(t *testing.T) (*PaperSearch, func()) {
 		t.Fatal("could not create bucket: ", err)
 	}
 
-	return &PaperSearch{index: index}, func() {
+	return &PaperIndex{index: index}, func() {
 		if err := index.Close(); err != nil {
 			t.Log(err)
 		}

@@ -8,7 +8,7 @@ import (
 	"github.com/bobinette/papernet"
 )
 
-func New(pr papernet.PaperRepository, ps papernet.PaperSearch, ts papernet.TagSearcher) (http.Handler, error) {
+func New(pr papernet.PaperRepository, ps papernet.PaperIndex, ts papernet.TagIndex) (http.Handler, error) {
 	router := gin.Default()
 
 	// CORS

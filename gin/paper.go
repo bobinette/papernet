@@ -12,9 +12,9 @@ import (
 
 type PaperHandler struct {
 	Repository papernet.PaperRepository
-	Searcher   papernet.PaperSearch
+	Searcher   papernet.PaperIndex
 
-	TagIndex papernet.TagSearcher
+	TagIndex papernet.TagIndex
 }
 
 func (h *PaperHandler) RegisterRoutes(router *gin.Engine) {

@@ -12,13 +12,13 @@ import (
 	"github.com/bobinette/papernet"
 )
 
-type PaperSearch struct {
+type PaperIndex struct {
 	Repository papernet.PaperRepository
 
 	index bleve.Index
 }
 
-func (s *PaperSearch) Open(path string) error {
+func (s *PaperIndex) Open(path string) error {
 	index, err := bleve.Open(path)
 	if err == bleve.ErrorIndexPathDoesNotExist {
 		indexMapping := createMapping()
@@ -34,7 +34,7 @@ func (s *PaperSearch) Open(path string) error {
 	return nil
 }
 
-func (s *PaperSearch) Close() error {
+func (s *PaperIndex) Close() error {
 	if s.index == nil {
 		return nil
 	}
@@ -42,7 +42,7 @@ func (s *PaperSearch) Close() error {
 	return s.index.Close()
 }
 
-func (s *PaperSearch) Index(paper *papernet.Paper) error {
+func (s *PaperIndex) Index(paper *papernet.Paper) error {
 	data := map[string]interface{}{
 		"title": paper.Title,
 		"tags":  paper.Tags,
@@ -51,10 +51,10 @@ func (s *PaperSearch) Index(paper *papernet.Paper) error {
 	return s.index.Index(strconv.Itoa(paper.ID), data)
 }
 
-func (s *PaperSearch) Search(titlePrefix string) ([]int, error) {
+func (s *PaperIndex) Search(titlePrefix string) ([]int, error) {
 	var q query.Query
 	if titlePrefix != "" {
-		tokens := splitNonEmpty(titlePrefix, " ")
+		tokens := strings.Fields(titlePrefix)
 		titleConjuncts := make([]query.Query, len(tokens))
 		tagConjuncs := make([]query.Query, len(tokens))
 		for i, token := range tokens {
@@ -110,21 +110,4 @@ func createMapping() mapping.IndexMapping {
 	indexMapping := bleve.NewIndexMapping()
 	indexMapping.DefaultMapping = paperMapping
 	return indexMapping
-}
-
-// ------------------------------------------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------------------------------------------
-
-func splitNonEmpty(s string, sep string) []string {
-	splitted := strings.Split(s, sep)
-	res := make([]string, 0, len(splitted))
-	for _, str := range splitted {
-		if str == "" {
-			continue
-		}
-
-		res = append(res, str)
-	}
-	return res
 }

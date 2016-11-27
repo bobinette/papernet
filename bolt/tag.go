@@ -9,18 +9,18 @@ import (
 
 var tagBucket = []byte("tags")
 
-type TagSearcher struct {
+type TagIndex struct {
 	Driver *Driver
 }
 
-func (s *TagSearcher) Index(tag string) error {
+func (s *TagIndex) Index(tag string) error {
 	return s.Driver.store.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(tagBucket)
 		return bucket.Put([]byte(tag), []byte(tag))
 	})
 }
 
-func (s *TagSearcher) Search(prefix string) ([]string, error) {
+func (s *TagIndex) Search(prefix string) ([]string, error) {
 	tags := make([]string, 0)
 
 	err := s.Driver.store.View(func(tx *bolt.Tx) error {

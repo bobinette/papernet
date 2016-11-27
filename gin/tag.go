@@ -9,7 +9,7 @@ import (
 )
 
 type TagHandler struct {
-	Searcher papernet.TagSearcher
+	Searcher papernet.TagIndex
 }
 
 func (h *TagHandler) RegisterRoutes(router *gin.Engine) {
