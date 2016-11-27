@@ -7,6 +7,15 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "github.com/PuerkitoBio/goquery",
+			"Comment": "v1.0.1-2-g152b1a2",
+			"Rev": "152b1a2c8f5d0340f658bb656032a39b94e52958"
+		},
+		{
+			"ImportPath": "github.com/andybalholm/cascadia",
+			"Rev": "65919c611220063037b1db8eb334acaf17a6d8ea"
+		},
+		{
 			"ImportPath": "github.com/blevesearch/bleve",
 			"Comment": "v0.5.0-96-gbcaea08",
 			"Rev": "bcaea084c55f25d843201bb421347311c59a1601"
@@ -166,53 +175,28 @@
 			"Rev": "762005e7a34fd909a84586299f1dd457371d36ee"
 		},
 		{
-			"ImportPath": "github.com/bobinette/papernet",
-			"Comment": "0.1-9-gac3abc9",
-			"Rev": "ac3abc9e80395147a17b0cb480aba0412fc09608"
-		},
-		{
-			"ImportPath": "github.com/bobinette/papernet/bleve",
-			"Comment": "0.1-9-gac3abc9",
-			"Rev": "ac3abc9e80395147a17b0cb480aba0412fc09608"
-		},
-		{
-			"ImportPath": "github.com/bobinette/papernet/bolt",
-			"Comment": "0.1-9-gac3abc9",
-			"Rev": "ac3abc9e80395147a17b0cb480aba0412fc09608"
-		},
-		{
-			"ImportPath": "github.com/bobinette/papernet/gin",
-			"Comment": "0.1-9-gac3abc9",
-			"Rev": "ac3abc9e80395147a17b0cb480aba0412fc09608"
-		},
-		{
-			"ImportPath": "github.com/bobinette/papernet/mock",
-			"Comment": "0.1-9-gac3abc9",
-			"Rev": "ac3abc9e80395147a17b0cb480aba0412fc09608"
-		},
-		{
 			"ImportPath": "github.com/boltdb/bolt",
-			"Comment": "v1.2.1-5-g05e441d",
-			"Rev": "05e441d7b3ded9164c5b912521504e7711dd0ba2"
+			"Comment": "v1.3.0-32-g315c65d",
+			"Rev": "315c65d4cf4f5278c73477a35fb1f9b08365d340"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin",
-			"Comment": "v1.0rc1-278-g3ad4c71",
-			"Rev": "3ad4c714a76ab83e3cc71fb6e532fb9c0e6e2d5a"
+			"Comment": "v1.0rc1-279-g9177f01",
+			"Rev": "9177f01c2843b91820780197f521ba48554b9df3"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin/binding",
-			"Comment": "v1.0rc1-278-g3ad4c71",
-			"Rev": "3ad4c714a76ab83e3cc71fb6e532fb9c0e6e2d5a"
+			"Comment": "v1.0rc1-279-g9177f01",
+			"Rev": "9177f01c2843b91820780197f521ba48554b9df3"
 		},
 		{
 			"ImportPath": "github.com/gin-gonic/gin/render",
-			"Comment": "v1.0rc1-278-g3ad4c71",
-			"Rev": "3ad4c714a76ab83e3cc71fb6e532fb9c0e6e2d5a"
+			"Comment": "v1.0rc1-279-g9177f01",
+			"Rev": "9177f01c2843b91820780197f521ba48554b9df3"
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "2bc9827a78f95c6665b5fe0abd1fd66b496ae2d8"
+			"Rev": "4bd1920723d7b7c925de087aa32e2187708897f7"
 		},
 		{
 			"ImportPath": "github.com/manucorporat/sse",
@@ -224,7 +208,15 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "55a3084c9119aeb9ba2437d595b0a7e9cb635da9"
+			"Rev": "0e2717dc3cc05907dc23096ef3a9086ea93f567f"
+		},
+		{
+			"ImportPath": "golang.org/x/net/html",
+			"Rev": "0e2717dc3cc05907dc23096ef3a9086ea93f567f"
+		},
+		{
+			"ImportPath": "golang.org/x/net/html/atom",
+			"Rev": "0e2717dc3cc05907dc23096ef3a9086ea93f567f"
 		},
 		{
 			"ImportPath": "golang.org/x/sys/unix",
