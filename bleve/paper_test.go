@@ -47,10 +47,11 @@ func TestFind(t *testing.T) {
 	}{
 		{Title: "Title 1", Tags: []string{"tag"}},
 		{Title: "Pizza yolo", Tags: []string{"tag"}},
-		{Title: "titi et rominet", Tags: []string{"tag", "test"}},
-		{Title: "pizza", Tags: []string{"tag", "tech"}},
-		{Title: "mysuperlongwordthat Iwanttomatch", Tags: []string{"tag"}},
-		{Title: "mysuperlongwordthat Idonotwanttomatch", Tags: []string{"tag"}},
+		{Title: "titi et rominet", Tags: []string{"tag", "tech"}},
+		{Title: "pizza", Tags: []string{"tag", "technique"}},
+		{Title: "reinforcement learning", Tags: []string{"machine learning"}},
+		{Title: "monte carlo", Tags: []string{"machine learning"}},
+		{Title: "pizza yolo", Tags: []string{"tag", "robbery"}},
 	}
 	for i, paper := range papers {
 		data := map[string]interface{}{
@@ -66,9 +67,13 @@ func TestFind(t *testing.T) {
 		Q        string
 		Expected []int
 	}{
+		"match all": {
+			Q:        "",
+			Expected: []int{0, 1, 2, 3, 4, 5, 6},
+		},
 		"one word": {
 			Q:        "pizza",
-			Expected: []int{1, 3},
+			Expected: []int{1, 3, 6},
 		},
 		"partial word": {
 			Q:        "ti",
@@ -76,11 +81,11 @@ func TestFind(t *testing.T) {
 		},
 		"two words": {
 			Q:        "pizza yolo",
-			Expected: []int{1},
+			Expected: []int{1, 6},
 		},
 		"long words": {
-			Q:        "mysuperlong",
-			Expected: []int{4, 5},
+			Q:        "reinforcement learning",
+			Expected: []int{4},
 		},
 		"long words spelling": {
 			Q:        "mysuperlnog",
@@ -91,8 +96,16 @@ func TestFind(t *testing.T) {
 			Expected: []int{2},
 		},
 		"by tags": {
-			Q:        "te",
+			Q:        "tech",
 			Expected: []int{2, 3},
+		},
+		"ro": {
+			Q:        "pi yo ro",
+			Expected: []int{6},
+		},
+		"with uppercase letters": {
+			Q:        "Learning",
+			Expected: []int{4, 5},
 		},
 	}
 

@@ -17,7 +17,7 @@ type PaperRepository interface {
 
 type PaperIndex interface {
 	Index(*Paper) error
-	Search(titlePrefix string) ([]int, error)
+	Search(string) ([]int, error)
 }
 
 type TagIndex interface {

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/analysis/analyzer/simple"
 	"github.com/blevesearch/bleve/analysis/lang/en"
 	"github.com/blevesearch/bleve/mapping"
 	"github.com/blevesearch/bleve/search/query"
@@ -51,39 +52,21 @@ func (s *PaperIndex) Index(paper *papernet.Paper) error {
 	return s.index.Index(strconv.Itoa(paper.ID), data)
 }
 
-func (s *PaperIndex) Search(titlePrefix string) ([]int, error) {
-	var q query.Query
-	if titlePrefix != "" {
-		tokens := strings.Fields(titlePrefix)
-		titleConjuncts := make([]query.Query, len(tokens))
-		tagConjuncs := make([]query.Query, len(tokens))
-		for i, token := range tokens {
-			titleConjuncts[i] = &query.PrefixQuery{
-				Prefix: token,
-				Field:  "title",
-			}
+func (s *PaperIndex) Search(queryString string) ([]int, error) {
+	q := andQ(
+		query.NewMatchAllQuery(),
+		s.searchTitleOrTags(queryString),
+	)
 
-			tagConjuncs[i] = &query.PrefixQuery{
-				Prefix: token,
-				Field:  "tags",
-			}
-		}
-		q = query.NewDisjunctionQuery([]query.Query{
-			query.NewConjunctionQuery(titleConjuncts),
-			query.NewConjunctionQuery(tagConjuncs),
-		})
-	} else {
-		q = query.NewMatchAllQuery()
-	}
+	searchRequest := bleve.NewSearchRequest(q)
+	searchRequest.SortBy([]string{"id"})
 
-	search := bleve.NewSearchRequest(q)
-	search.SortBy([]string{"id"})
-	searchResults, err := s.index.Search(search)
+	searchResults, err := s.index.Search(searchRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := make([]int, searchResults.Total)
+	ids := make([]int, len(searchResults.Hits))
 	for i, hit := range searchResults.Hits {
 		ids[i], err = strconv.Atoi(hit.ID)
 		if err != nil {
@@ -91,6 +74,84 @@ func (s *PaperIndex) Search(titlePrefix string) ([]int, error) {
 		}
 	}
 	return ids, nil
+}
+
+func andQ(qs ...query.Query) query.Query {
+	ands := make([]query.Query, 0, len(qs))
+	for _, q := range qs {
+		if q != nil {
+			ands = append(ands, q)
+		}
+	}
+
+	if len(ands) == 0 {
+		return nil
+	}
+	return query.NewConjunctionQuery(ands)
+}
+
+func orQ(qs ...query.Query) query.Query {
+	ors := make([]query.Query, 0, len(qs))
+	for _, q := range qs {
+		if q != nil {
+			ors = append(ors, q)
+		}
+	}
+
+	if len(ors) == 0 {
+		return nil
+	}
+	return query.NewDisjunctionQuery(ors)
+}
+
+func (s *PaperIndex) searchTitleOrTags(queryString string) query.Query {
+	words := strings.Fields(queryString)
+
+	ands := make([]query.Query, 0, len(words))
+	for _, word := range words {
+		ands = append(ands, orQ(
+			s.searchTitle(word),
+			s.searchTags(word),
+		))
+	}
+
+	return andQ(ands...)
+}
+
+func (s *PaperIndex) searchTitle(queryString string) query.Query {
+	analyzer := s.index.Mapping().AnalyzerNamed(en.AnalyzerName)
+	tokens := analyzer.Analyze([]byte(queryString))
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	conjuncs := make([]query.Query, len(tokens))
+	for i, token := range tokens {
+		conjuncs[i] = &query.PrefixQuery{
+			Prefix: string(token.Term),
+			Field:  "title",
+		}
+	}
+
+	return query.NewConjunctionQuery(conjuncs)
+}
+
+func (s *PaperIndex) searchTags(queryString string) query.Query {
+	analyzer := s.index.Mapping().AnalyzerNamed(simple.Name)
+	tokens := analyzer.Analyze([]byte(queryString))
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	conjuncs := make([]query.Query, len(tokens))
+	for i, token := range tokens {
+		conjuncs[i] = &query.PrefixQuery{
+			Prefix: string(token.Term),
+			Field:  "tags",
+		}
+	}
+
+	return query.NewConjunctionQuery(conjuncs)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -102,10 +163,13 @@ func createMapping() mapping.IndexMapping {
 	englishTextFieldMapping := bleve.NewTextFieldMapping()
 	englishTextFieldMapping.Analyzer = en.AnalyzerName
 
+	simpleMapping := bleve.NewTextFieldMapping()
+	simpleMapping.Analyzer = simple.Name
+
 	// Paper mapping
 	paperMapping := bleve.NewDocumentMapping()
 	paperMapping.AddFieldMappingsAt("title", englishTextFieldMapping)
-	paperMapping.AddFieldMappingsAt("tags", englishTextFieldMapping)
+	paperMapping.AddFieldMappingsAt("tags", simpleMapping)
 
 	indexMapping := bleve.NewIndexMapping()
 	indexMapping.DefaultMapping = paperMapping
