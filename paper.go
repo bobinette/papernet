@@ -23,6 +23,7 @@ type PaperRepository interface {
 type PaperIndex interface {
 	Index(*Paper) error
 	Search(PaperSearch) ([]int, error)
+	Delete(int) error
 }
 
 type TagIndex interface {

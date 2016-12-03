@@ -2,23 +2,23 @@ package gin
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/bobinette/papernet"
-	"github.com/bobinette/papernet/auth"
+	"github.com/bobinette/papernet/errors"
 )
 
 type PaperHandler struct {
 	Repository papernet.PaperRepository
 	Searcher   papernet.PaperIndex
 
-	UserRepository papernet.UserRepository
-	Encoder        auth.Encoder
-	Authenticator  Authenticator
-
 	TagIndex papernet.TagIndex
+
+	Authenticator Authenticator
 }
 
 func (h *PaperHandler) RegisterRoutes(router *gin.Engine) {
@@ -32,14 +32,17 @@ func (h *PaperHandler) RegisterRoutes(router *gin.Engine) {
 func (h *PaperHandler) Get(c *gin.Context) (interface{}, error) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("id should be an integer", errors.WithCode(http.StatusBadRequest))
 	}
 
 	papers, err := h.Repository.Get(id)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(
+			fmt.Sprintf("error retrieving paper %d", id),
+			errors.WithCause(err),
+		)
 	} else if len(papers) == 0 {
-		return nil, fmt.Errorf("Paper %d not found", id)
+		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
 	}
 
 	return map[string]interface{}{
@@ -51,27 +54,30 @@ func (h *PaperHandler) Insert(c *gin.Context) (interface{}, error) {
 	var paper papernet.Paper
 	err := c.BindJSON(&paper)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("error decoding json body", errors.WithCause(err))
 	}
 
 	if paper.ID > 0 {
-		return nil, fmt.Errorf("field id should be empty, got %d", paper.ID)
+		return nil, errors.New(
+			fmt.Sprintf("field id should be empty, got %d", paper.ID),
+			errors.WithCode(http.StatusBadRequest),
+		)
 	}
 
 	err = h.Repository.Upsert(&paper)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("error inserting paper", errors.WithCause(err))
 	}
 
 	err = h.Searcher.Index(&paper)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("error indexing paper", errors.WithCause(err))
 	}
 
 	for _, tag := range paper.Tags {
 		err = h.TagIndex.Index(tag)
 		if err != nil {
-			return nil, err
+			log.Printf("error indexing tag %s: %v", tag, err)
 		}
 	}
 
@@ -83,24 +89,30 @@ func (h *PaperHandler) Insert(c *gin.Context) (interface{}, error) {
 func (h *PaperHandler) Update(c *gin.Context) (interface{}, error) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("id should be an integer", errors.WithCode(http.StatusBadRequest))
 	}
 
 	var paper papernet.Paper
 	err = c.BindJSON(&paper)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("error decoding json body", errors.WithCause(err))
 	}
 
-	papersFromID, err := h.Repository.Get(id)
+	papers, err := h.Repository.Get(id)
 	if err != nil {
-		return nil, err
-	} else if len(papersFromID) == 0 {
-		return nil, fmt.Errorf("Paper %d not found", id)
+		return nil, errors.New(
+			fmt.Sprintf("error retrieving paper %d", id),
+			errors.WithCause(err),
+		)
+	} else if len(papers) == 0 {
+		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
 	}
 
 	if paper.ID != id {
-		return nil, fmt.Errorf("ids do not match: %d (url) != %d (body)", id, paper.ID)
+		return nil, errors.New(
+			fmt.Sprintf("ids do not match: %d (url) != %d (body)", id, paper.ID),
+			errors.WithCode(http.StatusBadRequest),
+		)
 	}
 
 	err = h.Repository.Upsert(&paper)
@@ -128,19 +140,33 @@ func (h *PaperHandler) Update(c *gin.Context) (interface{}, error) {
 func (h *PaperHandler) Delete(c *gin.Context) (interface{}, error) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("id should be an integer", errors.WithCode(http.StatusBadRequest))
 	}
 
 	papers, err := h.Repository.Get(id)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(
+			fmt.Sprintf("error retrieving paper %d", id),
+			errors.WithCause(err),
+		)
 	} else if len(papers) == 0 {
-		return nil, fmt.Errorf("Paper %d not found", id)
+		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
 	}
 
 	err = h.Repository.Delete(id)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(
+			fmt.Sprintf("error deleting paper in the database %d", id),
+			errors.WithCause(err),
+		)
+	}
+
+	err = h.Searcher.Delete(id)
+	if err != nil {
+		return nil, errors.New(
+			fmt.Sprintf("error deleting paper from the index %d", id),
+			errors.WithCause(err),
+		)
 	}
 
 	return map[string]interface{}{

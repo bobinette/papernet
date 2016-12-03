@@ -3,6 +3,7 @@ package gin
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http/httptest"
@@ -13,40 +14,73 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/bobinette/papernet"
+	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/bleve"
-	"github.com/bobinette/papernet/mock"
+	"github.com/bobinette/papernet/bolt"
 )
 
-func createRouter(t *testing.T) (*gin.Engine, *PaperHandler, func()) {
+type handlers struct {
+	PaperHandler *PaperHandler
+	UserHandler  *UserHandler
+}
+
+func createRouter(t *testing.T) (*gin.Engine, handlers, func()) {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal("could not create tmp file:", err)
 	}
 
-	// Too lazy to mock the search now...
 	index := &bleve.PaperIndex{}
-	err = index.Open(path.Join(dir, "test"))
+	err = index.Open(path.Join(dir, "test", "index"))
 	if err != nil {
 		t.Fatal("error creating index", err)
 	}
 
-	handler := &PaperHandler{
-		Repository: &mock.PaperRepository{},
+	driver := &bolt.Driver{}
+	err = driver.Open(path.Join(dir, "test", "db"))
+	if err != nil {
+		t.Fatal("error creating index", err)
+	}
+
+	encoder := auth.Encoder{Key: "test"}
+
+	paperRepo := &bolt.PaperRepository{Driver: driver}
+	userRepo := &bolt.UserRepository{Driver: driver}
+	tagIndex := &bolt.TagIndex{Driver: driver}
+
+	paperHandler := &PaperHandler{
+		Repository: paperRepo,
 		Searcher:   index,
+		TagIndex:   tagIndex,
+		Authenticator: Authenticator{
+			UserRepository: userRepo,
+			Encoder:        encoder,
+		},
+	}
+
+	userHandler := &UserHandler{
+		Authenticator: Authenticator{
+			UserRepository: userRepo,
+			Encoder:        encoder,
+		},
+		Repository: userRepo,
 	}
 
 	gin.SetMode(gin.ReleaseMode) // avoid unnecessary log
 	router := gin.New()
-	handler.RegisterRoutes(router)
+	paperHandler.RegisterRoutes(router)
 
-	return router, handler, func() {
-		if err := index.Close(); err != nil {
-			t.Log(err)
+	return router, handlers{
+			PaperHandler: paperHandler,
+			UserHandler:  userHandler,
+		}, func() {
+			if err := index.Close(); err != nil {
+				t.Log(err)
+			}
+			if err := os.RemoveAll(dir); err != nil {
+				t.Log(err)
+			}
 		}
-		if err := os.RemoveAll(dir); err != nil {
-			t.Log(err)
-		}
-	}
 }
 
 func createReader(i interface{}, t *testing.T) io.Reader {
@@ -65,9 +99,8 @@ func createReader(i interface{}, t *testing.T) io.Reader {
 }
 
 func TestGet(t *testing.T) {
-	t.Skip("Reactivate when error handling is up")
-
-	router, handler, f := createRouter(t)
+	router, handlers, f := createRouter(t)
+	handler := handlers.PaperHandler
 	defer f()
 
 	// Load fixtures
@@ -118,8 +151,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	t.Skip("Reactivate when error handling is up")
-
 	router, _, f := createRouter(t)
 	defer f()
 
@@ -132,6 +163,14 @@ func TestInsert(t *testing.T) {
 			Paper: papernet.Paper{
 				Title:   "Pizza Yolo",
 				Summary: "Paper for test",
+			},
+			Code: 200,
+		},
+		{
+			Paper: papernet.Paper{
+				Title:   "Pizza Yolo",
+				Summary: "Paper for test",
+				Tags:    []string{"Supa tag"},
 			},
 			Code: 200,
 		},
@@ -173,9 +212,8 @@ func TestInsert(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	t.Skip("Reactivate when error handling is up")
-
-	router, handler, f := createRouter(t)
+	router, handlers, f := createRouter(t)
+	handler := handlers.PaperHandler
 	defer f()
 
 	// Load fixtures
@@ -255,9 +293,8 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	t.Skip("Reactivate when error handling is up")
-
-	router, handler, f := createRouter(t)
+	router, handlers, f := createRouter(t)
+	handler := handlers.PaperHandler
 	defer f()
 
 	// Load fixtures
@@ -319,9 +356,8 @@ func TestDelete(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	t.Skip("Reactivate when error handling is up")
-
-	router, handler, f := createRouter(t)
+	router, handlers, f := createRouter(t)
+	handler := handlers.PaperHandler
 	defer f()
 
 	// Load fixtures
@@ -341,6 +377,20 @@ func TestList(t *testing.T) {
 		}
 	}
 
+	user := &papernet.User{
+		ID:        "1",
+		Name:      "Test user",
+		Bookmarks: []int{1},
+	}
+	if err := handler.Authenticator.UserRepository.Upsert(user); err != nil {
+		t.Fatal("could not insert user:", err)
+	}
+	token, err := handler.Authenticator.Encoder.Encode(user.ID)
+	if err != nil {
+		t.Fatal("could not fake token:", err)
+	}
+	bearer := fmt.Sprint("Bearer ", token)
+
 	var tts = []struct {
 		Query string
 		Code  int
@@ -358,10 +408,24 @@ func TestList(t *testing.T) {
 			Code:  200,
 			Len:   1,
 		},
+		{
+			// List all papers with title starting by piz
+			Query: "/api/papers?q=piz&bookmarked=true",
+			Code:  200,
+			Len:   0,
+		},
+		{
+			// List all papers with title starting by piz
+			Query: "/api/papers?bookmarked=true",
+			Code:  200,
+			Len:   1,
+		},
 	}
 
 	for _, tt := range tts {
 		req := httptest.NewRequest("GET", tt.Query, nil)
+		req.Header.Add("Authorization", bearer)
+
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
 		if resp.Code != tt.Code {

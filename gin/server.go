@@ -45,7 +45,7 @@ func New(
 	authenticator := Authenticator{Encoder: encoder, UserRepository: ur}
 
 	// Papers
-	paperHandler := PaperHandler{Repository: pr, Searcher: ps, TagIndex: ts, UserRepository: ur, Authenticator: authenticator}
+	paperHandler := PaperHandler{Repository: pr, Searcher: ps, TagIndex: ts, Authenticator: authenticator}
 	paperHandler.RegisterRoutes(router)
 
 	// Tags

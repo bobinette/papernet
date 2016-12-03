@@ -52,6 +52,10 @@ func (s *PaperIndex) Index(paper *papernet.Paper) error {
 	return s.index.Index(strconv.Itoa(paper.ID), data)
 }
 
+func (s *PaperIndex) Delete(id int) error {
+	return s.index.Delete(strconv.Itoa(id))
+}
+
 func (s *PaperIndex) Search(search papernet.PaperSearch) ([]int, error) {
 	q := andQ(
 		query.NewMatchAllQuery(),
