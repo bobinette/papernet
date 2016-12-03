@@ -37,7 +37,7 @@ func New(
 	})
 
 	// Ping
-	router.GET("/papernet/ping", func(c *gin.Context) {
+	router.GET("/api/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{"data": "ok"})
 	})
 

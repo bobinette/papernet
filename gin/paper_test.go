@@ -84,17 +84,17 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			// Paper is inserted above
-			Query: "/papernet/papers/1",
+			Query: "/api/papers/1",
 			Code:  200,
 		},
 		{
 			// test cannot be decoded as an int
-			Query: "/papernet/papers/test",
+			Query: "/api/papers/test",
 			Code:  400,
 		},
 		{
 			// 2 is not in the database
-			Query: "/papernet/papers/2",
+			Query: "/api/papers/2",
 			Code:  404,
 		},
 	}
@@ -119,7 +119,7 @@ func TestInsert(t *testing.T) {
 	router, _, f := createRouter(t)
 	defer f()
 
-	url := "/papernet/papers"
+	url := "/api/papers"
 	var tts = []struct {
 		Paper papernet.Paper
 		Code  int
@@ -190,7 +190,7 @@ func TestUpdate(t *testing.T) {
 	}{
 		{
 			Name:  "Paper is inserted above",
-			Query: "/papernet/papers/1",
+			Query: "/api/papers/1",
 			Paper: papernet.Paper{
 				ID:      1,
 				Title:   "Pizza Yolo",
@@ -200,7 +200,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			Name:  "test cannot be decoded as an int",
-			Query: "/papernet/papers/test",
+			Query: "/api/papers/test",
 			Paper: papernet.Paper{
 				ID:      1,
 				Title:   "Pizza Yolo",
@@ -210,7 +210,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			Name:  "2 is not in the database",
-			Query: "/papernet/papers/2",
+			Query: "/api/papers/2",
 			Paper: papernet.Paper{
 				ID:      2,
 				Title:   "Pizza Yolo",
@@ -220,7 +220,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			Name:  "IDs do not correspond",
-			Query: "/papernet/papers/1",
+			Query: "/api/papers/1",
 			Paper: papernet.Paper{
 				ID:      2,
 				Title:   "Pizza Yolo",
@@ -268,17 +268,17 @@ func TestDelete(t *testing.T) {
 	}{
 		{
 			// Paper is inserted above
-			Query: "/papernet/papers/1",
+			Query: "/api/papers/1",
 			Code:  200,
 		},
 		{
 			// test cannot be decoded as an int
-			Query: "/papernet/papers/test",
+			Query: "/api/papers/test",
 			Code:  400,
 		},
 		{
 			// 2 is not in the database
-			Query: "/papernet/papers/2",
+			Query: "/api/papers/2",
 			Code:  404,
 		},
 	}
@@ -338,13 +338,13 @@ func TestList(t *testing.T) {
 	}{
 		{
 			// List all papers, simply
-			Query: "/papernet/papers",
+			Query: "/api/papers",
 			Code:  200,
 			Len:   2,
 		},
 		{
 			// List all papers with title starting by piz
-			Query: "/papernet/papers?q=piz",
+			Query: "/api/papers?q=piz",
 			Code:  200,
 			Len:   1,
 		},

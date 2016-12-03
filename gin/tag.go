@@ -13,7 +13,7 @@ type TagHandler struct {
 }
 
 func (h *TagHandler) RegisterRoutes(router *gin.Engine) {
-	router.GET("/papernet/tags", h.List)
+	router.GET("/api/tags", h.List)
 }
 
 func (h *TagHandler) List(c *gin.Context) {

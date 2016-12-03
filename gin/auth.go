@@ -21,9 +21,10 @@ type AuthHandler struct {
 }
 
 func (h *AuthHandler) RegisterRoutes(router *gin.Engine) {
-	router.GET("/papernet/auth", h.AuthURL)
-	router.GET("/papernet/auth/google", h.Google)
-	router.GET("/papernet/auth/me", h.Me)
+	router.GET("/api/auth", h.AuthURL)
+	router.GET("/api/auth/google", h.Google)
+	router.GET("/api/me", h.Me)
+	router.POST("/api/bookmarks", h.Me)
 }
 
 func (h *AuthHandler) Me(c *gin.Context) {
@@ -101,6 +102,97 @@ func (h *AuthHandler) Google(c *gin.Context) {
 
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"access_token": token,
+	})
+}
+
+func (h *AuthHandler) Bookmarks(c *gin.Context) {
+	authHeader, ok := c.Request.Header["Authorization"]
+	if !ok || len(authHeader) != 1 {
+		c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"error": "No token found",
+		})
+		return
+	}
+
+	token := authHeader[0]
+	if !strings.HasPrefix(token, "Bearer ") {
+		c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": "No bearer",
+		})
+		return
+	}
+
+	token = token[len("Bearer "):]
+	userID, err := decodeToken(h.SigningKey.Key, token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	user, err := h.Repository.Get(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	var payload struct {
+		Add    []int `json:"add"`
+		Remove []int `json:"remove"`
+	}
+	err = c.BindJSON(&payload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	in := func(i int, a []int) bool {
+		for _, e := range a {
+			if e == i {
+				return true
+			}
+		}
+		return false
+	}
+
+	bookmarks := make(map[int]struct{})
+	for _, b := range user.Bookmarks {
+		if !in(b, payload.Remove) {
+			bookmarks[b] = struct{}{}
+		}
+	}
+
+	for _, b := range payload.Add {
+		if !in(b, payload.Remove) {
+			bookmarks[b] = struct{}{}
+		}
+	}
+
+	user.Bookmarks = func(m map[int]struct{}) []int {
+		i := 0
+		a := make([]int, len(m))
+		for k, _ := range m {
+			a[i] = k
+			i++
+		}
+		return a
+	}(bookmarks)
+
+	err = h.Repository.Upsert(user)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"user": user,
 	})
 }
 

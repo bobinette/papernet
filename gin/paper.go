@@ -22,11 +22,11 @@ type PaperHandler struct {
 }
 
 func (h *PaperHandler) RegisterRoutes(router *gin.Engine) {
-	router.GET("/papernet/papers/:id", h.Get)
-	router.PUT("/papernet/papers/:id", h.Update)
-	router.DELETE("/papernet/papers/:id", h.Delete)
-	router.GET("/papernet/papers", h.List)
-	router.POST("/papernet/papers", h.Insert)
+	router.GET("/api/papers/:id", h.Get)
+	router.PUT("/api/papers/:id", h.Update)
+	router.DELETE("/api/papers/:id", h.Delete)
+	router.GET("/api/papers", h.List)
+	router.POST("/api/papers", h.Insert)
 }
 
 func (h *PaperHandler) Get(c *gin.Context) {
