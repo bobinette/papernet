@@ -1,1 +1,5 @@
 data/*
+
+# Credentials
+oauth*
+hs256.json

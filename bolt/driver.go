@@ -26,6 +26,7 @@ func (d *Driver) Open(path string) error {
 		buckets := [][]byte{
 			paperBucket,
 			tagBucket,
+			userBucket,
 		}
 		for _, bucket := range buckets {
 			_, err := tx.CreateBucketIfNotExists(bucket)
