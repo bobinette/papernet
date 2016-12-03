@@ -47,10 +47,16 @@ func TestWithCode(t *testing.T) {
 				cause: &myError{msg: "I am the cause"},
 			},
 		},
+		{
+			// nil input should give nil output
+			err:      nil,
+			code:     305,
+			expected: nil,
+		},
 	}
 
 	for i, tt := range tts {
-		err := WithCode(tt.code)(tt.err).(*myError)
+		err, _ := WithCode(tt.code)(tt.err).(*myError)
 		assertErrors(tt.expected, err, t, fmt.Sprintf("%d WithCode", i))
 	}
 }
@@ -113,10 +119,16 @@ func TestWithCause(t *testing.T) {
 				cause: &myError{msg: "I am the new cause", code: DefaultCode, cause: nil},
 			},
 		},
+		{
+			// nil input should give nil output
+			err:      nil,
+			cause:    errors.New("The cause is ignored if the wrapper is nil"),
+			expected: nil,
+		},
 	}
 
 	for i, tt := range tts {
-		err := WithCause(tt.cause)(tt.err).(*myError)
+		err, _ := WithCause(tt.cause)(tt.err).(*myError)
 		assertErrors(tt.expected, err, t, fmt.Sprintf("%d WithClause", i))
 	}
 }

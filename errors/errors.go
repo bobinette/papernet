@@ -46,6 +46,10 @@ type ErrorEnricher func(error) error
 
 func WithCode(code int) func(error) error {
 	return func(err error) error {
+		if err == nil {
+			return nil
+		}
+
 		switch err := err.(type) {
 		case *myError:
 			err.code = code
@@ -71,6 +75,10 @@ func WithCause(cause error) func(error) error {
 	}
 
 	return func(err error) error {
+		if err == nil {
+			return nil
+		}
+
 		if myErr, ok := err.(*myError); ok {
 			myErr.cause = myCause
 			return myErr
