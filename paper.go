@@ -8,6 +8,11 @@ type Paper struct {
 	Tags []string `json:"tags"`
 }
 
+type PaperSearch struct {
+	Q   string
+	IDs []int
+}
+
 type PaperRepository interface {
 	Get(...int) ([]*Paper, error)
 	List() ([]*Paper, error)
@@ -17,7 +22,7 @@ type PaperRepository interface {
 
 type PaperIndex interface {
 	Index(*Paper) error
-	Search(string) ([]int, error)
+	Search(PaperSearch) ([]int, error)
 }
 
 type TagIndex interface {

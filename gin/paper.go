@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -13,6 +14,9 @@ import (
 type PaperHandler struct {
 	Repository papernet.PaperRepository
 	Searcher   papernet.PaperIndex
+
+	UserRepository papernet.UserRepository
+	SigningKey     papernet.SigningKey
 
 	TagIndex papernet.TagIndex
 }
@@ -206,7 +210,49 @@ func (h *PaperHandler) Delete(c *gin.Context) {
 
 func (h *PaperHandler) List(c *gin.Context) {
 	q := c.Query("q")
-	ids, err := h.Searcher.Search(q)
+	bookmarked, _, err := queryBool("bookmarked", c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	search := papernet.PaperSearch{
+		Q: q,
+	}
+
+	if bookmarked {
+		authHeader, ok := c.Request.Header["Authorization"]
+		if !ok || len(authHeader) != 1 {
+			c.JSON(http.StatusUnauthorized, map[string]interface{}{
+				"error": "No token found",
+			})
+			return
+		}
+
+		token := authHeader[0]
+		if !strings.HasPrefix(token, "Bearer ") {
+			c.JSON(http.StatusBadRequest, map[string]interface{}{
+				"error": "No bearer",
+			})
+			return
+		}
+
+		token = token[len("Bearer "):]
+		userID, err := decodeToken(h.SigningKey.Key, token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, map[string]interface{}{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		user, err := h.UserRepository.Get(userID)
+		search.IDs = user.Bookmarks
+	}
+
+	ids, err := h.Searcher.Search(search)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"error": err.Error(),

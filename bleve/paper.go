@@ -52,10 +52,11 @@ func (s *PaperIndex) Index(paper *papernet.Paper) error {
 	return s.index.Index(strconv.Itoa(paper.ID), data)
 }
 
-func (s *PaperIndex) Search(queryString string) ([]int, error) {
+func (s *PaperIndex) Search(search papernet.PaperSearch) ([]int, error) {
 	q := andQ(
 		query.NewMatchAllQuery(),
-		s.searchTitleOrTags(queryString),
+		s.searchTitleOrTags(search.Q),
+		s.searchIDs(search.IDs),
 	)
 
 	searchRequest := bleve.NewSearchRequest(q)
@@ -152,6 +153,18 @@ func (s *PaperIndex) searchTags(queryString string) query.Query {
 	}
 
 	return query.NewConjunctionQuery(conjuncs)
+}
+
+func (*PaperIndex) searchIDs(ids []int) query.Query {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	docIDs := make([]string, len(ids))
+	for i, id := range ids {
+		docIDs[i] = strconv.Itoa(id)
+	}
+	return query.NewDocIDQuery(docIDs)
 }
 
 // ------------------------------------------------------------------------------------------------

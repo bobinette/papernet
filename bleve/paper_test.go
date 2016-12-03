@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/blevesearch/bleve"
+
+	"github.com/bobinette/papernet"
 )
 
 func createIndex(t *testing.T) (*PaperIndex, func()) {
@@ -64,53 +66,79 @@ func TestFind(t *testing.T) {
 	}
 
 	var tts = map[string]struct {
-		Q        string
+		Search   papernet.PaperSearch
 		Expected []int
 	}{
 		"match all": {
-			Q:        "",
+			Search: papernet.PaperSearch{
+				Q: "",
+			},
 			Expected: []int{0, 1, 2, 3, 4, 5, 6},
 		},
 		"one word": {
-			Q:        "pizza",
+			Search: papernet.PaperSearch{
+				Q: "pizza",
+			},
 			Expected: []int{1, 3, 6},
 		},
 		"partial word": {
-			Q:        "ti",
+			Search: papernet.PaperSearch{
+				Q: "ti",
+			},
 			Expected: []int{0, 2},
 		},
 		"two words": {
-			Q:        "pizza yolo",
+			Search: papernet.PaperSearch{
+				Q: "pizza yolo",
+			},
 			Expected: []int{1, 6},
 		},
 		"long words": {
-			Q:        "reinforcement learning",
+			Search: papernet.PaperSearch{
+				Q: "reinforcement learning",
+			},
 			Expected: []int{4},
 		},
 		"long words spelling": {
-			Q:        "mysuperlnog",
+			Search: papernet.PaperSearch{
+				Q: "mysuperlnog",
+			},
 			Expected: []int{},
 		},
 		"trailing space": {
-			Q:        "titi ",
+			Search: papernet.PaperSearch{
+				Q: "titi ",
+			},
 			Expected: []int{2},
 		},
 		"by tags": {
-			Q:        "tech",
+			Search: papernet.PaperSearch{
+				Q: "tech",
+			},
 			Expected: []int{2, 3},
 		},
 		"ro": {
-			Q:        "pi yo ro",
+			Search: papernet.PaperSearch{
+				Q: "pi yo ro",
+			},
 			Expected: []int{6},
 		},
 		"with uppercase letters": {
-			Q:        "Learning",
+			Search: papernet.PaperSearch{
+				Q: "Learning",
+			},
 			Expected: []int{4, 5},
+		},
+		"by ids": {
+			Search: papernet.PaperSearch{
+				IDs: []int{1, 3, 17},
+			},
+			Expected: []int{1, 3},
 		},
 	}
 
 	for name, tt := range tts {
-		ids, err := index.Search(tt.Q)
+		ids, err := index.Search(tt.Search)
 		if err != nil {
 			t.Errorf("%s - search failed with error: %v", name, err)
 		} else if !reflect.DeepEqual(tt.Expected, ids) {

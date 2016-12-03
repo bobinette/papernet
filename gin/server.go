@@ -42,7 +42,7 @@ func New(
 	})
 
 	// Papers
-	paperHandler := PaperHandler{Repository: pr, Searcher: ps, TagIndex: ts}
+	paperHandler := PaperHandler{Repository: pr, Searcher: ps, TagIndex: ts, UserRepository: ur, SigningKey: sk}
 	paperHandler.RegisterRoutes(router)
 
 	// Tags
