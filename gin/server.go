@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/bobinette/papernet"
-	"github.com/bobinette/papernet/oauth"
+	"github.com/bobinette/papernet/auth"
 )
 
 func New(
@@ -15,7 +15,7 @@ func New(
 	ts papernet.TagIndex,
 	ur papernet.UserRepository,
 	sk papernet.SigningKey,
-	googleOAuthClient *oauth.GoogleOAuthClient,
+	googleOAuthClient *auth.GoogleClient,
 ) (http.Handler, error) {
 	router := gin.Default()
 
@@ -41,8 +41,11 @@ func New(
 		c.JSON(http.StatusOK, map[string]string{"data": "ok"})
 	})
 
+	encoder := auth.Encoder{Key: sk.Key}
+	authenticator := Authenticator{Encoder: encoder, UserRepository: ur}
+
 	// Papers
-	paperHandler := PaperHandler{Repository: pr, Searcher: ps, TagIndex: ts, UserRepository: ur, SigningKey: sk}
+	paperHandler := PaperHandler{Repository: pr, Searcher: ps, TagIndex: ts, UserRepository: ur, Authenticator: authenticator}
 	paperHandler.RegisterRoutes(router)
 
 	// Tags
@@ -50,8 +53,8 @@ func New(
 	tagHandler.RegisterRoutes(router)
 
 	// Auth
-	authHandler := AuthHandler{GoogleClient: googleOAuthClient, Repository: ur, SigningKey: sk}
-	authHandler.RegisterRoutes(router)
+	userHandler := UserHandler{GoogleClient: googleOAuthClient, Repository: ur, Authenticator: authenticator}
+	userHandler.RegisterRoutes(router)
 
 	return router, nil
 }

@@ -2,13 +2,12 @@ package gin
 
 import (
 	"fmt"
-	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/bobinette/papernet"
+	"github.com/bobinette/papernet/auth"
 )
 
 type PaperHandler struct {
@@ -16,206 +15,144 @@ type PaperHandler struct {
 	Searcher   papernet.PaperIndex
 
 	UserRepository papernet.UserRepository
-	SigningKey     papernet.SigningKey
+	Encoder        auth.Encoder
+	Authenticator  Authenticator
 
 	TagIndex papernet.TagIndex
 }
 
 func (h *PaperHandler) RegisterRoutes(router *gin.Engine) {
-	router.GET("/api/papers/:id", h.Get)
-	router.PUT("/api/papers/:id", h.Update)
-	router.DELETE("/api/papers/:id", h.Delete)
-	router.GET("/api/papers", h.List)
-	router.POST("/api/papers", h.Insert)
+	router.GET("/api/papers/:id", JSONFormatter(h.Get))
+	router.PUT("/api/papers/:id", JSONFormatter(h.Update))
+	router.DELETE("/api/papers/:id", JSONFormatter(h.Delete))
+	router.GET("/api/papers", JSONFormatter(h.Authenticator.Authenticate(h.List)))
+	router.POST("/api/papers", JSONFormatter(h.Insert))
 }
 
-func (h *PaperHandler) Get(c *gin.Context) {
+func (h *PaperHandler) Get(c *gin.Context) (interface{}, error) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	papers, err := h.Repository.Get(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": err,
-		})
-		return
+		return nil, err
 	} else if len(papers) == 0 {
-		c.JSON(http.StatusNotFound, map[string]interface{}{
-			"error": fmt.Sprintf("Paper %d not found", id),
-		})
-		return
+		return nil, fmt.Errorf("Paper %d not found", id)
 	}
 
-	c.JSON(http.StatusOK, map[string]interface{}{
+	return map[string]interface{}{
 		"data": papers[0],
-	})
+	}, nil
 }
 
-func (h *PaperHandler) Insert(c *gin.Context) {
+func (h *PaperHandler) Insert(c *gin.Context) (interface{}, error) {
 	var paper papernet.Paper
 	err := c.BindJSON(&paper)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	if paper.ID > 0 {
-		c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": "field id should be empty",
-		})
-		return
+		return nil, fmt.Errorf("field id should be empty, got %d", paper.ID)
 	}
 
 	err = h.Repository.Upsert(&paper)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	err = h.Searcher.Index(&paper)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	for _, tag := range paper.Tags {
 		err = h.TagIndex.Index(tag)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"error": err.Error(),
-			})
-			return
+			return nil, err
 		}
 	}
 
-	c.JSON(http.StatusOK, map[string]interface{}{
+	return map[string]interface{}{
 		"data": paper,
-	})
+	}, nil
 }
 
-func (h *PaperHandler) Update(c *gin.Context) {
+func (h *PaperHandler) Update(c *gin.Context) (interface{}, error) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	var paper papernet.Paper
 	err = c.BindJSON(&paper)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	papersFromID, err := h.Repository.Get(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": err,
-		})
-		return
+		return nil, err
 	} else if len(papersFromID) == 0 {
-		c.JSON(http.StatusNotFound, map[string]interface{}{
-			"error": fmt.Sprintf("Paper %d not found", id),
-		})
-		return
+		return nil, fmt.Errorf("Paper %d not found", id)
 	}
 
 	if paper.ID != id {
-		c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": fmt.Sprintf("ids do not match: %d (url) != %d (body)", id, paper.ID),
-		})
-		return
+		return nil, fmt.Errorf("ids do not match: %d (url) != %d (body)", id, paper.ID)
 	}
 
 	err = h.Repository.Upsert(&paper)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	err = h.Searcher.Index(&paper)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	for _, tag := range paper.Tags {
 		err = h.TagIndex.Index(tag)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"error": err.Error(),
-			})
-			return
+			return nil, err
 		}
 	}
 
-	c.JSON(http.StatusOK, map[string]interface{}{
+	return map[string]interface{}{
 		"data": paper,
-	})
+	}, nil
 }
 
-func (h *PaperHandler) Delete(c *gin.Context) {
+func (h *PaperHandler) Delete(c *gin.Context) (interface{}, error) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	papers, err := h.Repository.Get(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	} else if len(papers) == 0 {
-		c.JSON(http.StatusNotFound, map[string]interface{}{
-			"error": fmt.Sprintf("Paper %d not found", id),
-		})
-		return
+		return nil, fmt.Errorf("Paper %d not found", id)
 	}
 
 	err = h.Repository.Delete(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
-	c.JSON(http.StatusOK, map[string]interface{}{
+	return map[string]interface{}{
 		"data": "ok",
-	})
+	}, nil
 }
 
-func (h *PaperHandler) List(c *gin.Context) {
+func (h *PaperHandler) List(c *gin.Context) (interface{}, error) {
 	q := c.Query("q")
 	bookmarked, _, err := queryBool("bookmarked", c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	search := papernet.PaperSearch{
@@ -223,52 +160,24 @@ func (h *PaperHandler) List(c *gin.Context) {
 	}
 
 	if bookmarked {
-		authHeader, ok := c.Request.Header["Authorization"]
-		if !ok || len(authHeader) != 1 {
-			c.JSON(http.StatusUnauthorized, map[string]interface{}{
-				"error": "No token found",
-			})
-			return
-		}
-
-		token := authHeader[0]
-		if !strings.HasPrefix(token, "Bearer ") {
-			c.JSON(http.StatusBadRequest, map[string]interface{}{
-				"error": "No bearer",
-			})
-			return
-		}
-
-		token = token[len("Bearer "):]
-		userID, err := decodeToken(h.SigningKey.Key, token)
+		user, err := GetUser(c)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, map[string]interface{}{
-				"error": err.Error(),
-			})
-			return
+			return nil, err
 		}
-
-		user, err := h.UserRepository.Get(userID)
 		search.IDs = user.Bookmarks
 	}
 
 	ids, err := h.Searcher.Search(search)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
 	papers, err := h.Repository.Get(ids...)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
+		return nil, err
 	}
 
-	c.JSON(http.StatusOK, map[string]interface{}{
+	return map[string]interface{}{
 		"data": papers,
-	})
+	}, nil
 }

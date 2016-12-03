@@ -7,10 +7,10 @@ import (
 	"net/http"
 
 	"github.com/bobinette/papernet"
+	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/bleve"
 	"github.com/bobinette/papernet/bolt"
 	"github.com/bobinette/papernet/gin"
-	"github.com/bobinette/papernet/oauth"
 )
 
 func main() {
@@ -45,7 +45,7 @@ func main() {
 	}
 
 	// Auth
-	googleOAuthClient, err := oauth.NewGoogleOAuthClient("oauth_google.json")
+	googleOAuthClient, err := auth.NewGoogleClient("oauth_google.json")
 	if err != nil {
 		log.Fatalln("could not read google oauth config:", err)
 	}
