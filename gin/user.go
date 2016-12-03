@@ -2,7 +2,7 @@ package gin
 
 import (
 	"errors"
-	"log"
+	"sort"
 
 	"github.com/gin-gonic/gin"
 
@@ -94,26 +94,15 @@ func (h *UserHandler) UpdateBookmarks(c *gin.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	in := func(i int, a []int) bool {
-		for _, e := range a {
-			if e == i {
-				return true
-			}
-		}
-		return false
-	}
-
 	bookmarks := make(map[int]struct{})
 	for _, b := range user.Bookmarks {
-		if !in(b, payload.Remove) {
-			bookmarks[b] = struct{}{}
-		}
+		bookmarks[b] = struct{}{}
 	}
-
 	for _, b := range payload.Add {
-		if !in(b, payload.Remove) {
-			bookmarks[b] = struct{}{}
-		}
+		bookmarks[b] = struct{}{}
+	}
+	for _, b := range payload.Remove {
+		delete(bookmarks, b)
 	}
 
 	user.Bookmarks = func(m map[int]struct{}) []int {
@@ -123,9 +112,9 @@ func (h *UserHandler) UpdateBookmarks(c *gin.Context) (interface{}, error) {
 			a[i] = k
 			i++
 		}
+		sort.Ints(a)
 		return a
 	}(bookmarks)
-	log.Println(user.Bookmarks)
 
 	err = h.Repository.Upsert(user)
 	if err != nil {
@@ -133,6 +122,6 @@ func (h *UserHandler) UpdateBookmarks(c *gin.Context) (interface{}, error) {
 	}
 
 	return map[string]interface{}{
-		"user": user,
+		"data": user,
 	}, nil
 }

@@ -69,6 +69,7 @@ func createRouter(t *testing.T) (*gin.Engine, handlers, func()) {
 	gin.SetMode(gin.ReleaseMode) // avoid unnecessary log
 	router := gin.New()
 	paperHandler.RegisterRoutes(router)
+	userHandler.RegisterRoutes(router)
 
 	return router, handlers{
 			PaperHandler: paperHandler,
@@ -98,7 +99,7 @@ func createReader(i interface{}, t *testing.T) io.Reader {
 	return &buf
 }
 
-func TestGet(t *testing.T) {
+func TestPaperHandler_Get(t *testing.T) {
 	router, handlers, f := createRouter(t)
 	handler := handlers.PaperHandler
 	defer f()
@@ -150,7 +151,7 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestInsert(t *testing.T) {
+func TestPaperHandler_Insert(t *testing.T) {
 	router, _, f := createRouter(t)
 	defer f()
 
@@ -198,7 +199,7 @@ func TestInsert(t *testing.T) {
 		}
 
 		var r struct {
-			Data papernet.Paper
+			Data papernet.Paper `json:"data"`
 		}
 		err := json.Unmarshal(resp.Body.Bytes(), &r)
 		if err != nil {
@@ -207,11 +208,13 @@ func TestInsert(t *testing.T) {
 
 		if r.Data.ID <= 0 {
 			t.Errorf("response should have a positive ID, got %d", r.Data.ID)
+		} else if r.Data.Title != tt.Paper.Title {
+			t.Errorf("incorrect title: expected %s got %s", tt.Paper.Title, r.Data.Title)
 		}
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestPaperHandler_Update(t *testing.T) {
 	router, handlers, f := createRouter(t)
 	handler := handlers.PaperHandler
 	defer f()
@@ -292,7 +295,7 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestPaperHandler_Delete(t *testing.T) {
 	router, handlers, f := createRouter(t)
 	handler := handlers.PaperHandler
 	defer f()
@@ -355,7 +358,7 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestList(t *testing.T) {
+func TestPaperHandler_List(t *testing.T) {
 	router, handlers, f := createRouter(t)
 	handler := handlers.PaperHandler
 	defer f()
