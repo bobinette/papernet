@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"time"
 
 	"github.com/bobinette/papernet"
 	"github.com/bobinette/papernet/bleve"
@@ -16,19 +17,16 @@ type repoResult struct {
 	f    func()
 }
 
-func createRepository(addr string) (*repoResult, error) {
+func createRepository(addr string) (papernet.PaperRepository, func(), error) {
 	driver := bolt.Driver{}
 
 	err := driver.Open(addr)
 	if err != nil {
-		return nil, err
+		return nil, func() {}, err
 	}
 
 	repo := bolt.PaperRepository{Driver: &driver}
-	return &repoResult{
-		repo: &repo,
-		f:    func() { driver.Close() },
-	}, nil
+	return &repo, func() { driver.Close() }, nil
 }
 
 type indexResult struct {
@@ -36,33 +34,18 @@ type indexResult struct {
 	f     func()
 }
 
-func createIndex(addr string) (*indexResult, error) {
+func createIndex(addr string) (papernet.PaperIndex, func(), error) {
 	index := bleve.PaperIndex{}
-	err := index.Open("data/papernet.index")
+	err := index.Open(addr)
 	if err != nil {
-		return nil, err
+		return nil, func() {}, err
 	}
 
-	return &indexResult{
-		index: &index,
-		f:     func() { index.Close() },
-	}, nil
+	return &index, func() { index.Close() }, nil
 }
 
-func parse(resource string) error {
+func parse(resource string, repo papernet.PaperRepository, index papernet.PaperIndex) error {
 	log.Println("Importing", resource)
-	repoRes, err := createRepository("data/papernet.db")
-	if err != nil {
-		return err
-	}
-	defer repoRes.f()
-
-	indexRes, err := createIndex("data/papernet.index")
-	if err != nil {
-		return err
-	}
-	defer indexRes.f()
-
 	importer := etl.Importer{}
 
 	paper, err := importer.Import(resource)
@@ -70,73 +53,19 @@ func parse(resource string) error {
 		return err
 	}
 
-	paper.ID = 19
 	// Save the paper
-	err = repoRes.repo.Upsert(&paper)
+	err = repo.Upsert(&paper)
 	if err != nil {
 		return err
 	}
 
-	err = indexRes.index.Index(&paper)
+	err = index.Index(&paper)
 	if err != nil {
 		return err
 	}
 
 	log.Println("Done. Paper ID:", paper.ID)
 	return nil
-}
-
-func main() {
-	verbose := flag.Bool("v", false, "verbose")
-	flag.Parse()
-
-	if len(os.Args) < 2 {
-		log.Fatal(`argument missing. One of:
-  - reindex
-  - parse <url>
- `)
-	}
-
-	// Do stuff
-	switch os.Args[1] {
-	case "reindex":
-		// Create repository
-		driver := bolt.Driver{}
-		defer driver.Close()
-		err := driver.Open("data/papernet.db")
-		if err != nil {
-			log.Fatalln("could not open db:", err)
-		}
-		repo := bolt.PaperRepository{Driver: &driver}
-
-		// Create index
-		index := bleve.PaperIndex{}
-		err = index.Open("data/papernet.index")
-		defer index.Close()
-		if err != nil {
-			log.Fatalln("could not open index:", err)
-		}
-
-		log.Println("Reindexing all the papers")
-		err = reindexAll(&repo, &index, *verbose)
-		if err != nil {
-			log.Fatal("error reindexing:", err)
-		}
-		log.Println("Done")
-	case "parse":
-		if len(os.Args) < 3 {
-			log.Fatalln("missing url to parse")
-		}
-		err := parse(os.Args[2])
-		if err != nil {
-			log.Fatalln(err)
-		}
-	default:
-		log.Fatalf(`unknown argument %s. Should be one of:
-  - reindex
-  - parse
- `, os.Args[1])
-	}
 }
 
 func reindexAll(repo papernet.PaperRepository, index papernet.PaperIndex, v bool) error {
@@ -157,4 +86,80 @@ func reindexAll(repo papernet.PaperRepository, index papernet.PaperIndex, v bool
 	}
 
 	return nil
+}
+
+func restoreDates(repo papernet.PaperRepository) error {
+	papers, err := repo.List()
+	if err != nil {
+		return err
+	}
+
+	nilTime := time.Time{}
+	for _, paper := range papers {
+		if paper.CreatedAt == nilTime {
+			paper.CreatedAt = time.Now()
+		}
+		if paper.UpdatedAt == nilTime {
+			paper.UpdatedAt = time.Now()
+		}
+
+		err = repo.Upsert(paper)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func main() {
+	verbose := flag.Bool("v", false, "verbose")
+	flag.Parse()
+
+	if len(os.Args) < 2 {
+		log.Fatal(`argument missing. One of:
+  - reindex
+  - parse <url>
+ `)
+	}
+
+	repo, f, err := createRepository("data/papernet.db")
+	defer f()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	index, f, err := createIndex("data/papernet.index")
+	defer f()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// Do stuff
+	switch os.Args[1] {
+	case "reindex":
+		log.Println("Reindexing all the papers")
+		err = reindexAll(repo, index, *verbose)
+		if err != nil {
+			log.Fatal("error reindexing:", err)
+		}
+		log.Println("Done")
+	case "parse":
+		if len(os.Args) < 3 {
+			log.Fatalln("missing url to parse")
+		}
+		err := parse(os.Args[2], repo, index)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	case "restore-dates":
+		if err := restoreDates(repo); err != nil {
+			log.Fatalln(err)
+		}
+	default:
+		log.Fatalf(`unknown argument %s. Should be one of:
+  - reindex
+  - parse
+ `, os.Args[1])
+	}
 }

@@ -1,11 +1,18 @@
 package papernet
 
+import (
+	"time"
+)
+
 type Paper struct {
 	ID      int    `json:"id"`
 	Title   string `json:"title"`
 	Summary string `json:"summary"`
 
 	Tags []string `json:"tags"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type PaperSearch struct {
