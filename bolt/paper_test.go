@@ -115,9 +115,9 @@ func TestReposistory_Update(t *testing.T) {
 		t.Fatal("error getting:", err)
 	} else if len(papers) != 1 {
 		t.Fatalf("incorrect number of papers retrieved: expected 1 got %d", len(papers))
-	} else if retrieved := papers[0]; !reflect.DeepEqual(*retrieved, paper) {
-		t.Fatalf("incorrect paper retrieved: expected %+v got %+v", paper, *retrieved)
 	}
+	retrieved := papers[0]
+	assertPaper(&paper, retrieved, t)
 }
 
 func TestRepository_Delete(t *testing.T) {
