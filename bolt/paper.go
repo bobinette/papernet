@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/boltdb/bolt"
 
@@ -57,7 +58,9 @@ func (r *PaperRepository) Upsert(paper *papernet.Paper) error {
 				return fmt.Errorf("error incrementing id: %v", err)
 			}
 			paper.ID = int(id)
+			paper.CreatedAt = time.Now()
 		}
+		paper.UpdatedAt = time.Now()
 
 		data, err := json.Marshal(paper)
 		if err != nil {

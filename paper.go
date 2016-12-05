@@ -9,7 +9,8 @@ type Paper struct {
 	Title   string `json:"title"`
 	Summary string `json:"summary"`
 
-	Tags []string `json:"tags"`
+	Tags       []string `json:"tags"`
+	References []string `json:"references"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

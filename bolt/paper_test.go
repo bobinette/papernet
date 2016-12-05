@@ -46,33 +46,47 @@ func TestRepository_Insert_Get(t *testing.T) {
 	repo, f := createRepository(t)
 	defer f()
 
+	nilTime := time.Time{}
+
 	paper := papernet.Paper{Title: "Test"}
 	if err := repo.Upsert(&paper); err != nil {
 		t.Fatal("error inserting:", err)
+	}
+	if paper.ID <= 0 {
+		t.Fatal("inserting should have set the id")
+	}
+	if paper.CreatedAt == nilTime {
+		t.Fatal("inserting should have set the created at")
+	}
+	if paper.UpdatedAt == nilTime {
+		t.Fatal("inserting should have set the updated at")
 	}
 
 	papers, err := repo.Get(paper.ID)
 	if err != nil {
 		t.Fatal("error getting:", err)
-	} else if len(papers) != 1 {
-		t.Fatalf("incorrect number of papers retrieved: expected 1 got %d", len(papers))
-	} else if retrieved := papers[0]; !reflect.DeepEqual(*retrieved, paper) {
-		t.Fatalf("incorrect paper retrieved: expected %+v got %+v", paper, *retrieved)
 	}
+	if len(papers) != 1 {
+		t.Fatalf("incorrect number of papers retrieved: expected 1 got %d", len(papers))
+	}
+	retrieved := papers[0]
+	assertPaper(&paper, retrieved, t)
 
 	papers, err = repo.Get(paper.ID, paper.ID+1)
 	if err != nil {
 		t.Fatal("error getting:", err)
-	} else if len(papers) != 1 {
-		t.Fatalf("incorrect number of papers retrieved: expected 1 got %d", len(papers))
-	} else if retrieved := papers[0]; !reflect.DeepEqual(*retrieved, paper) {
-		t.Fatalf("incorrect paper retrieved: expected %+v got %+v", paper, *retrieved)
 	}
+	if len(papers) != 1 {
+		t.Fatalf("incorrect number of papers retrieved: expected 1 got %d", len(papers))
+	}
+	retrieved = papers[0]
+	assertPaper(&paper, retrieved, t)
 
 	papers, err = repo.Get(paper.ID + 1)
 	if err != nil {
 		t.Fatal("error getting:", err)
-	} else if len(papers) != 0 {
+	}
+	if len(papers) != 0 {
 		t.Fatalf("incorrect number of papers retrieved: expected 0 got %d", len(papers))
 	}
 }
@@ -81,7 +95,8 @@ func TestReposistory_Update(t *testing.T) {
 	repo, f := createRepository(t)
 	defer f()
 
-	paper := papernet.Paper{Title: "Test"}
+	date := time.Now()
+	paper := papernet.Paper{ID: 1, Title: "Test", CreatedAt: date, UpdatedAt: date}
 	if err := repo.Upsert(&paper); err != nil {
 		t.Fatal("error inserting:", err)
 	}
@@ -89,6 +104,10 @@ func TestReposistory_Update(t *testing.T) {
 	paper.Title = "Updated"
 	if err := repo.Upsert(&paper); err != nil {
 		t.Fatal("error inserting:", err)
+	} else if paper.CreatedAt != date {
+		t.Fatal("inserting should NOT have changed the created at")
+	} else if paper.UpdatedAt == date {
+		t.Fatal("inserting should have changed the updated at")
 	}
 
 	papers, err := repo.Get(paper.ID)
@@ -115,9 +134,9 @@ func TestRepository_Delete(t *testing.T) {
 		t.Fatal("error getting:", err)
 	} else if len(papers) != 1 {
 		t.Fatalf("incorrect number of papers retrieved: expected 1 got %d", len(papers))
-	} else if retrieved := papers[0]; !reflect.DeepEqual(*retrieved, paper) {
-		t.Fatalf("incorrect paper retrieved: expected %+v got %+v", paper, *retrieved)
 	}
+	retrieved := papers[0]
+	assertPaper(&paper, retrieved, t)
 
 	err = repo.Delete(paper.ID)
 	if err != nil {
@@ -150,7 +169,27 @@ func TestRepository_List(t *testing.T) {
 	retrieved, err := repo.List()
 	if err != nil {
 		t.Fatal("error getting:", err)
-	} else if !reflect.DeepEqual(retrieved, papers) {
-		t.Fatalf("incorrect paper retrieved: expected %+v got %+v", papers, retrieved)
+	}
+
+	if len(papers) != len(retrieved) {
+		t.Fatalf("incorrect number of papers retrieved: expected %d got %d", len(papers), len(retrieved))
+	}
+
+	for i, paper := range retrieved {
+		assertPaper(papers[i], paper, t)
+	}
+}
+
+func assertPaper(exp, got *papernet.Paper, t *testing.T) {
+	if exp.Title != got.Title {
+		t.Errorf("invalid title: expected %s got %s", exp.Title, got.Title)
+	}
+
+	if exp.Summary != got.Summary {
+		t.Errorf("invalid summary: expected %s got %s", exp.Summary, got.Summary)
+	}
+
+	if !reflect.DeepEqual(exp.Tags, got.Tags) {
+		t.Errorf("invalid tags: expected %v got %v", exp.Tags, got.Tags)
 	}
 }

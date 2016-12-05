@@ -2,7 +2,6 @@ package bolt
 
 import (
 	"bytes"
-	"log"
 
 	"github.com/boltdb/bolt"
 )
@@ -34,7 +33,6 @@ func (s *TagIndex) Search(prefix string) ([]string, error) {
 		} else {
 			for tag, _ := c.Seek([]byte(prefix)); bytes.HasPrefix(tag, []byte(prefix)); tag, _ = c.Next() {
 				tags = append(tags, string(tag))
-				log.Println(tag)
 			}
 		}
 		return nil

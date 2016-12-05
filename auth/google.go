@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"sync"
 
@@ -60,7 +59,6 @@ func (c *GoogleClient) LoginURL() string {
 	c.state[s] = struct{}{}
 	c.stateMutex.Unlock()
 
-	log.Println(s)
 	url := c.config.AuthCodeURL(s)
 	return url
 }
@@ -112,7 +110,6 @@ func (c *GoogleClient) userInfo(tok *oauth2.Token) (*papernet.User, error) {
 		return nil, err
 	}
 
-	log.Println(user)
 	return &papernet.User{
 		ID:   user.Sub,
 		Name: user.Name,

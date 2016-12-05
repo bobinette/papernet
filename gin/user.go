@@ -54,9 +54,15 @@ func (h *UserHandler) Google(c *gin.Context) (interface{}, error) {
 		return nil, errors.New("error exchanging token", errors.WithCause(err))
 	}
 
-	err = h.Repository.Upsert(user)
-	if err != nil {
-		return nil, errors.New("error saving user", errors.WithCause(err))
+	if dbUser, err := h.Repository.Get(user.ID); err != nil {
+		return nil, errors.New("error checking user in db", errors.WithCause(err))
+	} else if dbUser == nil {
+		err = h.Repository.Upsert(user)
+		if err != nil {
+			return nil, errors.New("error saving user", errors.WithCause(err))
+		}
+	} else {
+		user = dbUser
 	}
 
 	token, err := h.Authenticator.Encoder.Encode(user.ID)
