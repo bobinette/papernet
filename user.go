@@ -9,6 +9,9 @@ type User struct {
 	Name string `json:"name"`
 
 	Bookmarks []int `json:"bookmarks"`
+
+	CanSee  []int `json::"-"`
+	CanEdit []int `json::"-"`
 }
 
 type UserRepository interface {

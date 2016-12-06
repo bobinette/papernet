@@ -49,9 +49,10 @@ func createRouter(t *testing.T) (*gin.Engine, handlers, func()) {
 	tagIndex := &bolt.TagIndex{Driver: driver}
 
 	paperHandler := &PaperHandler{
-		Repository: paperRepo,
-		Searcher:   index,
-		TagIndex:   tagIndex,
+		Repository:     paperRepo,
+		Searcher:       index,
+		TagIndex:       tagIndex,
+		UserRepository: userRepo,
 		Authenticator: Authenticator{
 			UserRepository: userRepo,
 			Encoder:        encoder,
@@ -114,6 +115,30 @@ func TestPaperHandler_Get(t *testing.T) {
 		t.Fatal("could not insert paper:", err)
 	}
 
+	err = handler.Repository.Upsert(&papernet.Paper{
+		ID:      2,
+		Title:   "Test 2",
+		Summary: "Test 2",
+	})
+	if err != nil {
+		t.Fatal("could not insert paper:", err)
+	}
+
+	user := &papernet.User{
+		ID:        "1",
+		Name:      "Test user",
+		Bookmarks: []int{1},
+		CanSee:    []int{1},
+	}
+	if err := handler.Authenticator.UserRepository.Upsert(user); err != nil {
+		t.Fatal("could not insert user:", err)
+	}
+	token, err := handler.Authenticator.Encoder.Encode(user.ID)
+	if err != nil {
+		t.Fatal("could not fake token:", err)
+	}
+	bearer := fmt.Sprint("Bearer ", token)
+
 	var tts = []struct {
 		Query string
 		Code  int
@@ -129,16 +154,24 @@ func TestPaperHandler_Get(t *testing.T) {
 			Code:  400,
 		},
 		{
-			// 2 is not in the database
+			// User is not allowed to see 2 -> 404 à la Github
 			Query: "/api/papers/2",
+			Code:  404,
+		},
+		{
+			// 3 is not in the database
+			Query: "/api/papers/3",
 			Code:  404,
 		},
 	}
 
 	for _, tt := range tts {
 		req := httptest.NewRequest("GET", tt.Query, nil)
+		req.Header.Add("Authorization", bearer)
+
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
+
 		if resp.Code != tt.Code {
 			t.Errorf("incorrect code: expected %d got %d", tt.Code, resp.Code)
 		}
@@ -152,8 +185,23 @@ func TestPaperHandler_Get(t *testing.T) {
 }
 
 func TestPaperHandler_Insert(t *testing.T) {
-	router, _, f := createRouter(t)
+	router, handlers, f := createRouter(t)
+	handler := handlers.PaperHandler
 	defer f()
+
+	user := &papernet.User{
+		ID:        "1",
+		Name:      "Test user",
+		Bookmarks: []int{1},
+	}
+	if err := handler.Authenticator.UserRepository.Upsert(user); err != nil {
+		t.Fatal("could not insert user:", err)
+	}
+	token, err := handler.Authenticator.Encoder.Encode(user.ID)
+	if err != nil {
+		t.Fatal("could not fake token:", err)
+	}
+	bearer := fmt.Sprint("Bearer ", token)
 
 	url := "/api/papers"
 	var tts = []struct {
@@ -188,9 +236,11 @@ func TestPaperHandler_Insert(t *testing.T) {
 	for _, tt := range tts {
 		reader := createReader(tt.Paper, t)
 		req := httptest.NewRequest("POST", url, reader)
-		resp := httptest.NewRecorder()
+		req.Header.Add("Authorization", bearer)
 
+		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
+
 		if resp.Code != tt.Code {
 			t.Errorf("incorrect code: expected %d got %d", tt.Code, resp.Code)
 		}
@@ -211,6 +261,16 @@ func TestPaperHandler_Insert(t *testing.T) {
 		} else if r.Data.Title != tt.Paper.Title {
 			t.Errorf("incorrect title: expected %s got %s", tt.Paper.Title, r.Data.Title)
 		}
+
+		// Check that the paper is available for the user
+		user, err = handler.Authenticator.UserRepository.Get(user.ID)
+		if err != nil {
+			t.Error("error getting user:", err)
+		} else if !isIn(r.Data.ID, user.CanSee) {
+			t.Error("Paper should be added to user can see")
+		} else if !isIn(r.Data.ID, user.CanEdit) {
+			t.Error("Paper should be added to user can edit")
+		}
 	}
 }
 
@@ -228,6 +288,31 @@ func TestPaperHandler_Update(t *testing.T) {
 	if err != nil {
 		t.Fatal("could not insert paper:", err)
 	}
+
+	err = handler.Repository.Upsert(&papernet.Paper{
+		ID:      2,
+		Title:   "Test",
+		Summary: "Test",
+	})
+	if err != nil {
+		t.Fatal("could not insert paper:", err)
+	}
+
+	user := &papernet.User{
+		ID:        "1",
+		Name:      "Test user",
+		Bookmarks: []int{1},
+		CanSee:    []int{1},
+		CanEdit:   []int{1},
+	}
+	if err := handler.Authenticator.UserRepository.Upsert(user); err != nil {
+		t.Fatal("could not insert user:", err)
+	}
+	token, err := handler.Authenticator.Encoder.Encode(user.ID)
+	if err != nil {
+		t.Fatal("could not fake token:", err)
+	}
+	bearer := fmt.Sprint("Bearer ", token)
 
 	var tts = []struct {
 		Name  string
@@ -256,10 +341,20 @@ func TestPaperHandler_Update(t *testing.T) {
 			Code: 400,
 		},
 		{
-			Name:  "2 is not in the database",
+			Name:  "User not allowed to edit 2",
 			Query: "/api/papers/2",
 			Paper: papernet.Paper{
 				ID:      2,
+				Title:   "Pizza Yolo",
+				Summary: "Paper for test",
+			},
+			Code: 403,
+		},
+		{
+			Name:  "3 is not in the database",
+			Query: "/api/papers/3",
+			Paper: papernet.Paper{
+				ID:      3,
 				Title:   "Pizza Yolo",
 				Summary: "Paper for test",
 			},
@@ -280,9 +375,11 @@ func TestPaperHandler_Update(t *testing.T) {
 	for _, tt := range tts {
 		reader := createReader(tt.Paper, t)
 		req := httptest.NewRequest("PUT", tt.Query, reader)
-		resp := httptest.NewRecorder()
+		req.Header.Add("Authorization", bearer)
 
+		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
+
 		if resp.Code != tt.Code {
 			t.Errorf("%s - incorrect code: expected %d got %d (%s)", tt.Name, tt.Code, resp.Code, resp.Body.String())
 		}
@@ -310,6 +407,31 @@ func TestPaperHandler_Delete(t *testing.T) {
 		t.Fatal("could not insert paper:", err)
 	}
 
+	err = handler.Repository.Upsert(&papernet.Paper{
+		ID:      2,
+		Title:   "Test",
+		Summary: "Test",
+	})
+	if err != nil {
+		t.Fatal("could not insert paper:", err)
+	}
+
+	user := &papernet.User{
+		ID:        "1",
+		Name:      "Test user",
+		Bookmarks: []int{1},
+		CanSee:    []int{1},
+		CanEdit:   []int{1},
+	}
+	if err := handler.Authenticator.UserRepository.Upsert(user); err != nil {
+		t.Fatal("could not insert user:", err)
+	}
+	token, err := handler.Authenticator.Encoder.Encode(user.ID)
+	if err != nil {
+		t.Fatal("could not fake token:", err)
+	}
+	bearer := fmt.Sprint("Bearer ", token)
+
 	var tts = []struct {
 		Query string
 		Code  int
@@ -325,18 +447,26 @@ func TestPaperHandler_Delete(t *testing.T) {
 			Code:  400,
 		},
 		{
-			// 2 is not in the database
+			// User is not allwed to delete 2
 			Query: "/api/papers/2",
+			Code:  403,
+		},
+		{
+			// 3 is not in the database
+			Query: "/api/papers/3",
 			Code:  404,
 		},
 	}
 
-	for _, tt := range tts {
+	for i, tt := range tts {
 		req := httptest.NewRequest("DELETE", tt.Query, nil)
+		req.Header.Add("Authorization", bearer)
+
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
+
 		if resp.Code != tt.Code {
-			t.Errorf("incorrect code: expected %d got %d", tt.Code, resp.Code)
+			t.Errorf("%d - incorrect code: expected %d got %d", i, tt.Code, resp.Code)
 		}
 
 		if tt.Code >= 400 {
@@ -346,14 +476,15 @@ func TestPaperHandler_Delete(t *testing.T) {
 		r := make(map[string]interface{})
 		err := json.Unmarshal(resp.Body.Bytes(), &r)
 		if err != nil {
-			t.Error("could not decode response as JSON:", err)
+			t.Error("%d - could not decode response as JSON:", i, err)
 		}
 
 		req = httptest.NewRequest("GET", tt.Query, nil)
+		req.Header.Add("Authorization", bearer)
 		resp = httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
 		if resp.Code != 404 {
-			t.Errorf("seems like I can still GET %s", tt.Query)
+			t.Errorf("%d - seems like I can still GET %s: %v", i, tt.Query, resp.Body.String())
 		}
 	}
 }
@@ -367,6 +498,7 @@ func TestPaperHandler_List(t *testing.T) {
 	papers := []*papernet.Paper{
 		&papernet.Paper{ID: 1, Title: "Test", Summary: "Test"},
 		&papernet.Paper{ID: 2, Title: "Pizza yolo", Summary: "Summary"},
+		&papernet.Paper{ID: 3, Title: "I am the invisible", Summary: "Shhhht!"},
 	}
 	for _, paper := range papers {
 		err := handler.Repository.Upsert(paper)
@@ -384,6 +516,7 @@ func TestPaperHandler_List(t *testing.T) {
 		ID:        "1",
 		Name:      "Test user",
 		Bookmarks: []int{1},
+		CanSee:    []int{1, 2},
 	}
 	if err := handler.Authenticator.UserRepository.Upsert(user); err != nil {
 		t.Fatal("could not insert user:", err)

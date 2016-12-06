@@ -71,61 +71,71 @@ func TestFind(t *testing.T) {
 	}{
 		"match all": {
 			Search: papernet.PaperSearch{
-				Q: "",
+				Q:   "",
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
 			},
 			Expected: []int{0, 1, 2, 3, 4, 5, 6},
 		},
 		"one word": {
 			Search: papernet.PaperSearch{
-				Q: "pizza",
+				Q:   "pizza",
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
 			},
 			Expected: []int{1, 3, 6},
 		},
 		"partial word": {
 			Search: papernet.PaperSearch{
-				Q: "ti",
+				Q:   "ti",
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
 			},
 			Expected: []int{0, 2},
 		},
 		"two words": {
 			Search: papernet.PaperSearch{
-				Q: "pizza yolo",
+				Q:   "pizza yolo",
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
 			},
 			Expected: []int{1, 6},
 		},
 		"long words": {
 			Search: papernet.PaperSearch{
-				Q: "reinforcement learning",
+				Q:   "reinforcement learning",
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
 			},
 			Expected: []int{4},
 		},
 		"long words spelling": {
 			Search: papernet.PaperSearch{
-				Q: "mysuperlnog",
+				Q:   "mysuperlnog",
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
 			},
 			Expected: []int{},
 		},
 		"trailing space": {
 			Search: papernet.PaperSearch{
-				Q: "titi ",
+				Q:   "titi ",
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
 			},
 			Expected: []int{2},
 		},
 		"by tags": {
 			Search: papernet.PaperSearch{
-				Q: "tech",
+				Q:   "tech",
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
 			},
 			Expected: []int{2, 3},
 		},
 		"ro": {
 			Search: papernet.PaperSearch{
-				Q: "pi yo ro",
+				Q:   "pi yo ro",
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
 			},
 			Expected: []int{6},
 		},
 		"with uppercase letters": {
 			Search: papernet.PaperSearch{
-				Q: "Learning",
+				Q:   "Learning",
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
 			},
 			Expected: []int{4, 5},
 		},
