@@ -10,7 +10,7 @@ type Node interface {
 }
 
 type Crawler interface {
-	Get(string) (Node, error)
+	Crawl(string) ([]Node, error)
 }
 
 type Scraper interface {
@@ -19,15 +19,21 @@ type Scraper interface {
 
 type Importer struct{}
 
-func (i Importer) Import(resource string) (papernet.Paper, error) {
-	// Only option for now
-	crawler := HtmlCrawler{}
-	node, err := crawler.Crawl(resource)
+func (i Importer) Import(resource string, crawler Crawler, scraper Scraper) ([]papernet.Paper, error) {
+	nodes, err := crawler.Crawl(resource)
 	if err != nil {
-		return papernet.Paper{}, err
+		return nil, err
 	}
 
 	// Only option for now
-	scraper := ArxivScraper{}
-	return scraper.Scrap(node)
+	papers := make([]papernet.Paper, len(nodes))
+	for i, node := range nodes {
+		p, err := scraper.Scrap(node)
+		if err != nil {
+			return nil, err
+		}
+
+		papers[i] = p
+	}
+	return papers, nil
 }

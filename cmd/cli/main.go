@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/bobinette/papernet/bleve"
 	"github.com/bobinette/papernet/bolt"
 	"github.com/bobinette/papernet/etl"
+	"github.com/bobinette/papernet/etl/crawlers"
+	"github.com/bobinette/papernet/etl/scrapers"
 )
 
 type repoResult struct {
@@ -47,24 +50,38 @@ func createIndex(addr string) (papernet.PaperIndex, func(), error) {
 func parse(resource string, repo papernet.PaperRepository, index papernet.PaperIndex) error {
 	log.Println("Importing", resource)
 	importer := etl.Importer{}
+	crawler, ok := crawlers.New("html")
+	if !ok {
+		return fmt.Errorf("no crawler for %s", "html")
+	}
 
-	paper, err := importer.Import(resource)
+	scraper, ok := scrapers.New("arxiv")
+	if !ok {
+		return fmt.Errorf("no scraper for %s", "html")
+	}
+
+	papers, err := importer.Import(resource, crawler, scraper)
 	if err != nil {
 		return err
 	}
 
-	// Save the paper
-	err = repo.Upsert(&paper)
-	if err != nil {
-		return err
+	for _, paper := range papers {
+		// Save the paper
+		// err = repo.Upsert(&paper)
+		// if err != nil {
+		// 	return err
+		// }
+
+		// err = index.Index(&paper)
+		// if err != nil {
+		// 	return err
+		// }
+
+		log.Println(paper)
+		log.Println("Done. Paper ID:", paper.ID)
 	}
 
-	err = index.Index(&paper)
-	if err != nil {
-		return err
-	}
-
-	log.Println("Done. Paper ID:", paper.ID)
+	log.Printf("Done. %d papers added.", len(papers))
 	return nil
 }
 
@@ -96,10 +113,10 @@ func restoreDates(repo papernet.PaperRepository) error {
 
 	nilTime := time.Time{}
 	for _, paper := range papers {
-		if paper.CreatedAt == nilTime {
+		if paper.CreatedAt.Equal(nilTime) {
 			paper.CreatedAt = time.Now()
 		}
-		if paper.UpdatedAt == nilTime {
+		if paper.UpdatedAt.Equal(nilTime) {
 			paper.UpdatedAt = time.Now()
 		}
 

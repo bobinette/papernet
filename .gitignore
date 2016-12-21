@@ -1,5 +1,5 @@
 data/*
 
 # Credentials
-oauth*
+oauth_*.json
 hs256.json

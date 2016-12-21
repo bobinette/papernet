@@ -1,4 +1,4 @@
-package etl
+package papernet
 
 import (
 	"strings"
@@ -6,13 +6,19 @@ import (
 
 type CleanFunc func(string) string
 
-func CleanString(str string, cleanFuncs ...CleanFunc) string {
+func Clean(str string, cleanFuncs ...CleanFunc) string {
 	cleaned := str
 	for _, clean := range cleanFuncs {
 		cleaned = clean(cleaned)
 	}
 
 	return cleaned
+}
+
+func CleaningPipe(cleanFuncs ...CleanFunc) CleanFunc {
+	return func(str string) string {
+		return Clean(str, cleanFuncs...)
+	}
 }
 
 func RemovePrefix(prefix string) CleanFunc {

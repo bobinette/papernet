@@ -1,7 +1,9 @@
-package etl
+package scrapers
 
 import (
 	"testing"
+
+	"github.com/bobinette/papernet/etl"
 )
 
 type MapNode struct {
@@ -9,7 +11,7 @@ type MapNode struct {
 	TextVal  string
 }
 
-func (m MapNode) Find(key string) Node {
+func (m MapNode) Find(key string) etl.Node {
 	return m.Children[key]
 }
 

@@ -43,5 +43,5 @@ func (e Encoder) Decode(bearer string) (string, error) {
 		return claims.UserID, nil
 	}
 
-	return "", errors.New("could not get claims claims")
+	return "", errors.New("could not get claims")
 }

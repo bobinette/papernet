@@ -62,5 +62,9 @@ func New(
 	userHandler := UserHandler{GoogleClient: googleOAuthClient, Repository: ur, Authenticator: authenticator}
 	userHandler.RegisterRoutes(router)
 
+	// Arxiv
+	arxivHandler := ArxivHandler{Authenticator: authenticator}
+	arxivHandler.RegisterRoutes(router)
+
 	return router, nil
 }

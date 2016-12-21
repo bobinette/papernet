@@ -41,6 +41,7 @@ func (h *PaperHandler) Get(c *gin.Context) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if !isIn(id, user.CanSee) {
 		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
 	}
