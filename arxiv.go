@@ -4,7 +4,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -151,21 +150,19 @@ type ArxivSpider struct {
 	Client *http.Client
 }
 
-func (s *ArxivSpider) Search(title string) ([]*Paper, error) {
+func (s *ArxivSpider) Search(q string) ([]*Paper, error) {
 	u, _ := url.Parse("http://export.arxiv.org/api/query")
 
 	search_query := ""
-	if title != "" {
-		search_query = fmt.Sprintf("ti:%s", title)
+	if q != "" {
+		search_query = fmt.Sprintf("all:%s", q)
 	}
-	q := u.Query()
-	q.Add("search_query", search_query)
-	q.Add("sortBy", "submittedDate")
-	q.Add("sortOrder", "descending")
+	query := u.Query()
+	query.Add("search_query", search_query)
+	query.Add("sortBy", "submittedDate")
+	query.Add("sortOrder", "descending")
 
-	u.RawQuery = q.Encode()
-
-	log.Println(u)
+	u.RawQuery = query.Encode()
 
 	resp, err := s.Client.Get(u.String())
 	if err != nil {

@@ -22,7 +22,7 @@ func (h *ArxivHandler) Search(c *gin.Context) (interface{}, error) {
 		Client: &http.Client{Timeout: 10 * time.Second},
 	}
 
-	papers, err := spider.Search(c.Query("title"))
+	papers, err := spider.Search(c.Query("q"))
 	if err != nil {
 		return nil, err
 	}
