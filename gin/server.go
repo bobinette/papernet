@@ -10,8 +10,8 @@ import (
 )
 
 func New(
-	pr papernet.PaperRepository,
-	ps papernet.PaperIndex,
+	ps papernet.PaperStore,
+	pi papernet.PaperIndex,
 	ts papernet.TagIndex,
 	ur papernet.UserRepository,
 	sk papernet.SigningKey,
@@ -46,8 +46,8 @@ func New(
 
 	// Papers
 	paperHandler := PaperHandler{
-		Repository:     pr,
-		Searcher:       ps,
+		Store:          ps,
+		Searcher:       pi,
 		UserRepository: ur,
 		TagIndex:       ts,
 		Authenticator:  authenticator,

@@ -13,16 +13,16 @@ import (
 
 var paperBucket = []byte("papers")
 
-// PaperRepository is used to store and retrieve papers from a bolt database.
-type PaperRepository struct {
+// PaperStore is used to store and retrieve papers from a bolt database.
+type PaperStore struct {
 	Driver *Driver
 }
 
 // Get retrieves the paper defined by id in the database. If no paper can be found with the
 // given id, Get returns nil.
-func (r *PaperRepository) Get(ids ...int) ([]*papernet.Paper, error) {
+func (s *PaperStore) Get(ids ...int) ([]*papernet.Paper, error) {
 	papers := make([]*papernet.Paper, 0, len(ids))
-	err := r.Driver.store.View(func(tx *bolt.Tx) error {
+	err := s.Driver.store.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(paperBucket)
 
 		for _, id := range ids {
@@ -48,8 +48,8 @@ func (r *PaperRepository) Get(ids ...int) ([]*papernet.Paper, error) {
 }
 
 // Upsert inserts or update a paper in the database, depending on paper.ID.
-func (r *PaperRepository) Upsert(paper *papernet.Paper) error {
-	return r.Driver.store.Update(func(tx *bolt.Tx) error {
+func (s *PaperStore) Upsert(paper *papernet.Paper) error {
+	return s.Driver.store.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(paperBucket)
 
 		if paper.ID <= 0 {
@@ -71,17 +71,17 @@ func (r *PaperRepository) Upsert(paper *papernet.Paper) error {
 	})
 }
 
-func (r *PaperRepository) Delete(id int) error {
-	return r.Driver.store.Update(func(tx *bolt.Tx) error {
+func (s *PaperStore) Delete(id int) error {
+	return s.Driver.store.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(paperBucket)
 		return bucket.Delete(itob(id))
 	})
 }
 
-func (r *PaperRepository) List() ([]*papernet.Paper, error) {
+func (s *PaperStore) List() ([]*papernet.Paper, error) {
 	var papers []*papernet.Paper
 
-	err := r.Driver.store.View(func(tx *bolt.Tx) error {
+	err := s.Driver.store.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(paperBucket)
 
 		c := bucket.Cursor()

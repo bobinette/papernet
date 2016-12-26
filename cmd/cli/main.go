@@ -15,12 +15,12 @@ import (
 	"github.com/bobinette/papernet/etl/scrapers"
 )
 
-type repoResult struct {
-	repo papernet.PaperRepository
-	f    func()
+type storeResult struct {
+	store papernet.PaperStore
+	f     func()
 }
 
-func createRepository(addr string) (papernet.PaperRepository, func(), error) {
+func createStore(addr string) (papernet.PaperStore, func(), error) {
 	driver := bolt.Driver{}
 
 	err := driver.Open(addr)
@@ -28,8 +28,8 @@ func createRepository(addr string) (papernet.PaperRepository, func(), error) {
 		return nil, func() {}, err
 	}
 
-	repo := bolt.PaperRepository{Driver: &driver}
-	return &repo, func() { driver.Close() }, nil
+	store := bolt.PaperStore{Driver: &driver}
+	return &store, func() { driver.Close() }, nil
 }
 
 type indexResult struct {
@@ -47,7 +47,7 @@ func createIndex(addr string) (papernet.PaperIndex, func(), error) {
 	return &index, func() { index.Close() }, nil
 }
 
-func parse(resource string, repo papernet.PaperRepository, index papernet.PaperIndex) error {
+func parse(resource string, store papernet.PaperStore, index papernet.PaperIndex) error {
 	log.Println("Importing", resource)
 	importer := etl.Importer{}
 	crawler, ok := crawlers.New("html")
@@ -67,7 +67,7 @@ func parse(resource string, repo papernet.PaperRepository, index papernet.PaperI
 
 	for _, paper := range papers {
 		// Save the paper
-		// err = repo.Upsert(&paper)
+		// err = store.Upsert(&paper)
 		// if err != nil {
 		// 	return err
 		// }
@@ -85,8 +85,8 @@ func parse(resource string, repo papernet.PaperRepository, index papernet.PaperI
 	return nil
 }
 
-func reindexAll(repo papernet.PaperRepository, index papernet.PaperIndex, v bool) error {
-	papers, err := repo.List()
+func reindexAll(store papernet.PaperStore, index papernet.PaperIndex, v bool) error {
+	papers, err := store.List()
 	if err != nil {
 		return err
 	}
@@ -105,8 +105,8 @@ func reindexAll(repo papernet.PaperRepository, index papernet.PaperIndex, v bool
 	return nil
 }
 
-func restoreDates(repo papernet.PaperRepository) error {
-	papers, err := repo.List()
+func restoreDates(store papernet.PaperStore) error {
+	papers, err := store.List()
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func restoreDates(repo papernet.PaperRepository) error {
 			paper.UpdatedAt = time.Now()
 		}
 
-		err = repo.Upsert(paper)
+		err = store.Upsert(paper)
 		if err != nil {
 			return err
 		}
@@ -140,7 +140,7 @@ func main() {
  `)
 	}
 
-	repo, f, err := createRepository("data/papernet.db")
+	store, f, err := createStore("data/papernet.db")
 	defer f()
 	if err != nil {
 		log.Fatalln(err)
@@ -156,7 +156,7 @@ func main() {
 	switch os.Args[1] {
 	case "reindex":
 		log.Println("Reindexing all the papers")
-		err = reindexAll(repo, index, *verbose)
+		err = reindexAll(store, index, *verbose)
 		if err != nil {
 			log.Fatal("error reindexing:", err)
 		}
@@ -165,12 +165,12 @@ func main() {
 		if len(os.Args) < 3 {
 			log.Fatalln("missing url to parse")
 		}
-		err := parse(os.Args[2], repo, index)
+		err := parse(os.Args[2], store, index)
 		if err != nil {
 			log.Fatalln(err)
 		}
 	case "restore-dates":
-		if err := restoreDates(repo); err != nil {
+		if err := restoreDates(store); err != nil {
 			log.Fatalln(err)
 		}
 	default:

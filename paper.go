@@ -21,7 +21,7 @@ type PaperSearch struct {
 	IDs []int
 }
 
-type PaperRepository interface {
+type PaperStore interface {
 	Get(...int) ([]*Paper, error)
 	List() ([]*Paper, error)
 	Upsert(*Paper) error

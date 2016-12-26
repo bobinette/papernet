@@ -13,8 +13,8 @@ import (
 )
 
 type PaperHandler struct {
-	Repository papernet.PaperRepository
-	Searcher   papernet.PaperIndex
+	Store    papernet.PaperStore
+	Searcher papernet.PaperIndex
 
 	UserRepository papernet.UserRepository
 
@@ -46,7 +46,7 @@ func (h *PaperHandler) Get(c *gin.Context) (interface{}, error) {
 		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
 	}
 
-	papers, err := h.Repository.Get(id)
+	papers, err := h.Store.Get(id)
 	if err != nil {
 		return nil, errors.New(
 			fmt.Sprintf("error retrieving paper %d", id),
@@ -80,7 +80,7 @@ func (h *PaperHandler) Insert(c *gin.Context) (interface{}, error) {
 		)
 	}
 
-	err = h.Repository.Upsert(&paper)
+	err = h.Store.Upsert(&paper)
 	if err != nil {
 		return nil, errors.New("error inserting paper", errors.WithCause(err))
 	}
@@ -127,7 +127,7 @@ func (h *PaperHandler) Update(c *gin.Context) (interface{}, error) {
 		return nil, errors.New("error decoding json body", errors.WithCause(err))
 	}
 
-	papers, err := h.Repository.Get(id)
+	papers, err := h.Store.Get(id)
 	if err != nil {
 		return nil, errors.New(
 			fmt.Sprintf("error retrieving paper %d", id),
@@ -152,7 +152,7 @@ func (h *PaperHandler) Update(c *gin.Context) (interface{}, error) {
 		)
 	}
 
-	err = h.Repository.Upsert(&paper)
+	err = h.Store.Upsert(&paper)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (h *PaperHandler) Delete(c *gin.Context) (interface{}, error) {
 		return nil, errors.New("id should be an integer", errors.WithCode(http.StatusBadRequest))
 	}
 
-	papers, err := h.Repository.Get(id)
+	papers, err := h.Store.Get(id)
 	if err != nil {
 		return nil, errors.New(
 			fmt.Sprintf("error retrieving paper %d", id),
@@ -195,7 +195,7 @@ func (h *PaperHandler) Delete(c *gin.Context) (interface{}, error) {
 		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
 	}
 
-	err = h.Repository.Delete(id)
+	err = h.Store.Delete(id)
 	if err != nil {
 		return nil, errors.New(
 			fmt.Sprintf("error deleting paper in the database %d", id),
@@ -249,7 +249,7 @@ func (h *PaperHandler) List(c *gin.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	papers, err := h.Repository.Get(ids...)
+	papers, err := h.Store.Get(ids...)
 	if err != nil {
 		return nil, err
 	}

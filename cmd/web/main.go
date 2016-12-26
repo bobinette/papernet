@@ -32,7 +32,7 @@ func main() {
 		log.Fatalln("could not open db:", err)
 	}
 
-	paperRepo := bolt.PaperRepository{Driver: &driver}
+	paperStore := bolt.PaperStore{Driver: &driver}
 	tagIndex := bolt.TagIndex{Driver: &driver}
 	userRepo := bolt.UserRepository{Driver: &driver}
 
@@ -51,7 +51,7 @@ func main() {
 	}
 
 	// Start web server
-	handler, err := gin.New(&paperRepo, &index, &tagIndex, &userRepo, key, googleOAuthClient)
+	handler, err := gin.New(&paperStore, &index, &tagIndex, &userRepo, key, googleOAuthClient)
 	if err != nil {
 		log.Fatalln("could not start server:", err)
 	}

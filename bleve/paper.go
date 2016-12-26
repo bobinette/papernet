@@ -14,8 +14,6 @@ import (
 )
 
 type PaperIndex struct {
-	Repository papernet.PaperRepository
-
 	index bleve.Index
 }
 

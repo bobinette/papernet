@@ -12,7 +12,7 @@ import (
 	"github.com/bobinette/papernet"
 )
 
-func createRepository(t *testing.T) (*PaperRepository, func()) {
+func createStore(t *testing.T) (*PaperStore, func()) {
 	tmpFile, err := ioutil.TempFile("", "")
 	if err != nil {
 		t.Fatal("could not create tmp file:", err)
@@ -34,7 +34,7 @@ func createRepository(t *testing.T) (*PaperRepository, func()) {
 		t.Fatal("could not create bucket: ", err)
 	}
 	driver := Driver{store: store}
-	repo := PaperRepository{Driver: &driver}
+	repo := PaperStore{Driver: &driver}
 
 	return &repo, func() {
 		store.Close()
@@ -42,14 +42,14 @@ func createRepository(t *testing.T) (*PaperRepository, func()) {
 	}
 }
 
-func TestRepository_Insert_Get(t *testing.T) {
-	repo, f := createRepository(t)
+func TestStore_Insert_Get(t *testing.T) {
+	store, f := createStore(t)
 	defer f()
 
 	nilTime := time.Time{}
 
 	paper := papernet.Paper{Title: "Test"}
-	if err := repo.Upsert(&paper); err != nil {
+	if err := store.Upsert(&paper); err != nil {
 		t.Fatal("error inserting:", err)
 	}
 	if paper.ID <= 0 {
@@ -62,7 +62,7 @@ func TestRepository_Insert_Get(t *testing.T) {
 		t.Fatal("inserting should have set the updated at")
 	}
 
-	papers, err := repo.Get(paper.ID)
+	papers, err := store.Get(paper.ID)
 	if err != nil {
 		t.Fatal("error getting:", err)
 	}
@@ -72,7 +72,7 @@ func TestRepository_Insert_Get(t *testing.T) {
 	retrieved := papers[0]
 	assertPaper(&paper, retrieved, t)
 
-	papers, err = repo.Get(paper.ID, paper.ID+1)
+	papers, err = store.Get(paper.ID, paper.ID+1)
 	if err != nil {
 		t.Fatal("error getting:", err)
 	}
@@ -82,7 +82,7 @@ func TestRepository_Insert_Get(t *testing.T) {
 	retrieved = papers[0]
 	assertPaper(&paper, retrieved, t)
 
-	papers, err = repo.Get(paper.ID + 1)
+	papers, err = store.Get(paper.ID + 1)
 	if err != nil {
 		t.Fatal("error getting:", err)
 	}
@@ -91,18 +91,18 @@ func TestRepository_Insert_Get(t *testing.T) {
 	}
 }
 
-func TestReposistory_Update(t *testing.T) {
-	repo, f := createRepository(t)
+func TestStore_Update(t *testing.T) {
+	store, f := createStore(t)
 	defer f()
 
 	date := time.Now()
 	paper := papernet.Paper{ID: 1, Title: "Test", CreatedAt: date, UpdatedAt: date}
-	if err := repo.Upsert(&paper); err != nil {
+	if err := store.Upsert(&paper); err != nil {
 		t.Fatal("error inserting:", err)
 	}
 
 	paper.Title = "Updated"
-	if err := repo.Upsert(&paper); err != nil {
+	if err := store.Upsert(&paper); err != nil {
 		t.Fatal("error inserting:", err)
 	} else if paper.CreatedAt != date {
 		t.Fatal("inserting should NOT have changed the created at")
@@ -110,7 +110,7 @@ func TestReposistory_Update(t *testing.T) {
 		t.Fatal("inserting should have changed the updated at")
 	}
 
-	papers, err := repo.Get(paper.ID)
+	papers, err := store.Get(paper.ID)
 	if err != nil {
 		t.Fatal("error getting:", err)
 	} else if len(papers) != 1 {
@@ -120,16 +120,16 @@ func TestReposistory_Update(t *testing.T) {
 	assertPaper(&paper, retrieved, t)
 }
 
-func TestRepository_Delete(t *testing.T) {
-	repo, f := createRepository(t)
+func TestStore_Delete(t *testing.T) {
+	store, f := createStore(t)
 	defer f()
 
 	paper := papernet.Paper{Title: "Test"}
-	if err := repo.Upsert(&paper); err != nil {
+	if err := store.Upsert(&paper); err != nil {
 		t.Fatal("error inserting:", err)
 	}
 
-	papers, err := repo.Get(paper.ID)
+	papers, err := store.Get(paper.ID)
 	if err != nil {
 		t.Fatal("error getting:", err)
 	} else if len(papers) != 1 {
@@ -138,12 +138,12 @@ func TestRepository_Delete(t *testing.T) {
 	retrieved := papers[0]
 	assertPaper(&paper, retrieved, t)
 
-	err = repo.Delete(paper.ID)
+	err = store.Delete(paper.ID)
 	if err != nil {
 		t.Fatal("error deleting", err)
 	}
 
-	papers, err = repo.Get(paper.ID)
+	papers, err = store.Get(paper.ID)
 	if err != nil {
 		t.Fatal("error getting:", err)
 	} else if len(papers) != 0 {
@@ -151,8 +151,8 @@ func TestRepository_Delete(t *testing.T) {
 	}
 }
 
-func TestRepository_List(t *testing.T) {
-	repo, f := createRepository(t)
+func TestStore_List(t *testing.T) {
+	store, f := createStore(t)
 	defer f()
 
 	papers := []*papernet.Paper{
@@ -161,12 +161,12 @@ func TestRepository_List(t *testing.T) {
 		&papernet.Paper{ID: 3, Title: "Test 3", Summary: "Pizza yolo"},
 	}
 	for _, paper := range papers {
-		if err := repo.Upsert(paper); err != nil {
+		if err := store.Upsert(paper); err != nil {
 			t.Fatal("error inserting:", err)
 		}
 	}
 
-	retrieved, err := repo.List()
+	retrieved, err := store.List()
 	if err != nil {
 		t.Fatal("error getting:", err)
 	}

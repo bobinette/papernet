@@ -44,12 +44,12 @@ func createRouter(t *testing.T) (*gin.Engine, handlers, func()) {
 
 	encoder := auth.Encoder{Key: "test"}
 
-	paperRepo := &bolt.PaperRepository{Driver: driver}
+	paperStore := &bolt.PaperStore{Driver: driver}
 	userRepo := &bolt.UserRepository{Driver: driver}
 	tagIndex := &bolt.TagIndex{Driver: driver}
 
 	paperHandler := &PaperHandler{
-		Repository:     paperRepo,
+		Store:          paperStore,
 		Searcher:       index,
 		TagIndex:       tagIndex,
 		UserRepository: userRepo,
@@ -106,7 +106,7 @@ func TestPaperHandler_Get(t *testing.T) {
 	defer f()
 
 	// Load fixtures
-	err := handler.Repository.Upsert(&papernet.Paper{
+	err := handler.Store.Upsert(&papernet.Paper{
 		ID:      1,
 		Title:   "Test",
 		Summary: "Test",
@@ -115,7 +115,7 @@ func TestPaperHandler_Get(t *testing.T) {
 		t.Fatal("could not insert paper:", err)
 	}
 
-	err = handler.Repository.Upsert(&papernet.Paper{
+	err = handler.Store.Upsert(&papernet.Paper{
 		ID:      2,
 		Title:   "Test 2",
 		Summary: "Test 2",
@@ -280,7 +280,7 @@ func TestPaperHandler_Update(t *testing.T) {
 	defer f()
 
 	// Load fixtures
-	err := handler.Repository.Upsert(&papernet.Paper{
+	err := handler.Store.Upsert(&papernet.Paper{
 		ID:      1,
 		Title:   "Test",
 		Summary: "Test",
@@ -289,7 +289,7 @@ func TestPaperHandler_Update(t *testing.T) {
 		t.Fatal("could not insert paper:", err)
 	}
 
-	err = handler.Repository.Upsert(&papernet.Paper{
+	err = handler.Store.Upsert(&papernet.Paper{
 		ID:      2,
 		Title:   "Test",
 		Summary: "Test",
@@ -398,7 +398,7 @@ func TestPaperHandler_Delete(t *testing.T) {
 	defer f()
 
 	// Load fixtures
-	err := handler.Repository.Upsert(&papernet.Paper{
+	err := handler.Store.Upsert(&papernet.Paper{
 		ID:      1,
 		Title:   "Test",
 		Summary: "Test",
@@ -407,7 +407,7 @@ func TestPaperHandler_Delete(t *testing.T) {
 		t.Fatal("could not insert paper:", err)
 	}
 
-	err = handler.Repository.Upsert(&papernet.Paper{
+	err = handler.Store.Upsert(&papernet.Paper{
 		ID:      2,
 		Title:   "Test",
 		Summary: "Test",
@@ -501,7 +501,7 @@ func TestPaperHandler_List(t *testing.T) {
 		&papernet.Paper{ID: 3, Title: "I am the invisible", Summary: "Shhhht!"},
 	}
 	for _, paper := range papers {
-		err := handler.Repository.Upsert(paper)
+		err := handler.Store.Upsert(paper)
 		if err != nil {
 			t.Fatal("could not insert paper:", err)
 		}

@@ -14,7 +14,7 @@ type Driver struct {
 // Open opens the connection to the bolt database defined by path.
 func (d *Driver) Open(path string) error {
 	if d.store != nil {
-		return errors.New("repository alread open")
+		return errors.New("store alread open")
 	}
 
 	store, err := bolt.Open(path, 0600, &bolt.Options{Timeout: 1 * time.Second})
