@@ -17,21 +17,17 @@
 			"Rev": "7959a9f8d3f60ecaaec2358e5467e73197d2e7f0"
 		},
 		{
-			"ImportPath": "github.com/PuerkitoBio/goquery",
-			"Comment": "v1.0.1-2-g152b1a2",
-			"Rev": "152b1a2c8f5d0340f658bb656032a39b94e52958"
-		},
-		{
-			"ImportPath": "github.com/andybalholm/cascadia",
-			"Rev": "65919c611220063037b1db8eb334acaf17a6d8ea"
-		},
-		{
 			"ImportPath": "github.com/blevesearch/bleve",
 			"Comment": "v0.5.0-96-gbcaea08",
 			"Rev": "bcaea084c55f25d843201bb421347311c59a1601"
 		},
 		{
 			"ImportPath": "github.com/blevesearch/bleve/analysis",
+			"Comment": "v0.5.0-96-gbcaea08",
+			"Rev": "bcaea084c55f25d843201bb421347311c59a1601"
+		},
+		{
+			"ImportPath": "github.com/blevesearch/bleve/analysis/analyzer/keyword",
 			"Comment": "v0.5.0-96-gbcaea08",
 			"Rev": "bcaea084c55f25d843201bb421347311c59a1601"
 		},
@@ -82,6 +78,11 @@
 		},
 		{
 			"ImportPath": "github.com/blevesearch/bleve/analysis/tokenizer/letter",
+			"Comment": "v0.5.0-96-gbcaea08",
+			"Rev": "bcaea084c55f25d843201bb421347311c59a1601"
+		},
+		{
+			"ImportPath": "github.com/blevesearch/bleve/analysis/tokenizer/single",
 			"Comment": "v0.5.0-96-gbcaea08",
 			"Rev": "bcaea084c55f25d843201bb421347311c59a1601"
 		},
@@ -205,6 +206,81 @@
 			"Rev": "315c65d4cf4f5278c73477a35fb1f9b08365d340"
 		},
 		{
+			"ImportPath": "github.com/cayleygraph/cayley",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/clog",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/graph",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/graph/bolt",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/graph/iterator",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/graph/memstore",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/graph/memstore/b",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/graph/path",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/graph/proto",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/quad",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/quad/pquads",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/quad/pquads/pio",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/voc",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/voc/schema",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
+			"ImportPath": "github.com/cayleygraph/cayley/writer",
+			"Comment": "v0.6.0-38-g76cdea6",
+			"Rev": "76cdea6b3041c2ef945c4f701d817afd5345270e"
+		},
+		{
 			"ImportPath": "github.com/dgrijalva/jwt-go",
 			"Comment": "v3.0.0-10-g9ed569b",
 			"Rev": "9ed569b5d1ac936e6494082958d63a6aa4fff99a"
@@ -225,6 +301,21 @@
 			"Rev": "9177f01c2843b91820780197f521ba48554b9df3"
 		},
 		{
+			"ImportPath": "github.com/gogo/protobuf/gogoproto",
+			"Comment": "v0.3-138-g84af261",
+			"Rev": "84af2615df1ba1d35cc975ba94b64ee67d6c196e"
+		},
+		{
+			"ImportPath": "github.com/gogo/protobuf/proto",
+			"Comment": "v0.3-138-g84af261",
+			"Rev": "84af2615df1ba1d35cc975ba94b64ee67d6c196e"
+		},
+		{
+			"ImportPath": "github.com/gogo/protobuf/protoc-gen-gogo/descriptor",
+			"Comment": "v0.3-138-g84af261",
+			"Rev": "84af2615df1ba1d35cc975ba94b64ee67d6c196e"
+		},
+		{
 			"ImportPath": "github.com/golang/protobuf/proto",
 			"Rev": "4bd1920723d7b7c925de087aa32e2187708897f7"
 		},
@@ -233,8 +324,25 @@
 			"Rev": "da06d194a00e19ce00d9011a13931c3f6f6887c7"
 		},
 		{
+			"ImportPath": "github.com/inconshreveable/mousetrap",
+			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
 			"ImportPath": "github.com/manucorporat/sse",
 			"Rev": "ee05b128a739a0fb76c7ebd3ae4810c1de808d6d"
+		},
+		{
+			"ImportPath": "github.com/pborman/uuid",
+			"Comment": "v1.0-19-g5007efa",
+			"Rev": "5007efa264d92316c43112bc573e754bc889b7b1"
+		},
+		{
+			"ImportPath": "github.com/spf13/cobra",
+			"Rev": "de09d9ce07d0d8a74442cfeaa91628cf9492cc23"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "25f8b5b07aece3207895bf19f7ab517eb3b22a40"
 		},
 		{
 			"ImportPath": "github.com/steveyen/gtreap",
@@ -246,14 +354,6 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context/ctxhttp",
-			"Rev": "0e2717dc3cc05907dc23096ef3a9086ea93f567f"
-		},
-		{
-			"ImportPath": "golang.org/x/net/html",
-			"Rev": "0e2717dc3cc05907dc23096ef3a9086ea93f567f"
-		},
-		{
-			"ImportPath": "golang.org/x/net/html/atom",
 			"Rev": "0e2717dc3cc05907dc23096ef3a9086ea93f567f"
 		},
 		{

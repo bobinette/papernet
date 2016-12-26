@@ -1,6 +1,7 @@
 package bleve
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/mapping"
 
 	"github.com/bobinette/papernet"
 )
@@ -18,8 +20,18 @@ func createIndex(t *testing.T) (*PaperIndex, func()) {
 		t.Fatal("could not create tmp file:", err)
 	}
 
-	indexMapping := createMapping()
-	index, err := bleve.New(dir, indexMapping)
+	data, err := ioutil.ReadFile("mapping.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var m mapping.IndexMappingImpl
+	err = json.Unmarshal(data, &m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	index, err := bleve.New(dir, &m)
 	if err != nil {
 		t.Fatal("error creating index", err)
 	}
