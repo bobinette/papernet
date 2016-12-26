@@ -13,12 +13,13 @@ import (
 
 func init() {
 	SavePaperCommand.PersistentFlags().String("file", "", "filename to load the payload")
-	PaperCommand.AddCommand(&SavePaperCommand)
-
 	SearchCommand.PersistentFlags().String("file", "", "filename to load the payload")
 
+	PaperCommand.AddCommand(&SavePaperCommand)
+	PaperCommand.AddCommand(&DeletePaperCommand)
+	PaperCommand.AddCommand(&SearchCommand)
+
 	RootCmd.AddCommand(&PaperCommand)
-	RootCmd.AddCommand(&SearchCommand)
 }
 
 var PaperCommand = cobra.Command{
@@ -57,6 +58,55 @@ var PaperCommand = cobra.Command{
 		}
 
 		cmd.Println(string(pj))
+		return nil
+	},
+}
+
+var DeletePaperCommand = cobra.Command{
+	Use:   "delete",
+	Short: "Delete papers based on their IDs",
+	Long:  "Delete papers based on their IDs",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return errors.New("This command expects ids as arguments")
+		}
+
+		if args[0] == "help" {
+			return cmd.Help()
+		}
+
+		ids, err := ints(args)
+		if err != nil {
+			return errors.New("ids should be integers", errors.WithCause(err))
+		}
+
+		addr := cmd.Flag("store").Value.String()
+		store, f, err := createStore(addr)
+		defer f()
+		if err != nil {
+			return errors.New("error opening db", errors.WithCause(err))
+		}
+
+		addr = cmd.Flag("index").Value.String()
+		index, f, err := createIndex(addr)
+		defer f()
+		if err != nil {
+			return errors.New("error opening index", errors.WithCause(err))
+		}
+
+		for _, id := range ids {
+			err = store.Delete(id)
+			if err != nil {
+				return errors.New("error deleting in store papers", errors.WithCause(err))
+			}
+
+			err = index.Delete(id)
+			if err != nil {
+				return errors.New("error deleting in index papers", errors.WithCause(err))
+			}
+
+			cmd.Printf("<Paper %d> deleted\n", id)
+		}
 		return nil
 	},
 }
