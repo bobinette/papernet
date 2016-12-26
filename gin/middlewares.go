@@ -23,7 +23,7 @@ func JSONFormatter(next HandlerFunc) gin.HandlerFunc {
 			}
 
 			c.JSON(code, map[string]interface{}{
-				"error": err.Error(),
+				"message": err.Error(),
 			})
 			return
 		}

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -146,19 +147,36 @@ var arxivCategories = map[string]string{
 	"quant-ph":           "Quantum Physics",
 }
 
+type ArxivSearch struct {
+	Q          string
+	Start      int
+	MaxResults int
+}
+
+type ArxivResult struct {
+	Papers []*Paper
+	Total  int
+}
+
 type ArxivSpider struct {
 	Client *http.Client
 }
 
-func (s *ArxivSpider) Search(q string) ([]*Paper, error) {
+func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 	u, _ := url.Parse("http://export.arxiv.org/api/query")
 
-	search_query := ""
-	if q != "" {
-		search_query = fmt.Sprintf("all:%s", q)
-	}
 	query := u.Query()
-	query.Add("search_query", search_query)
+
+	if search.Q != "" {
+		query.Add("search_query", fmt.Sprintf("all:%s", search.Q))
+	}
+	if search.Start > 0 {
+		query.Add("start", strconv.Itoa(search.Start))
+	}
+	if search.MaxResults > 0 {
+		query.Add("max_results", strconv.Itoa(search.MaxResults))
+	}
+
 	query.Add("sortBy", "submittedDate")
 	query.Add("sortOrder", "descending")
 
@@ -166,18 +184,21 @@ func (s *ArxivSpider) Search(q string) ([]*Paper, error) {
 
 	resp, err := s.Client.Get(u.String())
 	if err != nil {
-		return nil, err
+		return ArxivResult{}, err
 	}
 
 	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return ArxivResult{}, err
 	}
 
 	r := struct {
-		Title   string `xml:"title"`
-		ID      string `xml:"id"`
+		Title string `xml:"title"`
+		ID    string `xml:"id"`
+		Total struct {
+			Total int `xml:",chardata"`
+		} `xml:"totalResults"`
 		Entries []struct {
 			Title   string `xml:"title"`
 			ID      string `xml:"id"`
@@ -195,7 +216,7 @@ func (s *ArxivSpider) Search(q string) ([]*Paper, error) {
 	}{}
 	err = xml.Unmarshal(data, &r)
 	if err != nil {
-		return nil, err
+		return ArxivResult{}, err
 	}
 
 	papers := make([]*Paper, len(r.Entries))
@@ -222,5 +243,8 @@ func (s *ArxivSpider) Search(q string) ([]*Paper, error) {
 		}
 	}
 
-	return papers, nil
+	return ArxivResult{
+		Papers: papers,
+		Total:  r.Total.Total,
+	}, nil
 }

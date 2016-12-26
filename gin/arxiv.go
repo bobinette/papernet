@@ -2,6 +2,7 @@ package gin
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +31,32 @@ func (h *ArxivHandler) Search(c *gin.Context) (interface{}, error) {
 		Client: &http.Client{Timeout: 10 * time.Second},
 	}
 
-	papers, err := spider.Search(c.Query("q"))
+	var start int
+	startQ := c.Query("offset")
+	if startQ != "" {
+		start, err = strconv.Atoi(startQ)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var maxResults int
+	maxResultsQ := c.Query("limit")
+	if maxResultsQ != "" {
+		maxResults, err = strconv.Atoi(maxResultsQ)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	arxivSearch := papernet.ArxivSearch{
+		Q:          c.Query("q"),
+		Start:      start,
+		MaxResults: maxResults,
+	}
+
+	res, err := spider.Search(arxivSearch)
+	papers := res.Papers
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +87,7 @@ func (h *ArxivHandler) Search(c *gin.Context) (interface{}, error) {
 	}
 
 	return map[string]interface{}{
-		"data": papers,
+		"data":  papers,
+		"total": res.Total,
 	}, nil
 }
