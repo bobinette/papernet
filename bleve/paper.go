@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/blevesearch/bleve"
+	_ "github.com/blevesearch/bleve/analysis/analyzer/keyword"
 	"github.com/blevesearch/bleve/analysis/analyzer/simple"
 	"github.com/blevesearch/bleve/analysis/lang/en"
-	"github.com/blevesearch/bleve/mapping"
 	"github.com/blevesearch/bleve/search/query"
 
 	"github.com/bobinette/papernet"
@@ -19,13 +19,7 @@ type PaperIndex struct {
 
 func (s *PaperIndex) Open(path string) error {
 	index, err := bleve.Open(path)
-	if err == bleve.ErrorIndexPathDoesNotExist {
-		indexMapping := createMapping()
-		index, err = bleve.New(path, indexMapping)
-		if err != nil {
-			return err
-		}
-	} else if err != nil {
+	if err != nil {
 		return err
 	}
 
@@ -43,8 +37,9 @@ func (s *PaperIndex) Close() error {
 
 func (s *PaperIndex) Index(paper *papernet.Paper) error {
 	data := map[string]interface{}{
-		"title": paper.Title,
-		"tags":  paper.Tags,
+		"title":   paper.Title,
+		"tags":    paper.Tags,
+		"arxivID": paper.ArxivID,
 	}
 
 	return s.index.Index(strconv.Itoa(paper.ID), data)
@@ -59,6 +54,7 @@ func (s *PaperIndex) Search(search papernet.PaperSearch) ([]int, error) {
 		query.NewMatchAllQuery(),
 		s.searchTitleOrTags(search.Q),
 		s.searchIDs(search.IDs),
+		s.termsQuery(search.ArxivIDs, "arxivID"),
 	)
 
 	searchRequest := bleve.NewSearchRequest(q)
@@ -158,6 +154,10 @@ func (s *PaperIndex) searchTags(queryString string) query.Query {
 }
 
 func (*PaperIndex) searchIDs(ids []int) query.Query {
+	if len(ids) == 0 {
+		return nil
+	}
+
 	docIDs := make([]string, len(ids))
 	for i, id := range ids {
 		docIDs[i] = strconv.Itoa(id)
@@ -165,24 +165,18 @@ func (*PaperIndex) searchIDs(ids []int) query.Query {
 	return query.NewDocIDQuery(docIDs)
 }
 
-// ------------------------------------------------------------------------------------------------
-// Mapping
-// ------------------------------------------------------------------------------------------------
+func (*PaperIndex) termsQuery(terms []string, field string) query.Query {
+	if len(terms) == 0 {
+		return nil
+	}
 
-func createMapping() mapping.IndexMapping {
-	// a generic reusable mapping for english text -- from blevesearch/beer-search
-	englishTextFieldMapping := bleve.NewTextFieldMapping()
-	englishTextFieldMapping.Analyzer = en.AnalyzerName
+	ors := make([]query.Query, len(terms))
+	for i, term := range terms {
+		ors[i] = &query.TermQuery{
+			Term:  term,
+			Field: field,
+		}
+	}
 
-	simpleMapping := bleve.NewTextFieldMapping()
-	simpleMapping.Analyzer = simple.Name
-
-	// Paper mapping
-	paperMapping := bleve.NewDocumentMapping()
-	paperMapping.AddFieldMappingsAt("title", englishTextFieldMapping)
-	paperMapping.AddFieldMappingsAt("tags", simpleMapping)
-
-	indexMapping := bleve.NewIndexMapping()
-	indexMapping.DefaultMapping = paperMapping
-	return indexMapping
+	return orQ(ors...)
 }
