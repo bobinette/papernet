@@ -63,7 +63,7 @@ func New(
 	userHandler.RegisterRoutes(router)
 
 	// Arxiv
-	arxivHandler := ArxivHandler{Authenticator: authenticator}
+	arxivHandler := ArxivHandler{Authenticator: authenticator, Store: ps, Index: pi}
 	arxivHandler.RegisterRoutes(router)
 
 	return router, nil

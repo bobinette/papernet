@@ -14,11 +14,15 @@ type Paper struct {
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+
+	// External ids
+	ArxivID string `json:"arxivId"`
 }
 
 type PaperSearch struct {
-	Q   string
-	IDs []int
+	IDs      []int
+	Q        string
+	ArxivIDs []string
 }
 
 type PaperStore interface {

@@ -218,6 +218,7 @@ func (s *ArxivSpider) Search(q string) ([]*Paper, error) {
 			Tags:      tags,
 			CreatedAt: entry.Published,
 			UpdatedAt: entry.Updated,
+			ArxivID:   entry.ID,
 		}
 	}
 
