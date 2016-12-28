@@ -49,7 +49,7 @@ func (s *PaperIndex) Delete(id int) error {
 	return s.index.Delete(strconv.Itoa(id))
 }
 
-func (s *PaperIndex) Search(search papernet.PaperSearch) ([]int, error) {
+func (s *PaperIndex) Search(search papernet.PaperSearch) (papernet.PaperSearchResults, error) {
 	q := andQ(
 		query.NewMatchAllQuery(),
 		s.searchTitleOrTags(search.Q),
@@ -62,17 +62,25 @@ func (s *PaperIndex) Search(search papernet.PaperSearch) ([]int, error) {
 
 	searchResults, err := s.index.Search(searchRequest)
 	if err != nil {
-		return nil, err
+		return papernet.PaperSearchResults{}, err
 	}
 
 	ids := make([]int, len(searchResults.Hits))
 	for i, hit := range searchResults.Hits {
 		ids[i], err = strconv.Atoi(hit.ID)
 		if err != nil {
-			return nil, err
+			return papernet.PaperSearchResults{}, err
 		}
 	}
-	return ids, nil
+
+	return papernet.PaperSearchResults{
+		IDs: ids,
+		Pagination: papernet.Pagination{
+			Total:  searchResults.Total,
+			Limit:  0,
+			Offset: 0,
+		},
+	}, nil
 }
 
 func andQ(qs ...query.Query) query.Query {

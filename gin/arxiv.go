@@ -66,12 +66,12 @@ func (h *ArxivHandler) Search(c *gin.Context) (interface{}, error) {
 		arxivIDs[i] = paper.ArxivID
 	}
 
-	ids, err := h.Index.Search(papernet.PaperSearch{IDs: user.CanEdit, ArxivIDs: arxivIDs})
+	searchRes, err := h.Index.Search(papernet.PaperSearch{IDs: user.CanEdit, ArxivIDs: arxivIDs})
 	if err != nil {
 		return nil, err
 	}
 
-	savedPapers, err := h.Store.Get(ids...)
+	savedPapers, err := h.Store.Get(searchRes.IDs...)
 	if err != nil {
 		return nil, err
 	}

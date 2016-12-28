@@ -10,8 +10,8 @@ type User struct {
 
 	Bookmarks []int `json:"bookmarks"`
 
-	CanSee  []int `json::"-"`
-	CanEdit []int `json::"-"`
+	CanSee  []int `json::"can_see"`
+	CanEdit []int `json::"can_view"`
 }
 
 type UserRepository interface {

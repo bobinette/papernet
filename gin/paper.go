@@ -244,18 +244,19 @@ func (h *PaperHandler) List(c *gin.Context) (interface{}, error) {
 		search.IDs = user.Bookmarks
 	}
 
-	ids, err := h.Searcher.Search(search)
+	res, err := h.Searcher.Search(search)
 	if err != nil {
 		return nil, err
 	}
 
-	papers, err := h.Store.Get(ids...)
+	papers, err := h.Store.Get(res.IDs...)
 	if err != nil {
 		return nil, err
 	}
 
 	return map[string]interface{}{
-		"data": papers,
+		"data":       papers,
+		"pagination": res.Pagination,
 	}, nil
 }
 

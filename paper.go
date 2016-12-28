@@ -19,10 +19,21 @@ type Paper struct {
 	ArxivID string `json:"arxivId"`
 }
 
+type Pagination struct {
+	Total  uint64 `json:"total"`
+	Limit  uint64 `json:"limit"`
+	Offset uint64 `json:"offset"`
+}
+
 type PaperSearch struct {
-	IDs      []int
-	Q        string
-	ArxivIDs []string
+	IDs      []int    `json:"ids"`
+	Q        string   `json:"q"`
+	ArxivIDs []string `json:"arxiv_ids"`
+}
+
+type PaperSearchResults struct {
+	IDs        []int
+	Pagination Pagination
 }
 
 type PaperStore interface {
@@ -34,7 +45,7 @@ type PaperStore interface {
 
 type PaperIndex interface {
 	Index(*Paper) error
-	Search(PaperSearch) ([]int, error)
+	Search(PaperSearch) (PaperSearchResults, error)
 	Delete(int) error
 }
 
