@@ -154,8 +154,8 @@ type ArxivSearch struct {
 }
 
 type ArxivResult struct {
-	Papers []*Paper
-	Total  int
+	Papers     []*Paper
+	Pagination Pagination
 }
 
 type ArxivSpider struct {
@@ -197,8 +197,14 @@ func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 		Title string `xml:"title"`
 		ID    string `xml:"id"`
 		Total struct {
-			Total int `xml:",chardata"`
+			Value uint64 `xml:",chardata"`
 		} `xml:"totalResults"`
+		Offset struct {
+			Value uint64 `xml:",chardata"`
+		} `xml:"startIndex"`
+		Limit struct {
+			Value uint64 `xml:",chardata"`
+		} `xml:"itemsPerPage"`
 		Entries []struct {
 			Title   string `xml:"title"`
 			ID      string `xml:"id"`
@@ -245,6 +251,10 @@ func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 
 	return ArxivResult{
 		Papers: papers,
-		Total:  r.Total.Total,
+		Pagination: Pagination{
+			Total:  r.Total.Value,
+			Limit:  r.Limit.Value,
+			Offset: r.Offset.Value,
+		},
 	}, nil
 }

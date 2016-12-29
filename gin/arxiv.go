@@ -87,7 +87,7 @@ func (h *ArxivHandler) Search(c *gin.Context) (interface{}, error) {
 	}
 
 	return map[string]interface{}{
-		"data":  papers,
-		"total": res.Total,
+		"data":       papers,
+		"pagination": res.Pagination,
 	}, nil
 }
