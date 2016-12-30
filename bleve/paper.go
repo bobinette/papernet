@@ -58,7 +58,12 @@ func (s *PaperIndex) Search(search papernet.PaperSearch) (papernet.PaperSearchRe
 	)
 
 	searchRequest := bleve.NewSearchRequest(q)
-	searchRequest.SortBy([]string{"id"})
+	searchRequest.SortBy([]string{"_id"})
+
+	if search.Limit > 0 {
+		searchRequest.Size = search.Limit
+	}
+	searchRequest.From = search.Offset
 
 	searchResults, err := s.index.Search(searchRequest)
 	if err != nil {

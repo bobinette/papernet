@@ -29,6 +29,9 @@ type PaperSearch struct {
 	IDs      []int    `json:"ids"`
 	Q        string   `json:"q"`
 	ArxivIDs []string `json:"arxiv_ids"`
+
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
 }
 
 type PaperSearchResults struct {
