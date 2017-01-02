@@ -200,12 +200,12 @@ var SearchCommand = cobra.Command{
 			return errors.New("error unmarshalling payload", errors.WithCause(err))
 		}
 
-		ids, err := index.Search(search)
+		res, err := index.Search(search)
 		if err != nil {
 			return errors.New("error querying index", errors.WithCause(err))
 		}
 
-		papers, err := store.Get(ids...)
+		papers, err := store.Get(res.IDs...)
 		if err != nil {
 			return errors.New("error retrieving papers", errors.WithCause(err))
 		}

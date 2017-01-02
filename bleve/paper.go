@@ -61,9 +61,9 @@ func (s *PaperIndex) Search(search papernet.PaperSearch) (papernet.PaperSearchRe
 	searchRequest.SortBy([]string{"_id"})
 
 	if search.Limit > 0 {
-		searchRequest.Size = search.Limit
+		searchRequest.Size = int(search.Limit)
 	}
-	searchRequest.From = search.Offset
+	searchRequest.From = int(search.Offset)
 
 	searchResults, err := s.index.Search(searchRequest)
 	if err != nil {
@@ -82,8 +82,8 @@ func (s *PaperIndex) Search(search papernet.PaperSearch) (papernet.PaperSearchRe
 		IDs: ids,
 		Pagination: papernet.Pagination{
 			Total:  searchResults.Total,
-			Limit:  0,
-			Offset: 0,
+			Limit:  search.Limit,
+			Offset: search.Offset,
 		},
 	}, nil
 }

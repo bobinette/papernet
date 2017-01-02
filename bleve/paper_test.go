@@ -79,92 +79,180 @@ func TestFind(t *testing.T) {
 
 	var tts = map[string]struct {
 		Search   papernet.PaperSearch
-		Expected []int
+		Expected papernet.PaperSearchResults
 	}{
 		"match all": {
 			Search: papernet.PaperSearch{
-				Q:   "",
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Q:     "",
+				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				Limit: 10,
 			},
-			Expected: []int{0, 1, 2, 3, 4, 5, 6},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Pagination: papernet.Pagination{
+					Total:  7,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 		"one word": {
 			Search: papernet.PaperSearch{
-				Q:   "pizza",
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Q:     "pizza",
+				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				Limit: 10,
 			},
-			Expected: []int{1, 3, 6},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{1, 3, 6},
+				Pagination: papernet.Pagination{
+					Total:  3,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 		"partial word": {
 			Search: papernet.PaperSearch{
-				Q:   "ti",
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Q:     "ti",
+				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				Limit: 10,
 			},
-			Expected: []int{0, 2},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{0, 2},
+				Pagination: papernet.Pagination{
+					Total:  2,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 		"two words": {
 			Search: papernet.PaperSearch{
-				Q:   "pizza yolo",
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Q:     "pizza yolo",
+				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				Limit: 10,
 			},
-			Expected: []int{1, 6},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{1, 6},
+				Pagination: papernet.Pagination{
+					Total:  2,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 		"long words": {
 			Search: papernet.PaperSearch{
-				Q:   "reinforcement learning",
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Q:     "reinforcement learning",
+				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				Limit: 10,
 			},
-			Expected: []int{4},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{4},
+				Pagination: papernet.Pagination{
+					Total:  1,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 		"long words spelling": {
 			Search: papernet.PaperSearch{
-				Q:   "mysuperlnog",
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Q:     "mysuperlnog",
+				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				Limit: 10,
 			},
-			Expected: []int{},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{},
+				Pagination: papernet.Pagination{
+					Total:  0,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 		"trailing space": {
 			Search: papernet.PaperSearch{
-				Q:   "titi ",
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Q:     "titi ",
+				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				Limit: 10,
 			},
-			Expected: []int{2},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{2},
+				Pagination: papernet.Pagination{
+					Total:  1,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 		"by tags": {
 			Search: papernet.PaperSearch{
-				Q:   "tech",
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Q:     "tech",
+				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				Limit: 10,
 			},
-			Expected: []int{2, 3},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{2, 3},
+				Pagination: papernet.Pagination{
+					Total:  2,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 		"ro": {
 			Search: papernet.PaperSearch{
-				Q:   "pi yo ro",
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Q:     "pi yo ro",
+				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				Limit: 10,
 			},
-			Expected: []int{6},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{6},
+				Pagination: papernet.Pagination{
+					Total:  1,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 		"with uppercase letters": {
 			Search: papernet.PaperSearch{
-				Q:   "Learning",
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				Q:     "Learning",
+				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				Limit: 10,
 			},
-			Expected: []int{4, 5},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{4, 5},
+				Pagination: papernet.Pagination{
+					Total:  2,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 		"by ids": {
 			Search: papernet.PaperSearch{
-				IDs: []int{1, 3, 17},
+				IDs:   []int{1, 3, 17},
+				Limit: 10,
 			},
-			Expected: []int{1, 3},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{1, 3},
+				Pagination: papernet.Pagination{
+					Total:  2,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
 		},
 	}
 
 	for name, tt := range tts {
-		ids, err := index.Search(tt.Search)
+		res, err := index.Search(tt.Search)
 		if err != nil {
 			t.Errorf("%s - search failed with error: %v", name, err)
-		} else if !reflect.DeepEqual(tt.Expected, ids) {
-			t.Errorf("%s - got wrong ids: expected %v got %v", name, tt.Expected, ids)
+		} else if !reflect.DeepEqual(tt.Expected, res) {
+			t.Errorf("%s - got wrong res: expected %v got %v", name, tt.Expected, res)
 		}
 	}
 }

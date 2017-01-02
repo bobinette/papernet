@@ -30,8 +30,8 @@ type PaperSearch struct {
 	Q        string   `json:"q"`
 	ArxivIDs []string `json:"arxiv_ids"`
 
-	Limit  int `json:"limit"`
-	Offset int `json:"offset"`
+	Limit  uint64 `json:"limit"`
+	Offset uint64 `json:"offset"`
 }
 
 type PaperSearchResults struct {

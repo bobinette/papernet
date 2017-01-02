@@ -235,14 +235,14 @@ func (h *PaperHandler) List(c *gin.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	limit, ok, err := queryInt("limit", c)
+	limit, ok, err := queryUInt64("limit", c)
 	if err != nil {
 		return nil, err
 	} else if !ok {
 		limit = 20
 	}
 
-	offset, _, err := queryInt("offset", c)
+	offset, _, err := queryUInt64("offset", c)
 	if err != nil {
 		return nil, err
 	}
