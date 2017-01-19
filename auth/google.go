@@ -17,7 +17,7 @@ import (
 type GoogleClient struct {
 	config oauth2.Config
 
-	stateMutex sync.RWMutex
+	stateMutex sync.Locker
 	state      map[string]struct{}
 }
 
@@ -48,7 +48,7 @@ func NewGoogleClient(config string) (*GoogleClient, error) {
 			Endpoint: google.Endpoint,
 		},
 
-		stateMutex: sync.RWMutex{},
+		stateMutex: &sync.RWMutex{},
 		state:      make(map[string]struct{}),
 	}, nil
 }
