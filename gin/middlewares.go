@@ -1,6 +1,7 @@
 package gin
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -16,6 +17,25 @@ type HandlerFunc func(*gin.Context) (interface{}, error)
 func JSONFormatter(next HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		res, err := next(c.Copy())
+		if err != nil {
+			code := http.StatusInternalServerError
+			if err, ok := err.(errors.Error); ok {
+				code = err.Code()
+			}
+
+			c.JSON(code, map[string]interface{}{
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+func JSONRenderer(next papernet.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		res, err := next(&Request{c.Copy()})
 		if err != nil {
 			code := http.StatusInternalServerError
 			if err, ok := err.(errors.Error); ok {
@@ -58,5 +78,28 @@ func (a *Authenticator) Authenticate(next HandlerFunc) HandlerFunc {
 
 		c.Set("user", user)
 		return next(c)
+	}
+}
+
+func (a *Authenticator) AuthenticateP(next papernet.HandlerFunc) papernet.HandlerFunc {
+	return func(req papernet.Request) (interface{}, error) {
+		token := req.Header("Authorization")
+		if len(token) <= 6 || strings.ToLower(token[:7]) != "bearer " {
+			return nil, errors.New("no token found", errors.WithCode(http.StatusUnauthorized))
+		}
+
+		userID, err := a.Encoder.Decode(token[7:])
+		if err != nil {
+			return nil, errors.New("invalid token", errors.WithCode(http.StatusUnauthorized), errors.WithCause(err))
+		}
+
+		user, err := a.UserRepository.Get(userID)
+		if err != nil {
+			return nil, errors.New("could not get user", errors.WithCause(err))
+		} else if user == nil {
+			return nil, errors.New("unknown user", errors.WithCode(http.StatusUnauthorized))
+		}
+
+		return next(req.WithContext(context.WithValue(req.Context(), "user", user)))
 	}
 }

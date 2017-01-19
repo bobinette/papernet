@@ -9,6 +9,12 @@ import (
 	"github.com/bobinette/papernet/auth"
 )
 
+type Server struct {
+	*gin.Engine
+
+	Authenticator Authenticator
+}
+
 func New(
 	ps papernet.PaperStore,
 	pi papernet.PaperIndex,
@@ -16,7 +22,7 @@ func New(
 	ur papernet.UserRepository,
 	sk papernet.SigningKey,
 	googleOAuthClient *auth.GoogleClient,
-) (http.Handler, error) {
+) (papernet.Server, error) {
 	router := gin.Default()
 
 	// CORS
@@ -44,16 +50,6 @@ func New(
 	encoder := auth.Encoder{Key: sk.Key}
 	authenticator := Authenticator{Encoder: encoder, UserRepository: ur}
 
-	// Papers
-	paperHandler := PaperHandler{
-		Store:          ps,
-		Searcher:       pi,
-		UserRepository: ur,
-		TagIndex:       ts,
-		Authenticator:  authenticator,
-	}
-	paperHandler.RegisterRoutes(router)
-
 	// Tags
 	tagHandler := TagHandler{Searcher: ts}
 	tagHandler.RegisterRoutes(router)
@@ -66,5 +62,17 @@ func New(
 	arxivHandler := ArxivHandler{Authenticator: authenticator, Store: ps, Index: pi}
 	arxivHandler.RegisterRoutes(router)
 
-	return router, nil
+	return &Server{
+		router,
+		authenticator,
+	}, nil
+}
+
+func (s *Server) Register(route papernet.Route) error {
+	h := route.HandlerFunc
+	if route.Authenticated {
+		h = s.Authenticator.AuthenticateP(h)
+	}
+	s.Handle(route.Method, route.Route, JSONRenderer(h))
+	return nil
 }

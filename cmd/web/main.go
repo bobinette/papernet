@@ -11,9 +11,11 @@ import (
 	"github.com/bobinette/papernet/bleve"
 	"github.com/bobinette/papernet/bolt"
 	"github.com/bobinette/papernet/gin"
+	"github.com/bobinette/papernet/web"
 )
 
 func main() {
+	// Load signing key
 	data, err := ioutil.ReadFile("hs256.json")
 	if err != nil {
 		log.Fatalln("could not open key file:", err)
@@ -54,6 +56,16 @@ func main() {
 	handler, err := gin.New(&paperStore, &index, &tagIndex, &userRepo, key, googleOAuthClient)
 	if err != nil {
 		log.Fatalln("could not start server:", err)
+	}
+
+	paperHandler := &web.PaperHandler{
+		Store:     &paperStore,
+		Index:     &index,
+		TagIndex:  &tagIndex,
+		UserStore: &userRepo,
+	}
+	for _, route := range paperHandler.Routes() {
+		handler.Register(route)
 	}
 
 	addr := ":1705"
