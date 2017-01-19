@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -147,6 +148,12 @@ var arxivCategories = map[string]string{
 	"quant-ph":           "Quantum Physics",
 }
 
+var arxivRegExp *regexp.Regexp
+
+func init() {
+	arxivRegExp, _ = regexp.Compile("http://arxiv.org/abs/([0-9.]*)(v[0-9]+)?")
+}
+
 type ArxivSearch struct {
 	Q          string
 	Start      int
@@ -235,6 +242,12 @@ func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 			}
 		}
 
+		var arxivID string
+		matches := arxivRegExp.FindAllStringSubmatch(entry.ID, -1)
+		if len(matches) > 0 && len(matches[0]) > 1 {
+			arxivID = matches[0][1]
+		}
+
 		papers[i] = &Paper{
 			Title:   entry.Title,
 			Summary: arxivSummaryPipe(entry.Summary),
@@ -245,7 +258,7 @@ func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 			Tags:      tags,
 			CreatedAt: entry.Published,
 			UpdatedAt: entry.Updated,
-			ArxivID:   entry.ID,
+			ArxivID:   arxivID,
 		}
 	}
 
