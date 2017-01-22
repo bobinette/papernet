@@ -279,14 +279,6 @@ func (h *PaperHandler) Delete(req papernet.Request) (interface{}, error) {
 		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
 	}
 
-	err = h.Store.Delete(id)
-	if err != nil {
-		return nil, errors.New(
-			fmt.Sprintf("error deleting paper in the database %d", id),
-			errors.WithCause(err),
-		)
-	}
-
 	if !isIn(id, user.CanEdit) {
 		return nil, errors.New(
 			fmt.Sprintf("You are not allowed to delete Paper %d", id),
@@ -298,6 +290,14 @@ func (h *PaperHandler) Delete(req papernet.Request) (interface{}, error) {
 	if err != nil {
 		return nil, errors.New(
 			fmt.Sprintf("error deleting paper from the index %d", id),
+			errors.WithCause(err),
+		)
+	}
+
+	err = h.Store.Delete(id)
+	if err != nil {
+		return nil, errors.New(
+			fmt.Sprintf("error deleting paper in the database %d", id),
 			errors.WithCause(err),
 		)
 	}
