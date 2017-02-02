@@ -27,59 +27,65 @@ func (h *PaperHandler) Routes() []papernet.Route {
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,
-			HandlerFunc:   h.List,
+			HandlerFunc:   WrapRequest(h.List),
 		},
 		papernet.Route{
 			Route:         "/api/papers",
 			Method:        "POST",
 			Renderer:      "JSON",
 			Authenticated: true,
-			HandlerFunc:   h.Insert,
+			HandlerFunc:   WrapRequest(h.Insert),
 		},
 		papernet.Route{
 			Route:         "/api/papers/:id",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,
-			HandlerFunc:   h.Get,
+			HandlerFunc:   WrapRequest(h.Get),
 		},
 		papernet.Route{
 			Route:         "/api/papers/:id",
 			Method:        "PUT",
 			Renderer:      "JSON",
 			Authenticated: true,
-			HandlerFunc:   h.Update,
+			HandlerFunc:   WrapRequest(h.Update),
 		},
 		papernet.Route{
 			Route:         "/api/papers/:id",
 			Method:        "DELETE",
 			Renderer:      "JSON",
 			Authenticated: true,
-			HandlerFunc:   h.Delete,
+			HandlerFunc:   WrapRequest(h.Delete),
 		},
 	}
 }
 
-func (h *PaperHandler) List(req papernet.Request) (interface{}, error) {
-	q := req.Query("q")
-	bookmarked, _, err := queryBool("bookmarked", req)
+func (h *PaperHandler) List(req *Request) (interface{}, error) {
+	q := ""
+	_ = req.Query("q", &q)
+
+	bookmarked := false
+	err := req.Query("bookmarked", &bookmarked)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := getUser(req.Context())
+	user, err := req.User()
 	if err != nil {
 		return nil, err
 	}
 
-	limit, ok, err := queryUInt64("limit", req)
+	var limit uint64 = 20
+	err = req.Query("limit", &limit)
 	if err != nil {
 		return nil, err
-	} else if !ok {
+	}
+	if limit == 0 {
 		limit = 20
 	}
 
-	offset, _, err := queryUInt64("offset", req)
+	var offset uint64 = 0
+	err = req.Query("offset", &offset)
 	if err != nil {
 		return nil, err
 	}
@@ -111,8 +117,8 @@ func (h *PaperHandler) List(req papernet.Request) (interface{}, error) {
 	}, nil
 }
 
-func (h *PaperHandler) Insert(req papernet.Request) (interface{}, error) {
-	user, err := getUser(req.Context())
+func (h *PaperHandler) Insert(req *Request) (interface{}, error) {
+	user, err := req.User()
 	if err != nil {
 		return nil, err
 	}
@@ -162,13 +168,13 @@ func (h *PaperHandler) Insert(req papernet.Request) (interface{}, error) {
 	}, nil
 }
 
-func (h *PaperHandler) Get(req papernet.Request) (interface{}, error) {
+func (h *PaperHandler) Get(req *Request) (interface{}, error) {
 	id, err := strconv.Atoi(req.Param("id"))
 	if err != nil {
 		return nil, errors.New("id should be an integer", errors.WithCode(http.StatusBadRequest))
 	}
 
-	user, err := getUser(req.Context())
+	user, err := req.User()
 	if err != nil {
 		return nil, err
 	}
@@ -192,8 +198,8 @@ func (h *PaperHandler) Get(req papernet.Request) (interface{}, error) {
 	}, nil
 }
 
-func (h *PaperHandler) Update(req papernet.Request) (interface{}, error) {
-	user, err := getUser(req.Context())
+func (h *PaperHandler) Update(req *Request) (interface{}, error) {
+	user, err := req.User()
 	if err != nil {
 		return nil, err
 	}
@@ -258,8 +264,8 @@ func (h *PaperHandler) Update(req papernet.Request) (interface{}, error) {
 	}, nil
 }
 
-func (h *PaperHandler) Delete(req papernet.Request) (interface{}, error) {
-	user, err := getUser(req.Context())
+func (h *PaperHandler) Delete(req *Request) (interface{}, error) {
+	user, err := req.User()
 	if err != nil {
 		return nil, err
 	}
