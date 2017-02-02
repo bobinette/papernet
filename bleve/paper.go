@@ -167,10 +167,6 @@ func (s *PaperIndex) searchTags(queryString string) query.Query {
 }
 
 func (*PaperIndex) searchIDs(ids []int) query.Query {
-	if len(ids) == 0 {
-		return nil
-	}
-
 	docIDs := make([]string, len(ids))
 	for i, id := range ids {
 		docIDs[i] = strconv.Itoa(id)
