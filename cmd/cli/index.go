@@ -116,14 +116,14 @@ var CreateIndexCommand = cobra.Command{
 			return cmd.Help()
 		}
 
-		filename := cmd.Flag("file").Value.String()
+		filename := cmd.Flag("mapping").Value.String()
 		if filename == "" {
-			return errors.New("file argument needed")
+			return errors.New("mapping argument needed")
 		}
 
 		indexPath := cmd.Flag("index").Value.String()
-		if filename == "" {
-			return errors.New("indexs argument needed")
+		if indexPath == "" {
+			return errors.New("index argument needed")
 		}
 
 		data, err := ioutil.ReadFile(filename)
