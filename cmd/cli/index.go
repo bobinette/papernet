@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	CreateIndexCommand.PersistentFlags().String("file", "", "mapping file")
+	CreateIndexCommand.PersistentFlags().String("mapping", "", "mapping file")
 	CreateIndexCommand.PersistentFlags().String("index", "", "index directory")
 
 	IndexCommand.AddCommand(&CreateIndexCommand)
