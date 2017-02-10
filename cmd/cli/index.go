@@ -116,14 +116,20 @@ var CreateIndexCommand = cobra.Command{
 			return cmd.Help()
 		}
 
-		filename := cmd.Flag("mapping").Value.String()
-		if filename == "" {
-			return errors.New("mapping argument needed")
-		}
-
 		indexPath := cmd.Flag("index").Value.String()
 		if indexPath == "" {
 			return errors.New("index argument needed")
+		}
+
+		_, err := bleve.Open(indexPath)
+		if err == nil {
+			cmd.Printf("Index %s already exists, no need to create it\n", indexPath)
+			return nil
+		}
+
+		filename := cmd.Flag("mapping").Value.String()
+		if filename == "" {
+			return errors.New("mapping argument needed")
 		}
 
 		data, err := ioutil.ReadFile(filename)
