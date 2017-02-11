@@ -2,22 +2,32 @@ package papernet
 
 import (
 	"context"
-	"io"
 	"net/http"
 )
 
-type Request interface {
-	Header(string) string
-	Param(string) string
-	Query(string) string
-	Body() io.ReadCloser
+type Request struct {
+	*http.Request
 
-	Context() context.Context
-	WithContext(context.Context) Request
+	Params map[string]string
+}
+
+func (r *Request) Query(k string) string {
+	return r.Request.URL.Query().Get(k)
+}
+
+func (r *Request) Param(k string) string {
+	return r.Params[k]
+}
+
+func (r *Request) WithContext(ctx context.Context) *Request {
+	return &Request{
+		Request: r.Request.WithContext(ctx),
+		Params:  r.Params,
+	}
 }
 
 // HandlerFunc defines the signature of a web endpoint
-type HandlerFunc func(Request) (interface{}, error)
+type HandlerFunc func(*Request) (interface{}, error)
 
 type Route struct {
 	// Route defines the url of the end point. It can contain parameters,

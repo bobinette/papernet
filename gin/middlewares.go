@@ -35,7 +35,15 @@ func JSONFormatter(next HandlerFunc) gin.HandlerFunc {
 
 func JSONRenderer(next papernet.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		res, err := next(&Request{c.Copy()})
+		params := make(map[string]string)
+		for _, p := range c.Params {
+			params[p.Key] = p.Value
+		}
+		req := papernet.Request{
+			Request: c.Request,
+			Params:  params,
+		}
+		res, err := next(&req)
 		if err != nil {
 			code := http.StatusInternalServerError
 			if err, ok := err.(errors.Error); ok {
@@ -82,8 +90,8 @@ func (a *Authenticator) Authenticate(next HandlerFunc) HandlerFunc {
 }
 
 func (a *Authenticator) AuthenticateP(next papernet.HandlerFunc) papernet.HandlerFunc {
-	return func(req papernet.Request) (interface{}, error) {
-		token := req.Header("Authorization")
+	return func(req *papernet.Request) (interface{}, error) {
+		token := req.Header.Get("Authorization")
 		if len(token) <= 6 || strings.ToLower(token[:7]) != "bearer " {
 			return nil, errors.New("no token found", errors.WithCode(http.StatusUnauthorized))
 		}

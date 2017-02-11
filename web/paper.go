@@ -124,7 +124,7 @@ func (h *PaperHandler) Insert(req *Request) (interface{}, error) {
 	}
 
 	var paper papernet.Paper
-	body := req.Body()
+	body := req.Body
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&paper)
 	if err != nil {
@@ -210,7 +210,7 @@ func (h *PaperHandler) Update(req *Request) (interface{}, error) {
 	}
 
 	var paper papernet.Paper
-	body := req.Body()
+	body := req.Body
 	defer body.Close()
 	err = json.NewDecoder(body).Decode(&paper)
 	if err != nil {

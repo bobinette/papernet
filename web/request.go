@@ -10,11 +10,11 @@ import (
 )
 
 type Request struct {
-	papernet.Request
+	*papernet.Request
 }
 
 func WrapRequest(next func(*Request) (interface{}, error)) papernet.HandlerFunc {
-	return func(req papernet.Request) (interface{}, error) {
+	return func(req *papernet.Request) (interface{}, error) {
 		return next(&Request{req})
 	}
 }
