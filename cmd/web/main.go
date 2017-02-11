@@ -53,9 +53,13 @@ func main() {
 	}
 
 	encoder := auth.EncodeDecoder{Key: key.Key}
+	authenticator := auth.Authenticator{
+		Decoder: &encoder,
+		Store:   &userRepo,
+	}
 
 	// Start web server
-	handler, err := gin.New(&paperStore, &index, &tagIndex, &userRepo, key, googleOAuthClient)
+	handler, err := gin.New(authenticator)
 	if err != nil {
 		log.Fatalln("could not start server:", err)
 	}
@@ -87,6 +91,14 @@ func main() {
 		Store: &paperStore,
 	}
 	for _, route := range arxivHandler.Routes() {
+		handler.Register(route)
+	}
+
+	// Tag handler
+	tagHandler := &web.TagHandler{
+		Searcher: &tagIndex,
+	}
+	for _, route := range tagHandler.Routes() {
 		handler.Register(route)
 	}
 

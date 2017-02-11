@@ -13,31 +13,37 @@ import (
 type Server struct {
 	*gin.Engine
 
-	Authenticator Authenticator
+	Authenticator auth.Authenticator
 }
 
-func GetUser(c *gin.Context) (*papernet.User, error) {
-	u, ok := c.Get("user")
-	if !ok {
-		return nil, errors.New("could not extract user", errors.WithCode(http.StatusUnauthorized))
-	}
+func JSONRenderer(next papernet.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		params := make(map[string]string)
+		for _, p := range c.Params {
+			params[p.Key] = p.Value
+		}
+		req := papernet.Request{
+			Request: c.Request,
+			Params:  params,
+		}
+		res, err := next(&req)
+		if err != nil {
+			code := http.StatusInternalServerError
+			if err, ok := err.(errors.Error); ok {
+				code = err.Code()
+			}
 
-	user, ok := u.(*papernet.User)
-	if !ok {
-		return nil, errors.New("could not retrieve user", errors.WithCode(http.StatusUnauthorized))
-	}
+			c.JSON(code, map[string]interface{}{
+				"message": err.Error(),
+			})
+			return
+		}
 
-	return user, nil
+		c.JSON(http.StatusOK, res)
+	}
 }
 
-func New(
-	ps papernet.PaperStore,
-	pi papernet.PaperIndex,
-	ts papernet.TagIndex,
-	ur papernet.UserRepository,
-	sk papernet.SigningKey,
-	googleOAuthClient *auth.GoogleClient,
-) (papernet.Server, error) {
+func New(authenticator auth.Authenticator) (papernet.Server, error) {
 	router := gin.Default()
 
 	// CORS
@@ -62,13 +68,6 @@ func New(
 		c.JSON(http.StatusOK, map[string]string{"data": "ok"})
 	})
 
-	encoder := auth.EncodeDecoder{Key: sk.Key}
-	authenticator := Authenticator{Encoder: encoder, UserRepository: ur}
-
-	// Tags
-	tagHandler := TagHandler{Searcher: ts}
-	tagHandler.RegisterRoutes(router)
-
 	return &Server{
 		router,
 		authenticator,
@@ -78,7 +77,7 @@ func New(
 func (s *Server) Register(route papernet.Route) error {
 	h := route.HandlerFunc
 	if route.Authenticated {
-		h = s.Authenticator.AuthenticateP(h)
+		h = s.Authenticator.Authenticate(h)
 	}
 	s.Handle(route.Method, route.Route, JSONRenderer(h))
 	return nil
