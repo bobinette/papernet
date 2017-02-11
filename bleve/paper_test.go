@@ -291,8 +291,10 @@ func TestFind(t *testing.T) {
 		res, err := index.Search(tt.Search)
 		if err != nil {
 			t.Errorf("%s - search failed with error: %v", name, err)
-		} else if !reflect.DeepEqual(tt.Expected, res) {
-			t.Errorf("%s - got wrong res: expected %v got %v", name, tt.Expected, res)
+		} else if !reflect.DeepEqual(tt.Expected.IDs, res.IDs) {
+			t.Errorf("%s - got wrong ids: expected %v got %v", name, tt.Expected, res)
+		} else if !reflect.DeepEqual(tt.Expected.Pagination, res.Pagination) {
+			t.Errorf("%s - got wrong pagination: expected %v got %v", name, tt.Expected, res)
 		}
 	}
 }

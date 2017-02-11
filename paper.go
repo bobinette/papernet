@@ -36,11 +36,13 @@ type PaperSearch struct {
 	Offset uint64 `json:"offset"`
 }
 
+type PaperSearchTagsFacet []struct {
+	Tag   string `json:"tag"`
+	Count int    `json:"count"`
+}
+
 type PaperSearchFacets struct {
-	Tags []struct {
-		Tag   string `json:"json"`
-		Count int    `json:"count"`
-	} `json:"tags,omitempty"`
+	Tags PaperSearchTagsFacet `json:"tags,omitempty"`
 }
 
 type PaperSearchResults struct {

@@ -67,6 +67,9 @@ func (s *PaperIndex) Search(search papernet.PaperSearch) (papernet.PaperSearchRe
 	}
 	searchRequest.From = int(search.Offset)
 
+	tagsFacet := bleve.NewFacetRequest("tags_keyword", 10)
+	searchRequest.AddFacet("tags", tagsFacet)
+
 	searchResults, err := s.index.Search(searchRequest)
 	if err != nil {
 		return papernet.PaperSearchResults{}, err
@@ -80,8 +83,17 @@ func (s *PaperIndex) Search(search papernet.PaperSearch) (papernet.PaperSearchRe
 		}
 	}
 
+	facets := papernet.PaperSearchFacets{
+		Tags: make(papernet.PaperSearchTagsFacet, len(searchResults.Facets["tags"].Terms)),
+	}
+	for i, term := range searchResults.Facets["tags"].Terms {
+		facets.Tags[i].Tag = term.Term
+		facets.Tags[i].Count = term.Count
+	}
+
 	return papernet.PaperSearchResults{
-		IDs: ids,
+		IDs:    ids,
+		Facets: facets,
 		Pagination: papernet.Pagination{
 			Total:  searchResults.Total,
 			Limit:  search.Limit,
