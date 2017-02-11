@@ -62,42 +62,38 @@ func (h *PaperHandler) Routes() []papernet.Route {
 }
 
 func (h *PaperHandler) List(req *Request) (interface{}, error) {
-	q := ""
-	_ = req.Query("q", &q)
-
-	bookmarked := false
-	err := req.Query("bookmarked", &bookmarked)
-	if err != nil {
-		return nil, err
-	}
-
 	user, err := auth.UserFromContext(req.Context())
 	if err != nil {
 		return nil, err
 	}
 
-	var limit uint64 = 20
-	err = req.Query("limit", &limit)
-	if err != nil {
-		return nil, err
-	}
-	if limit == 0 {
-		limit = 20
-	}
-
-	var offset uint64 = 0
-	err = req.Query("offset", &offset)
-	if err != nil {
-		return nil, err
-	}
-
 	search := papernet.PaperSearch{
-		Q:      q,
-		IDs:    user.CanSee,
-		Limit:  limit,
-		Offset: offset,
+		IDs: user.CanSee,
 	}
 
+	err = req.Query("q", &search.Q)
+	if err != nil {
+		return nil, err
+	}
+
+	err = req.Query("limit", &search.Limit)
+	if err != nil {
+		return nil, err
+	}
+	if search.Limit == 0 {
+		search.Limit = 20
+	}
+
+	err = req.Query("offset", &search.Offset)
+	if err != nil {
+		return nil, err
+	}
+
+	bookmarked := false
+	err = req.Query("bookmarked", &bookmarked)
+	if err != nil {
+		return nil, err
+	}
 	if bookmarked {
 		search.IDs = user.Bookmarks
 	}
