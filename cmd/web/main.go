@@ -81,6 +81,15 @@ func main() {
 		handler.Register(route)
 	}
 
+	// Arxiv handler
+	arxivHandler := &web.ArxivHandler{
+		Index: &index,
+		Store: &paperStore,
+	}
+	for _, route := range arxivHandler.Routes() {
+		handler.Register(route)
+	}
+
 	addr := ":1705"
 	log.Println("server started, listening on", addr)
 	log.Fatal(http.ListenAndServe(addr, handler))

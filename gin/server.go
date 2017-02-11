@@ -69,10 +69,6 @@ func New(
 	tagHandler := TagHandler{Searcher: ts}
 	tagHandler.RegisterRoutes(router)
 
-	// Arxiv
-	arxivHandler := ArxivHandler{Authenticator: authenticator, Store: ps, Index: pi}
-	arxivHandler.RegisterRoutes(router)
-
 	return &Server{
 		router,
 		authenticator,

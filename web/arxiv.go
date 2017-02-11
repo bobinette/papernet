@@ -1,28 +1,32 @@
-package gin
+package web
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/bobinette/papernet"
+	"github.com/bobinette/papernet/auth"
 )
 
 type ArxivHandler struct {
-	Authenticator Authenticator
-
 	Store papernet.PaperStore
 	Index papernet.PaperIndex
 }
 
-func (h *ArxivHandler) RegisterRoutes(router *gin.Engine) {
-	router.GET("/api/arxiv", JSONFormatter(h.Authenticator.Authenticate(h.Search)))
+func (h *ArxivHandler) Routes() []papernet.Route {
+	return []papernet.Route{
+		papernet.Route{
+			Route:         "/api/arxiv",
+			Method:        "GET",
+			Renderer:      "JSON",
+			Authenticated: true,
+			HandlerFunc:   WrapRequest(h.Search),
+		},
+	}
 }
 
-func (h *ArxivHandler) Search(c *gin.Context) (interface{}, error) {
-	user, err := GetUser(c)
+func (h *ArxivHandler) Search(req *Request) (interface{}, error) {
+	user, err := auth.UserFromContext(req.Context())
 	if err != nil {
 		return nil, err
 	}
@@ -31,28 +35,18 @@ func (h *ArxivHandler) Search(c *gin.Context) (interface{}, error) {
 		Client: &http.Client{Timeout: 10 * time.Second},
 	}
 
-	var start int
-	startQ := c.Query("offset")
-	if startQ != "" {
-		start, err = strconv.Atoi(startQ)
-		if err != nil {
-			return nil, err
-		}
+	arxivSearch := papernet.ArxivSearch{}
+	err = req.Query("q", &arxivSearch.Q)
+	if err != nil {
+		return nil, err
 	}
-
-	var maxResults int
-	maxResultsQ := c.Query("limit")
-	if maxResultsQ != "" {
-		maxResults, err = strconv.Atoi(maxResultsQ)
-		if err != nil {
-			return nil, err
-		}
+	err = req.Query("offset", &arxivSearch.Start)
+	if err != nil {
+		return nil, err
 	}
-
-	arxivSearch := papernet.ArxivSearch{
-		Q:          c.Query("q"),
-		Start:      start,
-		MaxResults: maxResults,
+	err = req.Query("limit", &arxivSearch.MaxResults)
+	if err != nil {
+		return nil, err
 	}
 
 	res, err := spider.Search(arxivSearch)
