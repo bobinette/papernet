@@ -1,0 +1,12 @@
+# Dev configuration
+
+# Auth files
+[auth]
+key = "configuration/hs256.json"
+google = "configuration/oauth_google.json"
+
+[bolt]
+store = "data/papernet.db"
+
+[bleve]
+store = "data/papernet.index"

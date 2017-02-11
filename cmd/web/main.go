@@ -2,9 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"github.com/BurntSushi/toml"
 
 	"github.com/bobinette/papernet"
 	"github.com/bobinette/papernet/auth"
@@ -14,22 +18,37 @@ import (
 	"github.com/bobinette/papernet/web"
 )
 
+type Configuration struct {
+	Auth struct {
+		Key    string `toml:"key"`
+		Google string `toml:"google"`
+	} `toml:"auth"`
+	Bolt struct {
+		Store string `toml:"store"`
+	} `toml:"bolt"`
+	Bleve struct {
+		Store string `toml:"store"`
+	} `toml:"bleve"`
+}
+
 func main() {
-	// Load signing key
-	data, err := ioutil.ReadFile("hs256.json")
+	env := flag.String("env", "dev", "environment")
+	flag.Parse()
+
+	data, err := ioutil.ReadFile(fmt.Sprintf("configuration/config.%s.toml", *env))
 	if err != nil {
-		log.Fatalln("could not open key file:", err)
+		log.Fatalln("could not read configuration file:", err)
 	}
-	var key papernet.SigningKey
-	err = json.Unmarshal(data, &key)
+	var cfg Configuration
+	err = toml.Unmarshal(data, &cfg)
 	if err != nil {
-		log.Fatalln("could not read key file:", err)
+		log.Fatalln("error unmarshalling configuration:", err)
 	}
 
 	// Create repositories
 	driver := bolt.Driver{}
 	defer driver.Close()
-	err = driver.Open("data/papernet.db")
+	err = driver.Open(cfg.Bolt.Store)
 	if err != nil {
 		log.Fatalln("could not open db:", err)
 	}
@@ -40,14 +59,24 @@ func main() {
 
 	// Create index
 	index := bleve.PaperIndex{}
-	err = index.Open("data/papernet.index")
+	err = index.Open(cfg.Bleve.Store)
 	defer index.Close()
 	if err != nil {
 		log.Fatalln("could not open index:", err)
 	}
 
 	// Auth
-	googleOAuthClient, err := auth.NewGoogleClient("oauth_google.json")
+	keyData, err := ioutil.ReadFile(cfg.Auth.Key)
+	if err != nil {
+		log.Fatalln("could not open key file:", err)
+	}
+	var key papernet.SigningKey
+	err = json.Unmarshal(keyData, &key)
+	if err != nil {
+		log.Fatalln("could not read key file:", err)
+	}
+
+	googleOAuthClient, err := auth.NewGoogleClient(cfg.Auth.Google)
 	if err != nil {
 		log.Fatalln("could not read google oauth config:", err)
 	}

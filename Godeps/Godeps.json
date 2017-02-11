@@ -17,6 +17,11 @@
 			"Rev": "7959a9f8d3f60ecaaec2358e5467e73197d2e7f0"
 		},
 		{
+			"ImportPath": "github.com/BurntSushi/toml",
+			"Comment": "v0.2.0-21-g9906417",
+			"Rev": "99064174e013895bbd9b025c31100bd1d9b590ca"
+		},
+		{
 			"ImportPath": "github.com/blevesearch/bleve",
 			"Comment": "v0.5.0-96-gbcaea08",
 			"Rev": "bcaea084c55f25d843201bb421347311c59a1601"
