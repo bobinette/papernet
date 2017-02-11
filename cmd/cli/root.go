@@ -5,8 +5,6 @@ import (
 )
 
 func init() {
-	RootCmd.PersistentFlags().String("store", "data/papernet.db", "address of the bolt db file")
-	RootCmd.PersistentFlags().String("index", "data/papernet.index", "address of the bolt db file")
 }
 
 var RootCmd = cobra.Command{

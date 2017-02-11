@@ -114,9 +114,14 @@ func (h *PaperHandler) List(req *Request) (interface{}, error) {
 		return nil, err
 	}
 
-	return map[string]interface{}{
-		"data":       papers,
-		"pagination": res.Pagination,
+	return struct {
+		Papers     []*papernet.Paper          `json:"data"`
+		Pagination papernet.Pagination        `json:"pagination"`
+		Facets     papernet.PaperSearchFacets `json:"facets"`
+	}{
+		Papers:     papers,
+		Pagination: res.Pagination,
+		Facets:     res.Facets,
 	}, nil
 }
 

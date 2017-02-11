@@ -12,6 +12,9 @@ import (
 )
 
 func init() {
+	PaperCommand.PersistentFlags().String("store", "data/papernet.db", "address of the bolt db file")
+	PaperCommand.PersistentFlags().String("index", "data/papernet.index", "address of the bolt db file")
+
 	SavePaperCommand.PersistentFlags().String("file", "", "filename to load the payload")
 	SearchCommand.PersistentFlags().String("file", "", "filename to load the payload")
 

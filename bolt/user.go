@@ -46,3 +46,27 @@ func (r *UserRepository) Upsert(user *papernet.User) error {
 		return bucket.Put([]byte(user.ID), data)
 	})
 }
+
+func (s *UserRepository) List() ([]*papernet.User, error) {
+	var users []*papernet.User
+
+	err := s.Driver.store.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(userBucket)
+
+		c := bucket.Cursor()
+		for id, data := c.First(); id != nil; id, data = c.Next() {
+			var user papernet.User
+			if err := json.Unmarshal(data, &user); err != nil {
+				return err
+			}
+			users = append(users, &user)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
