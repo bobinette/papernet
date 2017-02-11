@@ -7,7 +7,15 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-type Encoder struct {
+type TokenEncoder interface {
+	Encode(string) (string, error)
+}
+
+type TokenDecoder interface {
+	Decode(string) (string, error)
+}
+
+type EncodeDecoder struct {
 	Key string
 }
 
@@ -16,7 +24,7 @@ type papernetClaims struct {
 	jwt.StandardClaims
 }
 
-func (e Encoder) Encode(userID string) (string, error) {
+func (e EncodeDecoder) Encode(userID string) (string, error) {
 	claims := papernetClaims{
 		userID,
 		jwt.StandardClaims{
@@ -29,7 +37,7 @@ func (e Encoder) Encode(userID string) (string, error) {
 	return token.SignedString([]byte(e.Key))
 }
 
-func (e Encoder) Decode(bearer string) (string, error) {
+func (e EncodeDecoder) Decode(bearer string) (string, error) {
 	claims := papernetClaims{}
 
 	token, err := jwt.ParseWithClaims(bearer, &claims, func(token *jwt.Token) (interface{}, error) {

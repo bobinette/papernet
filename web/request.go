@@ -2,7 +2,6 @@ package web
 
 import (
 	"fmt"
-	"net/http"
 	"strconv"
 
 	"github.com/bobinette/papernet"
@@ -54,18 +53,4 @@ func (r *Request) Query(key string, v interface{}) error {
 	}
 
 	return nil
-}
-
-func (r *Request) User() (*papernet.User, error) {
-	u := r.Request.Context().Value("user")
-	if u == nil {
-		return nil, errors.New("could not extract user", errors.WithCode(http.StatusUnauthorized))
-	}
-
-	user, ok := u.(*papernet.User)
-	if !ok {
-		return nil, errors.New("could not retrieve user", errors.WithCode(http.StatusUnauthorized))
-	}
-
-	return user, nil
 }

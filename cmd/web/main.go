@@ -52,12 +52,15 @@ func main() {
 		log.Fatalln("could not read google oauth config:", err)
 	}
 
+	encoder := auth.EncodeDecoder{Key: key.Key}
+
 	// Start web server
 	handler, err := gin.New(&paperStore, &index, &tagIndex, &userRepo, key, googleOAuthClient)
 	if err != nil {
 		log.Fatalln("could not start server:", err)
 	}
 
+	// Paper handler
 	paperHandler := &web.PaperHandler{
 		Store:     &paperStore,
 		Index:     &index,
@@ -65,6 +68,16 @@ func main() {
 		UserStore: &userRepo,
 	}
 	for _, route := range paperHandler.Routes() {
+		handler.Register(route)
+	}
+
+	// User handler
+	userHandler := &web.UserHandler{
+		Encoder:      &encoder,
+		GoogleClient: googleOAuthClient,
+		Store:        &userRepo,
+	}
+	for _, route := range userHandler.Routes() {
 		handler.Register(route)
 	}
 

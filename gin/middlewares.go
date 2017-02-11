@@ -61,7 +61,7 @@ func JSONRenderer(next papernet.HandlerFunc) gin.HandlerFunc {
 }
 
 type Authenticator struct {
-	Encoder        auth.Encoder
+	Encoder        auth.EncodeDecoder
 	UserRepository papernet.UserRepository
 }
 

@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/bobinette/papernet"
+	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/errors"
 )
 
@@ -70,7 +71,7 @@ func (h *PaperHandler) List(req *Request) (interface{}, error) {
 		return nil, err
 	}
 
-	user, err := req.User()
+	user, err := auth.UserFromContext(req.Context())
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +119,7 @@ func (h *PaperHandler) List(req *Request) (interface{}, error) {
 }
 
 func (h *PaperHandler) Insert(req *Request) (interface{}, error) {
-	user, err := req.User()
+	user, err := auth.UserFromContext(req.Context())
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +175,7 @@ func (h *PaperHandler) Get(req *Request) (interface{}, error) {
 		return nil, errors.New("id should be an integer", errors.WithCode(http.StatusBadRequest))
 	}
 
-	user, err := req.User()
+	user, err := auth.UserFromContext(req.Context())
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +200,7 @@ func (h *PaperHandler) Get(req *Request) (interface{}, error) {
 }
 
 func (h *PaperHandler) Update(req *Request) (interface{}, error) {
-	user, err := req.User()
+	user, err := auth.UserFromContext(req.Context())
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +266,7 @@ func (h *PaperHandler) Update(req *Request) (interface{}, error) {
 }
 
 func (h *PaperHandler) Delete(req *Request) (interface{}, error) {
-	user, err := req.User()
+	user, err := auth.UserFromContext(req.Context())
 	if err != nil {
 		return nil, err
 	}

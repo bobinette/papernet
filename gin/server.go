@@ -7,12 +7,27 @@ import (
 
 	"github.com/bobinette/papernet"
 	"github.com/bobinette/papernet/auth"
+	"github.com/bobinette/papernet/errors"
 )
 
 type Server struct {
 	*gin.Engine
 
 	Authenticator Authenticator
+}
+
+func GetUser(c *gin.Context) (*papernet.User, error) {
+	u, ok := c.Get("user")
+	if !ok {
+		return nil, errors.New("could not extract user", errors.WithCode(http.StatusUnauthorized))
+	}
+
+	user, ok := u.(*papernet.User)
+	if !ok {
+		return nil, errors.New("could not retrieve user", errors.WithCode(http.StatusUnauthorized))
+	}
+
+	return user, nil
 }
 
 func New(
@@ -47,16 +62,12 @@ func New(
 		c.JSON(http.StatusOK, map[string]string{"data": "ok"})
 	})
 
-	encoder := auth.Encoder{Key: sk.Key}
+	encoder := auth.EncodeDecoder{Key: sk.Key}
 	authenticator := Authenticator{Encoder: encoder, UserRepository: ur}
 
 	// Tags
 	tagHandler := TagHandler{Searcher: ts}
 	tagHandler.RegisterRoutes(router)
-
-	// Auth
-	userHandler := UserHandler{GoogleClient: googleOAuthClient, Repository: ur, Authenticator: authenticator}
-	userHandler.RegisterRoutes(router)
 
 	// Arxiv
 	arxivHandler := ArxivHandler{Authenticator: authenticator, Store: ps, Index: pi}
