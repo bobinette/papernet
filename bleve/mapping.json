@@ -33,6 +33,21 @@
         ],
         "default_analyzer": ""
       },
+      "tags_keyword": {
+        "enabled": true,
+        "dynamic": true,
+        "fields": [
+          {
+            "type": "text",
+            "analyzer": "keyword",
+            "store": true,
+            "index": true,
+            "include_term_vectors": true,
+            "include_in_all": true
+          }
+        ],
+        "default_analyzer": ""
+      },
       "title": {
         "enabled": true,
         "dynamic": true,

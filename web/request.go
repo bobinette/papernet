@@ -48,6 +48,8 @@ func (r *Request) Query(key string, v interface{}) error {
 			return errors.New(fmt.Sprintf("could not parse %s", q), errors.WithCause(err))
 		}
 		*v = i
+	case *[]string:
+		*v = r.Request.Request.URL.Query()[key]
 	default:
 		return errors.New(fmt.Sprintf("unsupported type: %T", v))
 	}

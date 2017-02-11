@@ -26,8 +26,10 @@ type Pagination struct {
 }
 
 type PaperSearch struct {
-	IDs      []int    `json:"ids"`
-	Q        string   `json:"q"`
+	IDs []int  `json:"ids"`
+	Q   string `json:"q"`
+
+	Tags     []string `json:"tags"`
 	ArxivIDs []string `json:"arxiv_ids"`
 
 	Limit  uint64 `json:"limit"`

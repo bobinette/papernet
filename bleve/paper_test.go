@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
-	"strconv"
 	"testing"
 
 	"github.com/blevesearch/bleve"
@@ -55,26 +54,22 @@ func TestFind(t *testing.T) {
 	index, f := createIndex(t)
 	defer f()
 
-	papers := []struct {
-		Title string
-		Tags  []string
-	}{
-		{Title: "Title 1", Tags: []string{"tag"}},
-		{Title: "Pizza yolo", Tags: []string{"tag"}},
-		{Title: "titi et rominet", Tags: []string{"tag", "tech"}},
-		{Title: "pizza", Tags: []string{"tag", "technique"}},
-		{Title: "reinforcement learning", Tags: []string{"machine learning"}},
-		{Title: "monte carlo", Tags: []string{"machine learning"}},
-		{Title: "pizza yolo", Tags: []string{"tag", "robbery"}},
+	papers := []*papernet.Paper{
+		&papernet.Paper{ID: 1, Title: "Title 1", Tags: []string{"tag"}},
+		&papernet.Paper{ID: 2, Title: "Pizza yolo", Tags: []string{"tag"}},
+		&papernet.Paper{ID: 3, Title: "titi et rominet", Tags: []string{"tag", "tech"}},
+		&papernet.Paper{ID: 4, Title: "pizza", Tags: []string{"tag", "technique"}},
+		&papernet.Paper{ID: 5, Title: "reinforcement learning", Tags: []string{"machine learning"}},
+		&papernet.Paper{ID: 6, Title: "monte carlo", Tags: []string{"machine learning"}},
+		&papernet.Paper{ID: 7, Title: "pizza yolo", Tags: []string{"tag", "robbery"}},
+		&papernet.Paper{ID: 8, Title: "learning to build a machine", Tags: []string{"skillz", "DIY"}},
 	}
+	ids := make([]int, len(papers))
 	for i, paper := range papers {
-		data := map[string]interface{}{
-			"title": paper.Title,
-			"tags":  paper.Tags,
+		if err := index.Index(paper); err != nil {
+			t.Fatal("error indexing", paper.ID, err)
 		}
-		if err := index.index.Index(strconv.Itoa(i), data); err != nil {
-			t.Fatal("error indexing", i, err)
-		}
+		ids[i] = paper.ID
 	}
 
 	var tts = map[string]struct {
@@ -84,13 +79,13 @@ func TestFind(t *testing.T) {
 		"match all": {
 			Search: papernet.PaperSearch{
 				Q:     "",
-				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				IDs:   ids,
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
-				IDs: []int{0, 1, 2, 3, 4, 5, 6},
+				IDs: ids,
 				Pagination: papernet.Pagination{
-					Total:  7,
+					Total:  uint64(len(ids)),
 					Limit:  10,
 					Offset: 0,
 				},
@@ -99,11 +94,11 @@ func TestFind(t *testing.T) {
 		"one word": {
 			Search: papernet.PaperSearch{
 				Q:     "pizza",
-				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				IDs:   ids,
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
-				IDs: []int{1, 3, 6},
+				IDs: []int{2, 4, 7},
 				Pagination: papernet.Pagination{
 					Total:  3,
 					Limit:  10,
@@ -114,11 +109,11 @@ func TestFind(t *testing.T) {
 		"partial word": {
 			Search: papernet.PaperSearch{
 				Q:     "ti",
-				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				IDs:   ids,
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
-				IDs: []int{0, 2},
+				IDs: []int{1, 3},
 				Pagination: papernet.Pagination{
 					Total:  2,
 					Limit:  10,
@@ -129,11 +124,11 @@ func TestFind(t *testing.T) {
 		"two words": {
 			Search: papernet.PaperSearch{
 				Q:     "pizza yolo",
-				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				IDs:   ids,
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
-				IDs: []int{1, 6},
+				IDs: []int{2, 7},
 				Pagination: papernet.Pagination{
 					Total:  2,
 					Limit:  10,
@@ -144,11 +139,11 @@ func TestFind(t *testing.T) {
 		"long words": {
 			Search: papernet.PaperSearch{
 				Q:     "reinforcement learning",
-				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				IDs:   ids,
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
-				IDs: []int{4},
+				IDs: []int{5},
 				Pagination: papernet.Pagination{
 					Total:  1,
 					Limit:  10,
@@ -159,7 +154,7 @@ func TestFind(t *testing.T) {
 		"long words spelling": {
 			Search: papernet.PaperSearch{
 				Q:     "mysuperlnog",
-				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				IDs:   ids,
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
@@ -174,11 +169,11 @@ func TestFind(t *testing.T) {
 		"trailing space": {
 			Search: papernet.PaperSearch{
 				Q:     "titi ",
-				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				IDs:   ids,
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
-				IDs: []int{2},
+				IDs: []int{3},
 				Pagination: papernet.Pagination{
 					Total:  1,
 					Limit:  10,
@@ -189,11 +184,11 @@ func TestFind(t *testing.T) {
 		"by tags": {
 			Search: papernet.PaperSearch{
 				Q:     "tech",
-				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				IDs:   ids,
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
-				IDs: []int{2, 3},
+				IDs: []int{3, 4},
 				Pagination: papernet.Pagination{
 					Total:  2,
 					Limit:  10,
@@ -204,11 +199,11 @@ func TestFind(t *testing.T) {
 		"ro": {
 			Search: papernet.PaperSearch{
 				Q:     "pi yo ro",
-				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				IDs:   ids,
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
-				IDs: []int{6},
+				IDs: []int{7},
 				Pagination: papernet.Pagination{
 					Total:  1,
 					Limit:  10,
@@ -219,13 +214,13 @@ func TestFind(t *testing.T) {
 		"with uppercase letters": {
 			Search: papernet.PaperSearch{
 				Q:     "Learning",
-				IDs:   []int{0, 1, 2, 3, 4, 5, 6},
+				IDs:   ids,
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
-				IDs: []int{4, 5},
+				IDs: []int{5, 6, 8},
 				Pagination: papernet.Pagination{
-					Total:  2,
+					Total:  3,
 					Limit:  10,
 					Offset: 0,
 				},
@@ -241,6 +236,51 @@ func TestFind(t *testing.T) {
 				Pagination: papernet.Pagination{
 					Total:  2,
 					Limit:  10,
+					Offset: 0,
+				},
+			},
+		},
+		"with q tag": {
+			Search: papernet.PaperSearch{
+				IDs:   ids,
+				Limit: 10,
+				Q:     "machine learning",
+			},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{5, 6, 8},
+				Pagination: papernet.Pagination{
+					Total:  3,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
+		},
+		"with fixed tag": {
+			Search: papernet.PaperSearch{
+				IDs:   ids,
+				Limit: 10,
+				Tags:  []string{"machine learning"},
+			},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{5, 6},
+				Pagination: papernet.Pagination{
+					Total:  2,
+					Limit:  10,
+					Offset: 0,
+				},
+			},
+		},
+		"match all with limit": {
+			Search: papernet.PaperSearch{
+				Q:     "",
+				IDs:   ids,
+				Limit: 5,
+			},
+			Expected: papernet.PaperSearchResults{
+				IDs: ids[:5],
+				Pagination: papernet.Pagination{
+					Total:  uint64(len(ids)),
+					Limit:  5,
 					Offset: 0,
 				},
 			},

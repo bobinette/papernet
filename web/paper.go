@@ -89,6 +89,12 @@ func (h *PaperHandler) List(req *Request) (interface{}, error) {
 		return nil, err
 	}
 
+	err = req.Query("tags", &search.Tags)
+	if err != nil {
+		return nil, err
+	}
+	log.Println(search.Tags)
+
 	bookmarked := false
 	err = req.Query("bookmarked", &bookmarked)
 	if err != nil {

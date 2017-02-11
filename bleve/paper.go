@@ -37,9 +37,10 @@ func (s *PaperIndex) Close() error {
 
 func (s *PaperIndex) Index(paper *papernet.Paper) error {
 	data := map[string]interface{}{
-		"title":   paper.Title,
-		"tags":    paper.Tags,
-		"arxivID": paper.ArxivID,
+		"title":        paper.Title,
+		"tags":         paper.Tags,
+		"tags_keyword": paper.Tags,
+		"arxivID":      paper.ArxivID,
 	}
 
 	return s.index.Index(strconv.Itoa(paper.ID), data)
@@ -52,9 +53,10 @@ func (s *PaperIndex) Delete(id int) error {
 func (s *PaperIndex) Search(search papernet.PaperSearch) (papernet.PaperSearchResults, error) {
 	q := andQ(
 		query.NewMatchAllQuery(),
-		s.searchTitleOrTags(search.Q),
+		s.searchQ(search.Q),
 		s.searchIDs(search.IDs),
 		s.termsQuery(search.ArxivIDs, "arxivID"),
+		s.searchTags(search.Tags),
 	)
 
 	searchRequest := bleve.NewSearchRequest(q)
@@ -116,54 +118,54 @@ func orQ(qs ...query.Query) query.Query {
 	return query.NewDisjunctionQuery(ors)
 }
 
-func (s *PaperIndex) searchTitleOrTags(queryString string) query.Query {
+func (s *PaperIndex) searchQ(queryString string) query.Query {
 	words := strings.Fields(queryString)
 
 	ands := make([]query.Query, 0, len(words))
 	for _, word := range words {
 		ands = append(ands, orQ(
-			s.searchTitle(word),
-			s.searchTags(word),
+			s.searchTitleQ(word),
+			s.searchTagsQ(word),
 		))
 	}
 
 	return andQ(ands...)
 }
 
-func (s *PaperIndex) searchTitle(queryString string) query.Query {
+func (s *PaperIndex) searchTitleQ(queryString string) query.Query {
 	analyzer := s.index.Mapping().AnalyzerNamed(en.AnalyzerName)
 	tokens := analyzer.Analyze([]byte(queryString))
 	if len(tokens) == 0 {
 		return nil
 	}
 
-	conjuncs := make([]query.Query, len(tokens))
+	conjuncts := make([]query.Query, len(tokens))
 	for i, token := range tokens {
-		conjuncs[i] = &query.PrefixQuery{
+		conjuncts[i] = &query.PrefixQuery{
 			Prefix: string(token.Term),
 			Field:  "title",
 		}
 	}
 
-	return query.NewConjunctionQuery(conjuncs)
+	return query.NewConjunctionQuery(conjuncts)
 }
 
-func (s *PaperIndex) searchTags(queryString string) query.Query {
+func (s *PaperIndex) searchTagsQ(queryString string) query.Query {
 	analyzer := s.index.Mapping().AnalyzerNamed(simple.Name)
 	tokens := analyzer.Analyze([]byte(queryString))
 	if len(tokens) == 0 {
 		return nil
 	}
 
-	conjuncs := make([]query.Query, len(tokens))
+	conjuncts := make([]query.Query, len(tokens))
 	for i, token := range tokens {
-		conjuncs[i] = &query.PrefixQuery{
+		conjuncts[i] = &query.PrefixQuery{
 			Prefix: string(token.Term),
 			Field:  "tags",
 		}
 	}
 
-	return query.NewConjunctionQuery(conjuncs)
+	return query.NewConjunctionQuery(conjuncts)
 }
 
 func (*PaperIndex) searchIDs(ids []int) query.Query {
@@ -172,6 +174,22 @@ func (*PaperIndex) searchIDs(ids []int) query.Query {
 		docIDs[i] = strconv.Itoa(id)
 	}
 	return query.NewDocIDQuery(docIDs)
+}
+
+func (*PaperIndex) searchTags(tags []string) query.Query {
+	if len(tags) == 0 {
+		return nil
+	}
+
+	conjuncts := make([]query.Query, len(tags))
+	for i, tag := range tags {
+		conjuncts[i] = &query.MatchQuery{
+			Match: tag,
+			Field: "tags_keyword",
+		}
+	}
+
+	return query.NewConjunctionQuery(conjuncts)
 }
 
 func (*PaperIndex) termsQuery(terms []string, field string) query.Query {
