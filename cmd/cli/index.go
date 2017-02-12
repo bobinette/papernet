@@ -12,6 +12,9 @@ import (
 )
 
 func init() {
+	IndexCommand.PersistentFlags().String("store", "data/papernet.db", "address of the bolt db file")
+	IndexCommand.PersistentFlags().String("index", "data/papernet.index", "address of the bolt db file")
+
 	CreateIndexCommand.PersistentFlags().String("mapping", "", "mapping file")
 	CreateIndexCommand.PersistentFlags().String("index", "", "index directory")
 
