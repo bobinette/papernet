@@ -175,7 +175,14 @@ func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 	query := u.Query()
 
 	if search.Q != "" {
-		query.Add("search_query", fmt.Sprintf("all:%s", search.Q))
+		re, _ := regexp.Compile("[A-Za-z0-9]+")
+		matches := re.FindAllStringSubmatch(search.Q, -1)
+		fmt.Println(matches)
+		q := make([]string, len(matches))
+		for i, match := range matches {
+			q[i] = match[0]
+		}
+		query.Add("search_query", fmt.Sprintf("all:%s", strings.Join(q, " AND ")))
 	}
 	if search.Start > 0 {
 		query.Add("start", strconv.Itoa(search.Start))
