@@ -5,9 +5,10 @@ import (
 )
 
 type Paper struct {
-	ID      int    `json:"id"`
-	Title   string `json:"title"`
-	Summary string `json:"summary"`
+	ID      int      `json:"id"`
+	Title   string   `json:"title"`
+	Summary string   `json:"summary"`
+	Authors []string `json:"authors"`
 
 	Tags       []string `json:"tags"`
 	References []string `json:"references"`
@@ -29,6 +30,7 @@ type PaperSearch struct {
 	IDs []int  `json:"ids"`
 	Q   string `json:"q"`
 
+	Authors  []string `json:"authors"`
 	Tags     []string `json:"tags"`
 	ArxivIDs []string `json:"arxiv_ids"`
 
