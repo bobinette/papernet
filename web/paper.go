@@ -94,6 +94,11 @@ func (h *PaperHandler) List(req *Request) (interface{}, error) {
 		return nil, err
 	}
 
+	err = req.Query("authors", &search.Authors)
+	if err != nil {
+		return nil, err
+	}
+
 	bookmarked := false
 	err = req.Query("bookmarked", &bookmarked)
 	if err != nil {

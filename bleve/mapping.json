@@ -48,6 +48,21 @@
         ],
         "default_analyzer": ""
       },
+      "authors": {
+        "enabled": true,
+        "dynamic": true,
+        "fields": [
+          {
+            "type": "text",
+            "analyzer": "simple",
+            "store": true,
+            "index": true,
+            "include_term_vectors": true,
+            "include_in_all": true
+          }
+        ],
+        "default_analyzer": ""
+      },
       "title": {
         "enabled": true,
         "dynamic": true,

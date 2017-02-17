@@ -40,6 +40,7 @@ func (s *PaperIndex) Index(paper *papernet.Paper) error {
 		"title":        paper.Title,
 		"tags":         paper.Tags,
 		"tags_keyword": paper.Tags,
+		"authors":      paper.Authors,
 		"arxivID":      paper.ArxivID,
 	}
 
@@ -138,6 +139,7 @@ func (s *PaperIndex) searchQ(queryString string) query.Query {
 		ands = append(ands, orQ(
 			s.searchTitleQ(word),
 			s.searchTagsQ(word),
+			s.searchAuthorsQ(word),
 		))
 	}
 
@@ -174,6 +176,24 @@ func (s *PaperIndex) searchTagsQ(queryString string) query.Query {
 		conjuncts[i] = &query.PrefixQuery{
 			Prefix: string(token.Term),
 			Field:  "tags",
+		}
+	}
+
+	return query.NewConjunctionQuery(conjuncts)
+}
+
+func (s *PaperIndex) searchAuthorsQ(queryString string) query.Query {
+	analyzer := s.index.Mapping().AnalyzerNamed(simple.Name)
+	tokens := analyzer.Analyze([]byte(queryString))
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	conjuncts := make([]query.Query, len(tokens))
+	for i, token := range tokens {
+		conjuncts[i] = &query.PrefixQuery{
+			Prefix: string(token.Term),
+			Field:  "authors",
 		}
 	}
 
