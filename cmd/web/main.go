@@ -68,6 +68,7 @@ func main() {
 	// Importers
 	importer := make(papernet.ImporterRegistry)
 	importer.Register("arxiv.org", &papernet.ArxivSpider{})
+	importer.Register("medium.com", &papernet.MediumImporter{})
 
 	// Auth
 	keyData, err := ioutil.ReadFile(cfg.Auth.Key)
