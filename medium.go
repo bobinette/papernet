@@ -2,16 +2,22 @@ package papernet
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
 
 	"github.com/PuerkitoBio/goquery"
+
+	"github.com/bobinette/papernet/errors"
 )
 
 var (
+	mediumRegex        *regexp.Regexp
 	mediumContentRegex *regexp.Regexp
+	mediumURL          = "https://medium.com"
 )
 
 func init() {
+	mediumRegex = regexp.MustCompile(`https://medium.com/([@0-9a-zA-A\-_]+)/([0-9a-zA-A\-]+)(#\..+)?`)
 	mediumContentRegex = regexp.MustCompile(`\/\/ <!\[CDATA\[ window\["obvInit"\]\((.*)\) \/\/ \]\]>`)
 }
 
@@ -42,7 +48,15 @@ type mediumPost struct {
 }
 
 func (MediumImporter) Import(addr string) (*Paper, error) {
-	doc, err := goquery.NewDocument(addr)
+	matches := mediumRegex.FindStringSubmatch(addr)
+	if len(matches) == 0 {
+		return nil, errors.New(fmt.Sprintf("ill formed medium post url: %s", addr))
+	}
+
+	// Recrafting the URL is needed to avoid a copy paste with the hash at the end of the URL
+	// [1]: author, [2]: sluf
+	url := fmt.Sprintf("%s/%s/%s", mediumURL, matches[1], matches[2])
+	doc, err := goquery.NewDocument(url)
 	if err != nil {
 		return nil, err
 	}

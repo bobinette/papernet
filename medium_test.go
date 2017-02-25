@@ -26,11 +26,24 @@ func TestMediumImporter_Import(t *testing.T) {
 		Authors []string
 	}
 	tts := map[string]struct {
+		URL      string
 		Filename string
 		Error    bool
 		Expected expected
 	}{
 		"death star design": {
+			URL:      "https://medium.com/darthvader/death-star-design-987654321",
+			Filename: "deathstar",
+			Error:    false,
+			Expected: expected{
+				Title:   "How we designed the Death Star, and why we failed at protecting the plans",
+				Summary: "In this document, I will share with you the process we went through when designing the Death Star. Moreover, I will also discuss how and why we got the plans stolen by the rebellion",
+				Tags:    []string{"Design", "Star Wars"},
+				Authors: []string{"Darth Vader"},
+			},
+		},
+		"death star design - with weird hash": {
+			URL:      "https://medium.com/darthvader/death-star-design-987654321#.ec86z5k0",
 			Filename: "deathstar",
 			Error:    false,
 			Expected: expected{
@@ -42,6 +55,12 @@ func TestMediumImporter_Import(t *testing.T) {
 		},
 	}
 
+	var content string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, mediumTemplate, content)
+	}))
+	defer ts.Close()
+
 	importer := MediumImporter{}
 	for name, tt := range tts {
 		data, err := ioutil.ReadFile(path.Join("testfiles", fmt.Sprintf("medium_%s.json", tt.Filename)))
@@ -49,13 +68,10 @@ func TestMediumImporter_Import(t *testing.T) {
 			t.Errorf("%s - error reading file %s: %v", name, tt.Filename, err)
 			continue
 		}
+		content = string(data)
 
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, mediumTemplate, string(data))
-		}))
-		defer ts.Close()
-
-		paper, err := importer.Import(ts.URL)
+		mediumURL = ts.URL
+		paper, err := importer.Import(tt.URL)
 		if err != nil && !tt.Error {
 			t.Errorf("%s - should not have failed but did with error %v", name, err)
 		} else if err == nil && tt.Error {
