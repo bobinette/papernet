@@ -65,6 +65,10 @@ func main() {
 		log.Fatalln("could not open index:", err)
 	}
 
+	// Importers
+	importer := make(papernet.ImporterRegistry)
+	importer.Register("arxiv.org", &papernet.ArxivSpider{})
+
 	// Auth
 	keyData, err := ioutil.ReadFile(cfg.Auth.Key)
 	if err != nil {
@@ -88,7 +92,7 @@ func main() {
 	}
 
 	// Start web server
-	handler, err := gin.New(authenticator)
+	server, err := gin.New(authenticator)
 	if err != nil {
 		log.Fatalln("could not start server:", err)
 	}
@@ -101,7 +105,7 @@ func main() {
 		UserStore: &userRepo,
 	}
 	for _, route := range paperHandler.Routes() {
-		handler.Register(route)
+		server.Register(route)
 	}
 
 	// User handler
@@ -111,7 +115,7 @@ func main() {
 		Store:        &userRepo,
 	}
 	for _, route := range userHandler.Routes() {
-		handler.Register(route)
+		server.Register(route)
 	}
 
 	// Arxiv handler
@@ -120,7 +124,7 @@ func main() {
 		Store: &paperStore,
 	}
 	for _, route := range arxivHandler.Routes() {
-		handler.Register(route)
+		server.Register(route)
 	}
 
 	// Tag handler
@@ -128,10 +132,18 @@ func main() {
 		Searcher: &tagIndex,
 	}
 	for _, route := range tagHandler.Routes() {
-		handler.Register(route)
+		server.Register(route)
+	}
+
+	// Import handler
+	importHandler := &web.ImportHandler{
+		Importer: importer,
+	}
+	for _, route := range importHandler.Routes() {
+		server.Register(route)
 	}
 
 	addr := ":1705"
 	log.Println("server started, listening on", addr)
-	log.Fatal(http.ListenAndServe(addr, handler))
+	log.Fatal(http.ListenAndServe(addr, server))
 }

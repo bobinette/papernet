@@ -4,158 +4,42 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bobinette/papernet/errors"
 )
 
-var arxivSummaryPipe = CleaningPipe(
-	strings.TrimSpace,
-	OneLine,
-	strings.TrimSpace,
+var (
+	arxivURL         = "http://export.arxiv.org/api/query"
+	arxivSummaryPipe = CleaningPipe(
+		strings.TrimSpace,
+		OneLine,
+		strings.TrimSpace,
+	)
+	arxivIDRegExp     *regexp.Regexp
+	arxivImportRegExp *regexp.Regexp
 )
-
-var arxivCategories = map[string]string{
-	"stat.AP":            "Statistics - Applications",
-	"stat.CO":            "Statistics - Computation",
-	"stat.ML":            "Statistics - Machine Learning",
-	"stat.ME":            "Statistics - Methodology",
-	"stat.TH":            "Statistics - Theory",
-	"q-bio.BM":           "Quantitative Biology - Biomolecules",
-	"q-bio.CB":           "Quantitative Biology - Cell Behavior",
-	"q-bio.GN":           "Quantitative Biology - Genomics",
-	"q-bio.MN":           "Quantitative Biology - Molecular Networks",
-	"q-bio.NC":           "Quantitative Biology - Neurons and Cognition",
-	"q-bio.OT":           "Quantitative Biology - Other",
-	"q-bio.PE":           "Quantitative Biology - Populations and Evolution",
-	"q-bio.QM":           "Quantitative Biology - Quantitative Methods",
-	"q-bio.SC":           "Quantitative Biology - Subcellular Processes",
-	"q-bio.TO":           "Quantitative Biology - Tissues and Organs",
-	"cs.AR":              "Computer Science - Architecture",
-	"cs.AI":              "Computer Science - Artificial Intelligence",
-	"cs.CL":              "Computer Science - Computation and Language",
-	"cs.CC":              "Computer Science - Computational Complexity",
-	"cs.CE":              "Computer Science - Computational Engineering; Finance; and Science",
-	"cs.CG":              "Computer Science - Computational Geometry",
-	"cs.GT":              "Computer Science - Computer Science and Game Theory",
-	"cs.CV":              "Computer Science - Computer Vision and Pattern Recognition",
-	"cs.CY":              "Computer Science - Computers and Society",
-	"cs.CR":              "Computer Science - Cryptography and Security",
-	"cs.DS":              "Computer Science - Data Structures and Algorithms",
-	"cs.DB":              "Computer Science - Databases",
-	"cs.DL":              "Computer Science - Digital Libraries",
-	"cs.DM":              "Computer Science - Discrete Mathematics",
-	"cs.DC":              "Computer Science - Distributed; Parallel; and Cluster Computing",
-	"cs.GL":              "Computer Science - General Literature",
-	"cs.GR":              "Computer Science - Graphics",
-	"cs.HC":              "Computer Science - Human-Computer Interaction",
-	"cs.IR":              "Computer Science - Information Retrieval",
-	"cs.IT":              "Computer Science - Information Theory",
-	"cs.LG":              "Computer Science - Learning",
-	"cs.LO":              "Computer Science - Logic in Computer Science",
-	"cs.MS":              "Computer Science - Mathematical Software",
-	"cs.MA":              "Computer Science - Multiagent Systems",
-	"cs.MM":              "Computer Science - Multimedia",
-	"cs.NI":              "Computer Science - Networking and Internet Architecture",
-	"cs.NE":              "Computer Science - Neural and Evolutionary Computing",
-	"cs.NA":              "Computer Science - Numerical Analysis",
-	"cs.OS":              "Computer Science - Operating Systems",
-	"cs.OH":              "Computer Science - Other",
-	"cs.PF":              "Computer Science - Performance",
-	"cs.PL":              "Computer Science - Programming Languages",
-	"cs.RO":              "Computer Science - Robotics",
-	"cs.SE":              "Computer Science - Software Engineering",
-	"cs.SD":              "Computer Science - Sound",
-	"cs.SC":              "Computer Science - Symbolic Computation",
-	"nlin.AO":            "Nonlinear Sciences - Adaptation and Self-Organizing Systems",
-	"nlin.CG":            "Nonlinear Sciences - Cellular Automata and Lattice Gases",
-	"nlin.CD":            "Nonlinear Sciences - Chaotic Dynamics",
-	"nlin.SI":            "Nonlinear Sciences - Exactly Solvable and Integrable Systems",
-	"nlin.PS":            "Nonlinear Sciences - Pattern Formation and Solitons",
-	"math.AG":            "Mathematics - Algebraic Geometry",
-	"math.AT":            "Mathematics - Algebraic Topology",
-	"math.AP":            "Mathematics - Analysis of PDEs",
-	"math.CT":            "Mathematics - Category Theory",
-	"math.CA":            "Mathematics - Classical Analysis and ODEs",
-	"math.CO":            "Mathematics - Combinatorics",
-	"math.AC":            "Mathematics - Commutative Algebra",
-	"math.CV":            "Mathematics - Complex Variables",
-	"math.DG":            "Mathematics - Differential Geometry",
-	"math.DS":            "Mathematics - Dynamical Systems",
-	"math.FA":            "Mathematics - Functional Analysis",
-	"math.GM":            "Mathematics - General Mathematics",
-	"math.GN":            "Mathematics - General Topology",
-	"math.GT":            "Mathematics - Geometric Topology",
-	"math.GR":            "Mathematics - Group Theory",
-	"math.HO":            "Mathematics - History and Overview",
-	"math.IT":            "Mathematics - Information Theory",
-	"math.KT":            "Mathematics - K-Theory and Homology",
-	"math.LO":            "Mathematics - Logic",
-	"math.MP":            "Mathematics - Mathematical Physics",
-	"math.MG":            "Mathematics - Metric Geometry",
-	"math.NT":            "Mathematics - Number Theory",
-	"math.NA":            "Mathematics - Numerical Analysis",
-	"math.OA":            "Mathematics - Operator Algebras",
-	"math.OC":            "Mathematics - Optimization and Control",
-	"math.PR":            "Mathematics - Probability",
-	"math.QA":            "Mathematics - Quantum Algebra",
-	"math.RT":            "Mathematics - Representation Theory",
-	"math.RA":            "Mathematics - Rings and Algebras",
-	"math.SP":            "Mathematics - Spectral Theory",
-	"math.ST":            "Mathematics - Statistics",
-	"math.SG":            "Mathematics - Symplectic Geometry",
-	"astro-ph":           "Astrophysics",
-	"cond-mat.dis-nn":    "Physics - Disordered Systems and Neural Networks",
-	"cond-mat.mes-hall":  "Physics - Mesoscopic Systems and Quantum Hall Effect",
-	"cond-mat.mtrl-sci":  "Physics - Materials Science",
-	"cond-mat.other":     "Physics - Other",
-	"cond-mat.soft":      "Physics - Soft Condensed Matter",
-	"cond-mat.stat-mech": "Physics - Statistical Mechanics",
-	"cond-mat.str-el":    "Physics - Strongly Correlated Electrons",
-	"cond-mat.supr-con":  "Physics - Superconductivity",
-	"gr-qc":              "General Relativity and Quantum Cosmology",
-	"hep-ex":             "High Energy Physics - Experiment",
-	"hep-lat":            "High Energy Physics - Lattice",
-	"hep-ph":             "High Energy Physics - Phenomenology",
-	"hep-th":             "High Energy Physics - Theory",
-	"math-ph":            "Mathematical Physics",
-	"nucl-ex":            "Nuclear Experiment",
-	"nucl-th":            "Nuclear Theory",
-	"physics.acc-ph":     "Physics - Accelerator Physics",
-	"physics.ao-ph":      "Physics - Atmospheric and Oceanic Physics",
-	"physics.atom-ph":    "Physics - Atomic Physics",
-	"physics.atm-clus":   "Physics - Atomic and Molecular Clusters",
-	"physics.bio-ph":     "Physics - Biological Physics",
-	"physics.chem-ph":    "Physics - Chemical Physics",
-	"physics.class-ph":   "Physics - Classical Physics",
-	"physics.comp-ph":    "Physics - Computational Physics",
-	"physics.data-an":    "Physics - Data Analysis; Statistics and Probability",
-	"physics.flu-dyn":    "Physics - Fluid Dynamics",
-	"physics.gen-ph":     "Physics - General Physics",
-	"physics.geo-ph":     "Physics - Geophysics",
-	"physics.hist-ph":    "Physics - History of Physics",
-	"physics.ins-det":    "Physics - Instrumentation and Detectors",
-	"physics.med-ph":     "Physics - Medical Physics",
-	"physics.optics":     "Physics - Optics",
-	"physics.ed-ph":      "Physics - Physics Education",
-	"physics.soc-ph":     "Physics - Physics and Society",
-	"physics.plasm-ph":   "Physics - Plasma Physics",
-	"physics.pop-ph":     "Physics - Popular Physics",
-	"physics.space-ph":   "Physics - Space Physics",
-	"quant-ph":           "Quantum Physics",
-}
-
-var arxivRegExp *regexp.Regexp
 
 func init() {
-	arxivRegExp, _ = regexp.Compile("http://arxiv.org/abs/([0-9.]*)(v[0-9]+)?")
+	arxivIDRegExp = regexp.MustCompile("http://arxiv.org/abs/([0-9.]*)(v[0-9]+)?")
+	arxivImportRegExp = regexp.MustCompile("https?://arxiv.org/(abs|pdf)/([0-9.]*)(v[0-9]+)?")
+
+	// Check if arxiv URL is valid
+	_, err := url.Parse(arxivURL)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 type ArxivSearch struct {
 	Q          string
+	IDs        []string
 	Start      int
 	MaxResults int
 }
@@ -170,19 +54,21 @@ type ArxivSpider struct {
 }
 
 func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
-	u, _ := url.Parse("http://export.arxiv.org/api/query")
-
+	// No need to check for error
+	u, _ := url.Parse(arxivURL)
 	query := u.Query()
 
 	if search.Q != "" {
 		re, _ := regexp.Compile("[A-Za-z0-9]+")
 		matches := re.FindAllStringSubmatch(search.Q, -1)
-		fmt.Println(matches)
 		q := make([]string, len(matches))
 		for i, match := range matches {
 			q[i] = match[0]
 		}
 		query.Add("search_query", fmt.Sprintf("all:%s", strings.Join(q, " AND ")))
+	}
+	if len(search.IDs) > 0 {
+		query.Add("id_list", strings.Join(search.IDs, ","))
 	}
 	if search.Start > 0 {
 		query.Add("start", strconv.Itoa(search.Start))
@@ -196,6 +82,9 @@ func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 
 	u.RawQuery = query.Encode()
 
+	if s.Client == nil {
+		s.Client = &http.Client{Timeout: 20 * time.Second}
+	}
 	resp, err := s.Client.Get(u.String())
 	if err != nil {
 		return ArxivResult{}, err
@@ -250,7 +139,7 @@ func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 		}
 
 		var arxivID string
-		matches := arxivRegExp.FindAllStringSubmatch(entry.ID, -1)
+		matches := arxivIDRegExp.FindAllStringSubmatch(entry.ID, -1)
 		if len(matches) > 0 && len(matches[0]) > 1 {
 			arxivID = matches[0][1]
 		}
@@ -277,4 +166,25 @@ func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 			Offset: r.Offset.Value,
 		},
 	}, nil
+}
+
+func (s *ArxivSpider) Import(url string) (*Paper, error) {
+	matches := arxivImportRegExp.FindAllStringSubmatch(url, -1)
+	if len(matches) == 0 || len(matches[0]) < 4 || matches[0][2] == "" {
+		return nil, errors.New(fmt.Sprintf("could not extract arxiv ID from %s", url), errors.WithCode(http.StatusNotFound))
+	}
+
+	arxivID := matches[0][2]
+	res, err := s.Search(ArxivSearch{
+		IDs: []string{matches[0][2]},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res.Papers) == 0 {
+		return nil, errors.New(fmt.Sprintf("no paper found for id %s", arxivID), errors.WithCode(http.StatusNotFound))
+	}
+
+	return res.Papers[0], nil
 }
