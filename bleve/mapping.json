@@ -3,6 +3,19 @@
     "enabled": true,
     "dynamic": true,
     "properties": {
+      "id": {
+        "enabled": true,
+        "dynamic": true,
+        "fields": [
+          {
+            "type": "number",
+            "store": true,
+            "index": true,
+            "include_in_all": true
+          }
+        ],
+        "default_analyzer": ""
+      },
       "arxivID": {
         "enabled": true,
         "dynamic": true,

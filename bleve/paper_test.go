@@ -63,6 +63,8 @@ func TestFind(t *testing.T) {
 		&papernet.Paper{ID: 6, Title: "monte carlo", Tags: []string{"machine learning"}},
 		&papernet.Paper{ID: 7, Title: "pizza yolo", Tags: []string{"tag", "robbery"}},
 		&papernet.Paper{ID: 8, Title: "learning to build a machine", Tags: []string{"skillz", "DIY"}},
+		&papernet.Paper{ID: 11, Title: "later that day", Tags: []string{"tag"}},
+		&papernet.Paper{ID: 24, Title: "twenty four", Tags: []string{"tag", "24"}},
 	}
 	ids := make([]int, len(papers))
 	for i, paper := range papers {

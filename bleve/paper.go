@@ -37,6 +37,7 @@ func (s *PaperIndex) Close() error {
 
 func (s *PaperIndex) Index(paper *papernet.Paper) error {
 	data := map[string]interface{}{
+		"id":           paper.ID,
 		"title":        paper.Title,
 		"tags":         paper.Tags,
 		"tags_keyword": paper.Tags,
@@ -61,7 +62,7 @@ func (s *PaperIndex) Search(search papernet.PaperSearch) (papernet.PaperSearchRe
 	)
 
 	searchRequest := bleve.NewSearchRequest(q)
-	searchRequest.SortBy([]string{"_id"})
+	searchRequest.SortBy([]string{"id"})
 
 	if search.Limit > 0 {
 		searchRequest.Size = int(search.Limit)
