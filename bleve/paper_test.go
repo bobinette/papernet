@@ -287,6 +287,22 @@ func TestFind(t *testing.T) {
 				},
 			},
 		},
+		"tag + order by id desc": {
+			Search: papernet.PaperSearch{
+				Tags:    []string{"tag"},
+				IDs:     ids,
+				Limit:   uint64(len(ids)),
+				OrderBy: "-id",
+			},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{24, 11, 7, 4, 3, 2, 1},
+				Pagination: papernet.Pagination{
+					Total:  7,
+					Limit:  uint64(len(ids)),
+					Offset: 0,
+				},
+			},
+		},
 	}
 
 	for name, tt := range tts {

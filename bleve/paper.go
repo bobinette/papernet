@@ -43,6 +43,8 @@ func (s *PaperIndex) Index(paper *papernet.Paper) error {
 		"tags_keyword": paper.Tags,
 		"authors":      paper.Authors,
 		"arxivID":      paper.ArxivID,
+		"createdAt":    paper.CreatedAt,
+		"updatedAt":    paper.UpdatedAt,
 	}
 
 	return s.index.Index(strconv.Itoa(paper.ID), data)
@@ -62,7 +64,11 @@ func (s *PaperIndex) Search(search papernet.PaperSearch) (papernet.PaperSearchRe
 	)
 
 	searchRequest := bleve.NewSearchRequest(q)
-	searchRequest.SortBy([]string{"id"})
+	if search.OrderBy != "" {
+		searchRequest.SortBy([]string{search.OrderBy})
+	} else {
+		searchRequest.SortBy([]string{"id"})
+	}
 
 	if search.Limit > 0 {
 		searchRequest.Size = int(search.Limit)

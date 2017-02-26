@@ -34,8 +34,9 @@ type PaperSearch struct {
 	Tags     []string `json:"tags"`
 	ArxivIDs []string `json:"arxiv_ids"`
 
-	Limit  uint64 `json:"limit"`
-	Offset uint64 `json:"offset"`
+	Limit   uint64 `json:"limit"`
+	Offset  uint64 `json:"offset"`
+	OrderBy string `json:"orderBy"`
 }
 
 type PaperSearchTagsFacet []struct {

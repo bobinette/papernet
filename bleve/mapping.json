@@ -16,13 +16,13 @@
         ],
         "default_analyzer": ""
       },
-      "arxivID": {
+      "title": {
         "enabled": true,
         "dynamic": true,
         "fields": [
           {
             "type": "text",
-            "analyzer": "keyword",
+            "analyzer": "en",
             "store": true,
             "index": true,
             "include_term_vectors": true,
@@ -61,6 +61,21 @@
         ],
         "default_analyzer": ""
       },
+      "arxivID": {
+        "enabled": true,
+        "dynamic": true,
+        "fields": [
+          {
+            "type": "text",
+            "analyzer": "keyword",
+            "store": true,
+            "index": true,
+            "include_term_vectors": true,
+            "include_in_all": true
+          }
+        ],
+        "default_analyzer": ""
+      },
       "authors": {
         "enabled": true,
         "dynamic": true,
@@ -76,16 +91,27 @@
         ],
         "default_analyzer": ""
       },
-      "title": {
+      "createdAt": {
         "enabled": true,
         "dynamic": true,
         "fields": [
           {
-            "type": "text",
-            "analyzer": "en",
+            "type": "datetime",
             "store": true,
             "index": true,
-            "include_term_vectors": true,
+            "include_in_all": true
+          }
+        ],
+        "default_analyzer": ""
+      },
+      "updatedAt": {
+        "enabled": true,
+        "dynamic": true,
+        "fields": [
+          {
+            "type": "datetime",
+            "store": true,
+            "index": true,
             "include_in_all": true
           }
         ],

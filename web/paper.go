@@ -99,6 +99,11 @@ func (h *PaperHandler) List(req *Request) (interface{}, error) {
 		return nil, err
 	}
 
+	err = req.Query("orderBy", &search.OrderBy)
+	if err != nil {
+		return nil, err
+	}
+
 	bookmarked := false
 	err = req.Query("bookmarked", &bookmarked)
 	if err != nil {
