@@ -18,28 +18,28 @@ type UserHandler struct {
 func (h *UserHandler) Routes() []papernet.Route {
 	return []papernet.Route{
 		papernet.Route{
-			Route:         "/api/auth",
+			Route:         "/auth",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: false,
 			HandlerFunc:   WrapRequest(h.AuthURL),
 		},
 		papernet.Route{
-			Route:         "/api/auth/google",
+			Route:         "/auth/google",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: false,
 			HandlerFunc:   WrapRequest(h.Google),
 		},
 		papernet.Route{
-			Route:         "/api/me",
+			Route:         "/me",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.Me),
 		},
 		papernet.Route{
-			Route:         "/api/bookmarks",
+			Route:         "/bookmarks",
 			Method:        "POST",
 			Renderer:      "JSON",
 			Authenticated: true,

@@ -11,7 +11,7 @@ type TagHandler struct {
 func (h *TagHandler) Routes() []papernet.Route {
 	return []papernet.Route{
 		papernet.Route{
-			Route:         "/api/tags",
+			Route:         "/tags",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: false,

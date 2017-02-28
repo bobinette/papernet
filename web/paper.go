@@ -24,35 +24,35 @@ type PaperHandler struct {
 func (h *PaperHandler) Routes() []papernet.Route {
 	return []papernet.Route{
 		papernet.Route{
-			Route:         "/api/papers",
+			Route:         "/papers",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.List),
 		},
 		papernet.Route{
-			Route:         "/api/papers",
+			Route:         "/papers",
 			Method:        "POST",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.Insert),
 		},
 		papernet.Route{
-			Route:         "/api/papers/:id",
+			Route:         "/papers/:id",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.Get),
 		},
 		papernet.Route{
-			Route:         "/api/papers/:id",
+			Route:         "/papers/:id",
 			Method:        "PUT",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.Update),
 		},
 		papernet.Route{
-			Route:         "/api/papers/:id",
+			Route:         "/papers/:id",
 			Method:        "DELETE",
 			Renderer:      "JSON",
 			Authenticated: true,

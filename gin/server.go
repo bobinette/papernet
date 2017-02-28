@@ -64,7 +64,7 @@ func New(authenticator auth.Authenticator) (papernet.Server, error) {
 	})
 
 	// Ping
-	router.GET("/api/ping", func(c *gin.Context) {
+	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, map[string]string{"data": "ok"})
 	})
 

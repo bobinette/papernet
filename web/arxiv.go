@@ -16,7 +16,7 @@ type ArxivHandler struct {
 func (h *ArxivHandler) Routes() []papernet.Route {
 	return []papernet.Route{
 		papernet.Route{
-			Route:         "/api/arxiv",
+			Route:         "/arxiv",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,
