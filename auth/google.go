@@ -102,8 +102,9 @@ func (c *GoogleClient) userInfo(tok *oauth2.Token) (*papernet.User, error) {
 	defer res.Body.Close()
 
 	var user struct {
-		Sub  string `json:"sub"`
-		Name string `json:"name"`
+		Sub   string `json:"sub"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
 	}
 	err = decoder.Decode(&user)
 	if err != nil {
@@ -111,8 +112,9 @@ func (c *GoogleClient) userInfo(tok *oauth2.Token) (*papernet.User, error) {
 	}
 
 	return &papernet.User{
-		ID:   user.Sub,
-		Name: user.Name,
+		ID:    user.Sub,
+		Name:  user.Name,
+		Email: user.Email,
 	}, nil
 }
 
