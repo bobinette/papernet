@@ -75,9 +75,11 @@ func (h *UserHandler) Google(req *Request) (interface{}, error) {
 	if dbUser, err := h.Store.Get(user.ID); err != nil {
 		return nil, errors.New("error checking user in db", errors.WithCause(err))
 	} else {
-		dbUser.Name = dbUser.Name
-		dbUser.Email = dbUser.Email
-		err = h.Store.Upsert(dbUser)
+		dbUser.Name = user.Name
+		dbUser.Email = user.Email
+
+		user = dbUser
+		err = h.Store.Upsert(user)
 		if err != nil {
 			return nil, errors.New("error saving user", errors.WithCause(err))
 		}
