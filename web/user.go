@@ -11,35 +11,35 @@ import (
 
 type UserHandler struct {
 	GoogleClient *auth.GoogleClient
-	Store        papernet.UserRepository
+	Store        papernet.UserStore
 	Encoder      auth.TokenEncoder
 }
 
-func (h *UserHandler) Routes() []papernet.Route {
-	return []papernet.Route{
-		papernet.Route{
-			Route:         "/auth",
+func (h *UserHandler) Routes() []papernet.EndPoint {
+	return []papernet.EndPoint{
+		papernet.EndPoint{
+			URL:           "/auth",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: false,
 			HandlerFunc:   WrapRequest(h.AuthURL),
 		},
-		papernet.Route{
-			Route:         "/auth/google",
+		papernet.EndPoint{
+			URL:           "/auth/google",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: false,
 			HandlerFunc:   WrapRequest(h.Google),
 		},
-		papernet.Route{
-			Route:         "/me",
+		papernet.EndPoint{
+			URL:           "/me",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.Me),
 		},
-		papernet.Route{
-			Route:         "/bookmarks",
+		papernet.EndPoint{
+			URL:           "/bookmarks",
 			Method:        "POST",
 			Renderer:      "JSON",
 			Authenticated: true,

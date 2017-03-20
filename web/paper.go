@@ -12,47 +12,51 @@ import (
 	"github.com/bobinette/papernet/errors"
 )
 
+func paperNotFound(id int) error {
+	return errors.New(fmt.Sprintf("<Paper %d> not found", id), errors.WithCode(http.StatusNotFound))
+}
+
 type PaperHandler struct {
 	Store papernet.PaperStore
 	Index papernet.PaperIndex
 
 	TagIndex papernet.TagIndex
 
-	UserStore papernet.UserRepository
+	UserStore papernet.UserStore
 }
 
-func (h *PaperHandler) Routes() []papernet.Route {
-	return []papernet.Route{
-		papernet.Route{
-			Route:         "/papers",
+func (h *PaperHandler) Routes() []papernet.EndPoint {
+	return []papernet.EndPoint{
+		papernet.EndPoint{
+			URL:           "/papers",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.List),
 		},
-		papernet.Route{
-			Route:         "/papers",
+		papernet.EndPoint{
+			URL:           "/papers",
 			Method:        "POST",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.Insert),
 		},
-		papernet.Route{
-			Route:         "/papers/:id",
+		papernet.EndPoint{
+			URL:           "/papers/:id",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.Get),
 		},
-		papernet.Route{
-			Route:         "/papers/:id",
+		papernet.EndPoint{
+			URL:           "/papers/:id",
 			Method:        "PUT",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.Update),
 		},
-		papernet.Route{
-			Route:         "/papers/:id",
+		papernet.EndPoint{
+			URL:           "/papers/:id",
 			Method:        "DELETE",
 			Renderer:      "JSON",
 			Authenticated: true,
@@ -197,7 +201,7 @@ func (h *PaperHandler) Get(req *Request) (interface{}, error) {
 	}
 
 	if !isIn(id, user.CanSee) {
-		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
+		return nil, paperNotFound(id)
 	}
 
 	papers, err := h.Store.Get(id)
@@ -207,7 +211,7 @@ func (h *PaperHandler) Get(req *Request) (interface{}, error) {
 			errors.WithCause(err),
 		)
 	} else if len(papers) == 0 {
-		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
+		return nil, paperNotFound(id)
 	}
 
 	return map[string]interface{}{
@@ -241,7 +245,7 @@ func (h *PaperHandler) Update(req *Request) (interface{}, error) {
 			errors.WithCause(err),
 		)
 	} else if len(papers) == 0 {
-		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
+		return nil, paperNotFound(id)
 	}
 
 	if paper.ID != id {
@@ -299,7 +303,7 @@ func (h *PaperHandler) Delete(req *Request) (interface{}, error) {
 			errors.WithCause(err),
 		)
 	} else if len(papers) == 0 {
-		return nil, errors.New(fmt.Sprintf("Paper %d not found", id), errors.WithCode(http.StatusNotFound))
+		return nil, paperNotFound(id)
 	}
 
 	if !isIn(id, user.CanEdit) {

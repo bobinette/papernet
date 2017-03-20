@@ -29,10 +29,14 @@ func (r *Request) WithContext(ctx context.Context) *Request {
 // HandlerFunc defines the signature of a web endpoint
 type HandlerFunc func(*Request) (interface{}, error)
 
-type Route struct {
-	// Route defines the url of the end point. It can contain parameters,
+// EndPoint defines
+type EndPoint struct {
+	// Name uniquely identifies the end point
+	Name string
+
+	// URL defines the url of the end point. It can contain parameters,
 	// the form depending on the framework used for implementation
-	Route string
+	URL string
 
 	// Method of the endpoint. Typically GET, PUT, POST, DELETE, etc.
 	Method string
@@ -52,6 +56,6 @@ type Route struct {
 }
 
 type Server interface {
-	http.Handler
-	Register(Route) error
+	Register(EndPoint) error
+	Start() error
 }

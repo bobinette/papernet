@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
 
 	"github.com/BurntSushi/toml"
 
@@ -55,7 +54,8 @@ func main() {
 
 	paperStore := bolt.PaperStore{Driver: &driver}
 	tagIndex := bolt.TagIndex{Driver: &driver}
-	userRepo := bolt.UserRepository{Driver: &driver}
+	userStore := bolt.UserStore{Driver: &driver}
+	teamStore := bolt.TeamStore{Driver: &driver}
 
 	// Create index
 	index := bleve.PaperIndex{}
@@ -89,11 +89,12 @@ func main() {
 	encoder := auth.EncodeDecoder{Key: key.Key}
 	authenticator := auth.Authenticator{
 		Decoder: &encoder,
-		Store:   &userRepo,
+		Store:   &userStore,
 	}
 
 	// Start web server
-	server, err := gin.New(authenticator)
+	addr := ":1705"
+	server, err := gin.New(addr, authenticator)
 	if err != nil {
 		log.Fatalln("could not start server:", err)
 	}
@@ -103,7 +104,7 @@ func main() {
 		Store:     &paperStore,
 		Index:     &index,
 		TagIndex:  &tagIndex,
-		UserStore: &userRepo,
+		UserStore: &userStore,
 	}
 	for _, route := range paperHandler.Routes() {
 		server.Register(route)
@@ -113,7 +114,7 @@ func main() {
 	userHandler := &web.UserHandler{
 		Encoder:      &encoder,
 		GoogleClient: googleOAuthClient,
-		Store:        &userRepo,
+		Store:        &userStore,
 	}
 	for _, route := range userHandler.Routes() {
 		server.Register(route)
@@ -144,7 +145,16 @@ func main() {
 		server.Register(route)
 	}
 
-	addr := ":1705"
+	// Import handler
+	teamHandler := &web.TeamHandler{
+		Store:      &teamStore,
+		PaperStore: &paperStore,
+		UserStore:  &userStore,
+	}
+	for _, route := range teamHandler.Routes() {
+		server.Register(route)
+	}
+
 	log.Println("server started, listening on", addr)
-	log.Fatal(http.ListenAndServe(addr, server))
+	log.Fatal(server.Start())
 }

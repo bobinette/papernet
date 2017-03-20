@@ -8,10 +8,10 @@ type ImportHandler struct {
 	Importer papernet.Importer
 }
 
-func (h *ImportHandler) Routes() []papernet.Route {
-	return []papernet.Route{
-		papernet.Route{
-			Route:         "/papernet/imports",
+func (h *ImportHandler) Routes() []papernet.EndPoint {
+	return []papernet.EndPoint{
+		papernet.EndPoint{
+			URL:           "/papernet/imports",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: false,

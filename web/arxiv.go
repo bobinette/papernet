@@ -13,10 +13,10 @@ type ArxivHandler struct {
 	Index papernet.PaperIndex
 }
 
-func (h *ArxivHandler) Routes() []papernet.Route {
-	return []papernet.Route{
-		papernet.Route{
-			Route:         "/arxiv",
+func (h *ArxivHandler) Routes() []papernet.EndPoint {
+	return []papernet.EndPoint{
+		papernet.EndPoint{
+			URL:           "/arxiv",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,

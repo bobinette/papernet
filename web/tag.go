@@ -8,10 +8,10 @@ type TagHandler struct {
 	Searcher papernet.TagIndex
 }
 
-func (h *TagHandler) Routes() []papernet.Route {
-	return []papernet.Route{
-		papernet.Route{
-			Route:         "/tags",
+func (h *TagHandler) Routes() []papernet.EndPoint {
+	return []papernet.EndPoint{
+		papernet.EndPoint{
+			URL:           "/tags",
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: false,

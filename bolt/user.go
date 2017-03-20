@@ -10,11 +10,11 @@ import (
 
 var userBucket = []byte("users")
 
-type UserRepository struct {
+type UserStore struct {
 	Driver *Driver
 }
 
-func (r *UserRepository) Get(id string) (*papernet.User, error) {
+func (r *UserStore) Get(id string) (*papernet.User, error) {
 	var user *papernet.User
 	err := r.Driver.store.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(userBucket)
@@ -34,7 +34,7 @@ func (r *UserRepository) Get(id string) (*papernet.User, error) {
 	return user, nil
 }
 
-func (r *UserRepository) Upsert(user *papernet.User) error {
+func (r *UserStore) Upsert(user *papernet.User) error {
 	return r.Driver.store.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(userBucket)
 
@@ -47,7 +47,7 @@ func (r *UserRepository) Upsert(user *papernet.User) error {
 	})
 }
 
-func (s *UserRepository) List() ([]*papernet.User, error) {
+func (s *UserStore) List() ([]*papernet.User, error) {
 	var users []*papernet.User
 
 	err := s.Driver.store.View(func(tx *bolt.Tx) error {

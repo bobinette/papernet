@@ -4,7 +4,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -33,7 +32,7 @@ func init() {
 	// Check if arxiv URL is valid
 	_, err := url.Parse(arxivURL)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 }
 

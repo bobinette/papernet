@@ -14,6 +14,7 @@ type Server struct {
 	*gin.Engine
 
 	Authenticator auth.Authenticator
+	Addr          string
 }
 
 func JSONRenderer(next papernet.HandlerFunc) gin.HandlerFunc {
@@ -43,7 +44,7 @@ func JSONRenderer(next papernet.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
-func New(authenticator auth.Authenticator) (papernet.Server, error) {
+func New(addr string, authenticator auth.Authenticator) (papernet.Server, error) {
 	router := gin.Default()
 
 	// CORS
@@ -60,7 +61,7 @@ func New(authenticator auth.Authenticator) (papernet.Server, error) {
 
 	// Unknown route
 	router.NoRoute(func(c *gin.Context) {
-		c.JSON(404, gin.H{"message": "Page not found"})
+		c.JSON(404, gin.H{"message": "Route not found"})
 	})
 
 	// Ping
@@ -69,16 +70,21 @@ func New(authenticator auth.Authenticator) (papernet.Server, error) {
 	})
 
 	return &Server{
-		router,
-		authenticator,
+		Engine:        router,
+		Authenticator: authenticator,
+		Addr:          addr,
 	}, nil
 }
 
-func (s *Server) Register(route papernet.Route) error {
+func (s *Server) Register(route papernet.EndPoint) error {
 	h := route.HandlerFunc
 	if route.Authenticated {
 		h = s.Authenticator.Authenticate(h)
 	}
-	s.Handle(route.Method, route.Route, JSONRenderer(h))
+	s.Handle(route.Method, route.URL, JSONRenderer(h))
 	return nil
+}
+
+func (s *Server) Start() error {
+	return http.ListenAndServe(s.Addr, s)
 }

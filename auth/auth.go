@@ -11,7 +11,7 @@ import (
 
 type Authenticator struct {
 	Decoder TokenDecoder
-	Store   papernet.UserRepository
+	Store   papernet.UserStore
 }
 
 func (a *Authenticator) Authenticate(next papernet.HandlerFunc) papernet.HandlerFunc {

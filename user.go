@@ -15,7 +15,34 @@ type User struct {
 	CanEdit []int `json:"canEdit"`
 }
 
-type UserRepository interface {
+type UserStore interface {
 	Get(string) (*User, error)
 	Upsert(*User) error
+}
+
+type PermissionManager interface {
+	UserCanSee(string, int) (bool, error)
+	UserCanEdit(string, int) (bool, error)
+
+	AllowUserToSee(string, int) error
+	AllowUserToEdit(string, int) error
+}
+
+type Team struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+
+	Admins  []string `json:"admins"`
+	Members []string `json:"members"`
+
+	CanSee  []int `json:"canSee"`
+	CanEdit []int `json:"canEdit"`
+}
+
+type TeamStore interface {
+	Get(int) (Team, error)
+	Upsert(*Team) error
+	Delete(int) error
+
+	List(userID string) ([]Team, error)
 }
