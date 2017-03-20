@@ -70,3 +70,31 @@ func (s *UserStore) List() ([]*papernet.User, error) {
 
 	return users, nil
 }
+
+func (s *UserStore) Search(email string) (*papernet.User, error) {
+	var user *papernet.User
+
+	err := s.Driver.store.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(userBucket)
+		c := bucket.Cursor()
+
+		for id, data := c.First(); id != nil; id, data = c.Next() {
+			var u papernet.User
+			if err := json.Unmarshal(data, &u); err != nil {
+				return err
+			}
+
+			if u.Email == email {
+				user = &u
+				return nil
+			}
+
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}

@@ -11,6 +11,10 @@ import (
 	"github.com/bobinette/papernet/errors"
 )
 
+func errTeamNotFound(id int) error {
+	return errors.New(fmt.Sprintf("<Team %d> not found", id), errors.WithCode(http.StatusNotFound))
+}
+
 type TeamHandler struct {
 	Store      papernet.TeamStore
 	PaperStore papernet.PaperStore
@@ -25,7 +29,7 @@ func (h *TeamHandler) Routes() []papernet.EndPoint {
 			Method:        "POST",
 			Renderer:      "JSON",
 			Authenticated: true,
-			HandlerFunc:   WrapRequest(h.Create),
+			HandlerFunc:   WrapRequest(h.create),
 		},
 		papernet.EndPoint{
 			Name:          "team.list",
@@ -41,15 +45,7 @@ func (h *TeamHandler) Routes() []papernet.EndPoint {
 			Method:        "GET",
 			Renderer:      "JSON",
 			Authenticated: true,
-			HandlerFunc:   WrapRequest(h.Get),
-		},
-		papernet.EndPoint{
-			Name:          "team.update",
-			URL:           "/teams/:id",
-			Method:        "PUT",
-			Renderer:      "JSON",
-			Authenticated: true,
-			HandlerFunc:   WrapRequest(h.Update),
+			HandlerFunc:   WrapRequest(h.get),
 		},
 		papernet.EndPoint{
 			Name:          "team.delete",
@@ -60,12 +56,20 @@ func (h *TeamHandler) Routes() []papernet.EndPoint {
 			HandlerFunc:   WrapRequest(h.delete),
 		},
 		papernet.EndPoint{
-			Name:          "team.shared",
+			Name:          "team.share",
 			URL:           "/teams/:id/share",
 			Method:        "POST",
 			Renderer:      "JSON",
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.share),
+		},
+		papernet.EndPoint{
+			Name:          "team.invite",
+			URL:           "/teams/:id/invite",
+			Method:        "POST",
+			Renderer:      "JSON",
+			Authenticated: true,
+			HandlerFunc:   WrapRequest(h.invite),
 		},
 	}
 }
@@ -91,6 +95,7 @@ func (h *TeamHandler) share(req *Request) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	team, err := h.Store.Get(id)
 	if err != nil {
 		return nil, err
@@ -99,6 +104,9 @@ func (h *TeamHandler) share(req *Request) (interface{}, error) {
 	}
 
 	// Check if user is a member. If not -> 404
+	if !isStringIn(user.ID, team.Members) {
+		return nil, errTeamNotFound(team.ID)
+	}
 
 	papers, err := h.PaperStore.Get(body.ID)
 	if err != nil {
@@ -208,8 +216,19 @@ func (h *TeamHandler) delete(req *Request) (interface{}, error) {
 		return nil, errors.New(fmt.Sprintf("<Team %d> not found", id), errors.WithCode(http.StatusNotFound))
 	}
 
+	user, err := auth.UserFromContext(req.Context())
+	if err != nil {
+		return nil, err
+	}
+
 	// Check if user is a member. If not -> 404
+	if !isStringIn(user.ID, team.Members) {
+		return nil, errTeamNotFound(team.ID)
+	}
 	// Check if user is an admin. If not -> 403
+	if !isStringIn(user.ID, team.Admins) {
+		return nil, errors.New("only team admins can delete a team", errors.WithCode(http.StatusForbidden))
+	}
 
 	err = h.Store.Delete(id)
 	if err != nil {
@@ -221,11 +240,16 @@ func (h *TeamHandler) delete(req *Request) (interface{}, error) {
 	}, nil
 }
 
-func (h *TeamHandler) Get(req *Request) (interface{}, error) {
+func (h *TeamHandler) get(req *Request) (interface{}, error) {
 	idStr := req.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return nil, errors.New("id should be an int", errors.WithCause(err), errors.WithCode(http.StatusBadRequest))
+	}
+
+	user, err := auth.UserFromContext(req.Context())
+	if err != nil {
+		return nil, err
 	}
 
 	team, err := h.Store.Get(id)
@@ -236,13 +260,16 @@ func (h *TeamHandler) Get(req *Request) (interface{}, error) {
 	}
 
 	// Check if user is a member. If not -> 404
+	if !isStringIn(user.ID, team.Members) {
+		return nil, errTeamNotFound(id)
+	}
 
 	return map[string]interface{}{
 		"data": team,
 	}, nil
 }
 
-func (h *TeamHandler) Create(req *Request) (interface{}, error) {
+func (h *TeamHandler) create(req *Request) (interface{}, error) {
 	user, err := auth.UserFromContext(req.Context())
 	if err != nil {
 		return nil, err
@@ -276,30 +303,68 @@ func (h *TeamHandler) Create(req *Request) (interface{}, error) {
 	}, nil
 }
 
-func (h *TeamHandler) Update(req *Request) (interface{}, error) {
+func (h *TeamHandler) invite(req *Request) (interface{}, error) {
+	defer req.Body.Close()
+
 	idStr := req.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return nil, errors.New("id should be an int", errors.WithCause(err), errors.WithCode(http.StatusBadRequest))
 	}
 
-	team, err := h.Store.Get(id)
+	user, err := auth.UserFromContext(req.Context())
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if user is a member. If not -> 404
-	// Check if user is admin. If not -> 403
+	team, err := h.Store.Get(id)
+	if err != nil {
+		return nil, err
+	} else if team.ID == 0 { // default
+		return nil, errors.New(fmt.Sprintf("<Team %d> not found", id), errors.WithCode(http.StatusNotFound))
+	}
 
-	body := req.Body
-	defer body.Close()
-	err = json.NewDecoder(body).Decode(&team)
+	if !isStringIn(user.ID, team.Admins) {
+		return nil, errors.New("only team admins can invite new users", errors.WithCode(http.StatusForbidden))
+	}
+
+	body := struct {
+		Email string
+	}{}
+	err = json.NewDecoder(req.Body).Decode(&body)
 	if err != nil {
 		return nil, errors.New("error decoding json body", errors.WithCause(err))
 	}
 
-	if err := h.Store.Upsert(&team); err != nil {
+	invidedUser, err := h.UserStore.Search(body.Email)
+	if err != nil {
 		return nil, err
+	}
+	if invidedUser == nil {
+		return nil, errors.New(
+			fmt.Sprintf("could not find user with email %s", body.Email),
+			errors.WithCode(http.StatusNotFound),
+		)
+	}
+
+	if !isStringIn(invidedUser.ID, team.Members) {
+		team.Members = append(team.Members, invidedUser.ID)
+		if err := h.Store.Upsert(&team); err != nil {
+			return nil, err
+		}
+	}
+
+	// Add papers to user
+	for _, pID := range team.CanSee {
+		if !isIn(pID, invidedUser.CanSee) {
+			invidedUser.CanSee = append(invidedUser.CanSee, pID)
+		}
+	}
+
+	for _, pID := range team.CanEdit {
+		if !isIn(pID, invidedUser.CanEdit) {
+			invidedUser.CanEdit = append(invidedUser.CanEdit, pID)
+		}
 	}
 
 	return map[string]interface{}{

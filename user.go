@@ -18,6 +18,8 @@ type User struct {
 type UserStore interface {
 	Get(string) (*User, error)
 	Upsert(*User) error
+
+	Search(email string) (*User, error)
 }
 
 type PermissionManager interface {
