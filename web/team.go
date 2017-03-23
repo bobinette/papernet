@@ -181,7 +181,13 @@ func (h *TeamHandler) share(req *Request) (interface{}, error) {
 		}
 	}
 
-	return team, nil
+	formatted, err := h.formatTeam(team)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"data": formatted,
+	}, nil
 }
 
 func (h *TeamHandler) list(req *Request) (interface{}, error) {
@@ -195,8 +201,15 @@ func (h *TeamHandler) list(req *Request) (interface{}, error) {
 		return nil, err
 	}
 
+	formattedTeams := make([]formattedTeam, len(teams))
+	for i, team := range teams {
+		formattedTeams[i], err = h.formatTeam(team)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return map[string]interface{}{
-		"data": teams,
+		"data": formattedTeams,
 	}, nil
 }
 
@@ -264,8 +277,12 @@ func (h *TeamHandler) get(req *Request) (interface{}, error) {
 		return nil, errTeamNotFound(id)
 	}
 
+	formatted, err := h.formatTeam(team)
+	if err != nil {
+		return nil, err
+	}
 	return map[string]interface{}{
-		"data": team,
+		"data": formatted,
 	}, nil
 }
 
@@ -298,8 +315,12 @@ func (h *TeamHandler) create(req *Request) (interface{}, error) {
 		return nil, err
 	}
 
+	formatted, err := h.formatTeam(team)
+	if err != nil {
+		return nil, err
+	}
 	return map[string]interface{}{
-		"data": team,
+		"data": formatted,
 	}, nil
 }
 
@@ -367,7 +388,56 @@ func (h *TeamHandler) invite(req *Request) (interface{}, error) {
 		}
 	}
 
+	formatted, err := h.formatTeam(team)
+	if err != nil {
+		return nil, err
+	}
 	return map[string]interface{}{
-		"data": team,
+		"data": formatted,
 	}, nil
+}
+
+type teamMember struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Admin bool   `json:"admin"`
+}
+
+type formattedTeam struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+
+	Members []teamMember `json:"members"`
+
+	CanSee  []int `json:"canSee"`
+	CanEdit []int `json:"canEdit"`
+}
+
+func (h *TeamHandler) formatTeam(team papernet.Team) (formattedTeam, error) {
+	formatted := formattedTeam{
+		ID:   team.ID,
+		Name: team.Name,
+
+		Members: make([]teamMember, len(team.Members)),
+
+		CanSee:  team.CanSee,
+		CanEdit: team.CanEdit,
+	}
+
+	for i, memberID := range team.Members {
+		member, err := h.UserStore.Get(memberID)
+		if err != nil {
+			return formattedTeam{}, errors.New("error getting member")
+		}
+
+		formatted.Members[i] = teamMember{
+			ID:    member.ID,
+			Name:  member.Name,
+			Email: member.Email,
+			Admin: isStringIn(member.ID, team.Admins),
+		}
+	}
+
+	return formatted, nil
 }
