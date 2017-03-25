@@ -71,6 +71,14 @@ func (h *TeamHandler) Routes() []papernet.EndPoint {
 			Authenticated: true,
 			HandlerFunc:   WrapRequest(h.invite),
 		},
+		papernet.EndPoint{
+			Name:          "team.kick",
+			URL:           "/teams/:id/kick",
+			Method:        "POST",
+			Renderer:      "JSON",
+			Authenticated: true,
+			HandlerFunc:   WrapRequest(h.kick),
+		},
 	}
 }
 
@@ -350,7 +358,7 @@ func (h *TeamHandler) invite(req *Request) (interface{}, error) {
 	}
 
 	body := struct {
-		Email string
+		Email string `json:"email"`
 	}{}
 	err = json.NewDecoder(req.Body).Decode(&body)
 	if err != nil {
@@ -386,6 +394,80 @@ func (h *TeamHandler) invite(req *Request) (interface{}, error) {
 		if !isIn(pID, invidedUser.CanEdit) {
 			invidedUser.CanEdit = append(invidedUser.CanEdit, pID)
 		}
+	}
+
+	formatted, err := h.formatTeam(team)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"data": formatted,
+	}, nil
+}
+
+func (h *TeamHandler) kick(req *Request) (interface{}, error) {
+	defer req.Body.Close()
+
+	idStr := req.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return nil, errors.New("id should be an int", errors.WithCause(err), errors.WithCode(http.StatusBadRequest))
+	}
+
+	user, err := auth.UserFromContext(req.Context())
+	if err != nil {
+		return nil, err
+	}
+
+	team, err := h.Store.Get(id)
+	if err != nil {
+		return nil, err
+	} else if team.ID == 0 { // default
+		return nil, errors.New(fmt.Sprintf("<Team %d> not found", id), errors.WithCode(http.StatusNotFound))
+	}
+
+	if !isStringIn(user.ID, team.Admins) {
+		return nil, errors.New("only team admins can kick members", errors.WithCode(http.StatusForbidden))
+	}
+
+	body := struct {
+		UserID string `json:"userID"`
+	}{}
+	err = json.NewDecoder(req.Body).Decode(&body)
+	if err != nil {
+		return nil, errors.New("error decoding json body", errors.WithCause(err))
+	}
+
+	if isStringIn(body.UserID, team.Members) {
+		members := make([]string, len(team.Members)-1)
+		offset := 0
+		for i, memberID := range team.Members {
+			if memberID == body.UserID {
+				offset = 1
+				continue
+			}
+			members[i-offset] = memberID
+		}
+
+		team.Members = members
+	}
+
+	if isStringIn(body.UserID, team.Admins) {
+		admins := make([]string, len(team.Admins)-1)
+		offset := 0
+		for i, adminID := range team.Admins {
+			if adminID == body.UserID {
+				offset = 1
+				continue
+			}
+			admins[i-offset] = adminID
+		}
+
+		team.Admins = admins
+	}
+
+	if err := h.Store.Upsert(&team); err != nil {
+		return nil, err
 	}
 
 	formatted, err := h.formatTeam(team)
