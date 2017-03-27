@@ -72,17 +72,22 @@ func (h *UserHandler) Google(req *Request) (interface{}, error) {
 		return nil, errors.New("error exchanging token", errors.WithCause(err))
 	}
 
-	if dbUser, err := h.Store.Get(user.ID); err != nil {
+	dbUser, err := h.Store.Get(user.ID)
+	if err != nil {
 		return nil, errors.New("error checking user in db", errors.WithCause(err))
-	} else {
-		dbUser.Name = user.Name
-		dbUser.Email = user.Email
-
-		user = dbUser
-		err = h.Store.Upsert(user)
-		if err != nil {
-			return nil, errors.New("error saving user", errors.WithCause(err))
+	} else if dbUser == nil {
+		dbUser = &papernet.User{
+			ID: user.ID,
 		}
+	}
+
+	dbUser.Name = user.Name
+	dbUser.Email = user.Email
+
+	user = dbUser
+	err = h.Store.Upsert(user)
+	if err != nil {
+		return nil, errors.New("error saving user", errors.WithCause(err))
 	}
 
 	token, err := h.Encoder.Encode(user.ID)
