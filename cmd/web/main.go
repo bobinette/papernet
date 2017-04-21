@@ -11,6 +11,7 @@ import (
 
 	"github.com/bobinette/papernet"
 	"github.com/bobinette/papernet/auth"
+	"github.com/bobinette/papernet/auth/cayley"
 	"github.com/bobinette/papernet/bleve"
 	"github.com/bobinette/papernet/bolt"
 	"github.com/bobinette/papernet/gin"
@@ -154,6 +155,22 @@ func main() {
 	for _, route := range teamHandler.Routes() {
 		server.Register(route)
 	}
+
+	// *************************************************
+	// Migration to go-kit
+	// *************************************************
+
+	// Auth service
+	userRepository, err := cayley.New("data/user.graph")
+	if err != nil {
+		log.Fatalln("could not create user graph:", err)
+	}
+	authHandler := auth.NewService(userRepository)
+	auth.RegisterHTTPRoutes(server, authHandler)
+
+	// *************************************************
+	// Start server
+	// *************************************************
 
 	log.Println("server started, listening on", addr)
 	log.Fatal(server.Start())
