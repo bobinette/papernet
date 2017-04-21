@@ -163,8 +163,8 @@ func (s *PaperIndex) searchTitleQ(queryString string) query.Query {
 	conjuncts := make([]query.Query, len(tokens))
 	for i, token := range tokens {
 		conjuncts[i] = &query.PrefixQuery{
-			Prefix: string(token.Term),
-			Field:  "title",
+			Prefix:   string(token.Term),
+			FieldVal: "title",
 		}
 	}
 
@@ -181,8 +181,8 @@ func (s *PaperIndex) searchTagsQ(queryString string) query.Query {
 	conjuncts := make([]query.Query, len(tokens))
 	for i, token := range tokens {
 		conjuncts[i] = &query.PrefixQuery{
-			Prefix: string(token.Term),
-			Field:  "tags",
+			Prefix:   string(token.Term),
+			FieldVal: "tags",
 		}
 	}
 
@@ -199,8 +199,8 @@ func (s *PaperIndex) searchAuthorsQ(queryString string) query.Query {
 	conjuncts := make([]query.Query, len(tokens))
 	for i, token := range tokens {
 		conjuncts[i] = &query.PrefixQuery{
-			Prefix: string(token.Term),
-			Field:  "authors",
+			Prefix:   string(token.Term),
+			FieldVal: "authors",
 		}
 	}
 
@@ -223,8 +223,8 @@ func (*PaperIndex) searchTags(tags []string) query.Query {
 	conjuncts := make([]query.Query, len(tags))
 	for i, tag := range tags {
 		conjuncts[i] = &query.MatchQuery{
-			Match: tag,
-			Field: "tags_keyword",
+			Match:    tag,
+			FieldVal: "tags_keyword",
 		}
 	}
 
@@ -239,8 +239,8 @@ func (*PaperIndex) termsQuery(terms []string, field string) query.Query {
 	ors := make([]query.Query, len(terms))
 	for i, term := range terms {
 		ors[i] = &query.TermQuery{
-			Term:  term,
-			Field: field,
+			Term:     term,
+			FieldVal: field,
 		}
 	}
 
