@@ -20,6 +20,10 @@ type UserRepository struct {
 
 var (
 	maxIDNode = quad.Raw("maxID")
+	maxIDEdge = quad.Raw("value")
+
+	allUsersNode = quad.Raw("allUsers")
+	allUsersEdge = quad.Raw("user")
 )
 
 // New creates and new user repository based on a cayley graph db
@@ -41,6 +45,10 @@ func New(dbpath string) (*UserRepository, error) {
 	}, nil
 }
 
+func (r *UserRepository) Close() error {
+	return r.store.Close()
+}
+
 // Get retrieves a user from its id.
 func (r *UserRepository) Get(id int) (auth.User, error) {
 	startingPoint := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("user:%d", id)))
@@ -53,10 +61,40 @@ func (r *UserRepository) GetByGoogleID(googleID string) (auth.User, error) {
 	return r.getFromStartingPoint(startingPoint)
 }
 
+// List retrieves all the users in the database
+func (r *UserRepository) List() ([]auth.User, error) {
+	p := cayley.StartPath(r.store, allUsersNode).Out(allUsersEdge)
+
+	it := r.buildIterator(p)
+	defer it.Close()
+
+	users := make([]auth.User, 0)
+	for it.Next() {
+
+		token := it.Result()                // get a ref to a node (backend-specific)
+		value := r.store.NameOf(token)      // get the value in the node (RDF)
+		nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+		if nativeValue == nil {
+			continue
+		}
+
+		user := auth.User{}
+		_, idStr := splitIRI(nativeValue.(quad.IRI))
+		userID, err := strconv.Atoi(idStr)
+		if err != nil {
+			return nil, err
+		}
+		user.ID = userID
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
 // Upsert updates the user passed as argument in the database. If the user has no ID (i.e. user.ID == 0),
 // this method sets the user ID before inserting.
 func (r *UserRepository) Upsert(user *auth.User) error {
-	isNew := false
 	if user.ID == 0 {
 		id, err := r.incrementMaxID()
 		if err != nil {
@@ -64,13 +102,12 @@ func (r *UserRepository) Upsert(user *auth.User) error {
 		}
 
 		user.ID = id
-		isNew = true
 	}
 
-	replace := func(tx *graph.Transaction, predicate, oldValue, newValue string) {
+	replace := func(tx *graph.Transaction, userID int, predicate, oldValue, newValue string) {
 		// Remove old value
 		removeQuad := quad.Make(
-			quad.IRI(fmt.Sprintf("user:%d", user.ID)),
+			quad.IRI(fmt.Sprintf("user:%d", userID)),
 			quad.Raw(predicate),
 			quad.Raw(oldValue),
 			"",
@@ -79,7 +116,7 @@ func (r *UserRepository) Upsert(user *auth.User) error {
 
 		// Set new value
 		addQuad := quad.Make(
-			quad.IRI(fmt.Sprintf("user:%d", user.ID)),
+			quad.IRI(fmt.Sprintf("user:%d", userID)),
 			quad.Raw(predicate),
 			quad.Raw(newValue),
 			"",
@@ -94,11 +131,53 @@ func (r *UserRepository) Upsert(user *auth.User) error {
 	}
 	tx := graph.NewTransaction()
 
-	replace(tx, "name", oldUser.Name, user.Name)
-	replace(tx, "email", oldUser.Email, user.Email)
-	replace(tx, "googleID", oldUser.GoogleID, user.GoogleID)
+	replace(tx, user.ID, "name", oldUser.Name, user.Name)
+	replace(tx, user.ID, "email", oldUser.Email, user.Email)
+	replace(tx, user.ID, "googleID", oldUser.GoogleID, user.GoogleID)
+	replace(tx, user.ID, "isAdmin", strconv.FormatBool(oldUser.IsAdmin), strconv.FormatBool(user.IsAdmin))
 
-	return r.store.ApplyDeltas(tx.Deltas, graph.IgnoreOpts{IgnoreMissing: isNew})
+	// Add user to all users
+	tx.AddQuad(quad.Make(allUsersNode, allUsersEdge, quad.IRI(fmt.Sprintf("user:%d", user.ID)), ""))
+
+	return r.store.ApplyDeltas(tx.Deltas, graph.IgnoreOpts{IgnoreMissing: true, IgnoreDup: true})
+}
+
+// Delete removes a user from the database based on its id. The first return argument is whether or not
+// the user defined by id was actually removed from the database. In the case no user could be found
+// for id, Delete returns (false, nil).
+func (r *UserRepository) Delete(id int) (bool, error) {
+	user, err := r.Get(id)
+	if err != nil {
+		return false, err
+	} else if user.ID == 0 {
+		// User does not exist
+		return false, nil
+	}
+
+	deleteQuad := func(tx *graph.Transaction, userID int, predicate, value string) {
+		removeQuad := quad.Make(
+			quad.IRI(fmt.Sprintf("user:%d", userID)),
+			quad.Raw(predicate),
+			quad.Raw(value),
+			"",
+		)
+		tx.RemoveQuad(removeQuad)
+	}
+
+	tx := graph.NewTransaction()
+
+	deleteQuad(tx, user.ID, "name", user.Name)
+	deleteQuad(tx, user.ID, "email", user.Email)
+	deleteQuad(tx, user.ID, "googleID", user.GoogleID)
+	deleteQuad(tx, user.ID, "isAdmin", strconv.FormatBool(user.IsAdmin))
+
+	tx.RemoveQuad(quad.Make(allUsersNode, allUsersEdge, quad.IRI(fmt.Sprintf("user:%d", user.ID)), ""))
+
+	err = r.store.ApplyDeltas(tx.Deltas, graph.IgnoreOpts{IgnoreMissing: true})
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // -----------------------------------------------------------------------------
@@ -116,6 +195,9 @@ func (r *UserRepository) getFromStartingPoint(startingPoint *path.Path) (auth.Us
 	)).Or(startingPoint.Clone().OutWithTags(
 		[]string{"googleID"},
 		quad.Raw("googleID"),
+	)).Or(startingPoint.Clone().OutWithTags(
+		[]string{"isAdmin"},
+		quad.Raw("isAdmin"),
 	))
 
 	it := r.buildIterator(p)
@@ -123,10 +205,13 @@ func (r *UserRepository) getFromStartingPoint(startingPoint *path.Path) (auth.Us
 
 	user := auth.User{}
 	for it.Next() {
-
 		token := it.Result()                // get a ref to a node (backend-specific)
 		value := r.store.NameOf(token)      // get the value in the node (RDF)
 		nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+		if nativeValue == nil {
+			continue
+		}
 
 		m := make(map[string]graph.Value)
 		it.TagResults(m)
@@ -144,6 +229,8 @@ func (r *UserRepository) getFromStartingPoint(startingPoint *path.Path) (auth.Us
 			user.Email = string(nativeValue.(quad.Raw))
 		case "googleID":
 			user.GoogleID = string(nativeValue.(quad.Raw))
+		case "isAdmin":
+			user.IsAdmin = string(nativeValue.(quad.Raw)) == "true"
 		case "userID":
 			_, idStr := splitIRI(nativeValue.(quad.IRI))
 			userID, err := strconv.Atoi(idStr)
@@ -151,6 +238,8 @@ func (r *UserRepository) getFromStartingPoint(startingPoint *path.Path) (auth.Us
 				return auth.User{}, err
 			}
 			user.ID = userID
+		default:
+			// Do nothing
 		}
 	}
 
@@ -158,7 +247,7 @@ func (r *UserRepository) getFromStartingPoint(startingPoint *path.Path) (auth.Us
 }
 
 func (r *UserRepository) getMaxID() (int, error) {
-	p := cayley.StartPath(r.store, maxIDNode).Out(quad.Raw("value"))
+	p := cayley.StartPath(r.store, maxIDNode).Out(maxIDEdge)
 
 	it := r.buildIterator(p)
 	defer it.Close()
@@ -195,24 +284,26 @@ func (r *UserRepository) incrementMaxID() (int, error) {
 	tx := graph.NewTransaction()
 
 	// Remove old value
-	removeQuad := quad.Make(
-		maxIDNode,
-		quad.Raw("value"),
-		quad.Raw(strconv.Itoa(current)),
-		"",
-	)
-	tx.RemoveQuad(removeQuad)
+	if current != 0 {
+		removeQuad := quad.Make(
+			maxIDNode,
+			maxIDEdge,
+			quad.Raw(strconv.Itoa(current)),
+			"",
+		)
+		tx.RemoveQuad(removeQuad)
+	}
 
 	// Set new value
 	addQuad := quad.Make(
 		maxIDNode,
-		quad.Raw("value"),
+		maxIDEdge,
 		quad.Raw(strconv.Itoa(current+1)),
 		"",
 	)
 	tx.AddQuad(addQuad)
 
-	err = r.store.ApplyDeltas(tx.Deltas, graph.IgnoreOpts{IgnoreMissing: (current == 0)})
+	err = r.store.ApplyDeltas(tx.Deltas, graph.IgnoreOpts{})
 	if err != nil {
 		return current, err
 	}

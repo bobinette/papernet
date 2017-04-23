@@ -165,8 +165,8 @@ func main() {
 	if err != nil {
 		log.Fatalln("could not create user graph:", err)
 	}
-	authHandler := auth.NewService(userRepository)
-	auth.RegisterHTTPRoutes(server, authHandler)
+	authHandler := auth.NewUserService(userRepository)
+	auth.RegisterHTTPRoutes(server, authHandler, []byte(key.Key))
 
 	// *************************************************
 	// Start server

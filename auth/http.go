@@ -3,12 +3,13 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	// "fmt"
 	"net/http"
-	// "strconv"
+	"strconv"
+
+	kitjwt "github.com/go-kit/kit/auth/jwt"
+	kithttp "github.com/go-kit/kit/transport/http"
 
 	"github.com/bobinette/papernet/errors"
-	kithttp "github.com/go-kit/kit/transport/http"
 )
 
 type Server interface {
@@ -21,21 +22,32 @@ type Server interface {
 // get user teams,
 // add/remove user from a team,
 // add/remove/get team permissions on a paper
-func RegisterHTTPRoutes(srv Server, service *Service) {
+func RegisterHTTPRoutes(srv Server, service *UserService, jwtKey []byte) {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
+		kithttp.ServerBefore(kitjwt.ToHTTPContext()),
 	}
 
+	authenticationMiddleware := jwtMiddleware(jwtKey)
+
 	meHandler := kithttp.NewServer(
-		service.Get,
+		authenticationMiddleware(makeMeEndpoint(service)),
 		decodeMeRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
 	srv.RegisterHandler("/auth/me", "GET", meHandler)
 
+	getUserHandler := kithttp.NewServer(
+		authenticationMiddleware(makeGetUserEndpoint(service)),
+		decodeGetUserRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+	srv.RegisterHandler("/auth/users/:id", "GET", getUserHandler)
+
 	upsertUserHandler := kithttp.NewServer(
-		service.Upsert,
+		authenticationMiddleware(makeUpsertUserEndpoint(service)),
 		decodeUpsertRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
@@ -45,10 +57,19 @@ func RegisterHTTPRoutes(srv Server, service *Service) {
 
 func decodeMeRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	defer r.Body.Close()
-	req := GetRequest{
-		ID: 1, // @TODO: get from token
+	return nil, nil
+}
+
+func decodeGetUserRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	params := ctx.Value("params").(map[string]string)
+	userID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		return nil, err
 	}
-	return req, nil
+
+	return userID, nil
 }
 
 func decodeUpsertRequest(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -64,12 +85,14 @@ func decodeUpsertRequest(ctx context.Context, r *http.Request) (interface{}, err
 		return nil, err
 	}
 
-	req := UpsertRequest{
+	user := User{
 		Name:     body.Name,
 		Email:    body.Email,
 		GoogleID: body.GoogleID,
+
+		IsAdmin: false, // Never insert admin via web
 	}
-	return req, nil
+	return user, nil
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
