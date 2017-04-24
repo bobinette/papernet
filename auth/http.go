@@ -10,6 +10,8 @@ import (
 	kithttp "github.com/go-kit/kit/transport/http"
 
 	"github.com/bobinette/papernet/errors"
+
+	"github.com/bobinette/papernet/auth/jwt"
 )
 
 type Server interface {
@@ -28,7 +30,7 @@ func RegisterHTTPRoutes(srv Server, service *UserService, jwtKey []byte) {
 		kithttp.ServerBefore(kitjwt.ToHTTPContext()),
 	}
 
-	authenticationMiddleware := jwtMiddleware(jwtKey)
+	authenticationMiddleware := jwt.Middleware(jwtKey)
 
 	meHandler := kithttp.NewServer(
 		authenticationMiddleware(makeMeEndpoint(service)),

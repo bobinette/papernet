@@ -1,4 +1,4 @@
-package auth
+package jwt
 
 import (
 	"github.com/dgrijalva/jwt-go"
@@ -7,7 +7,7 @@ import (
 	"github.com/go-kit/kit/endpoint"
 )
 
-func jwtMiddleware(key []byte) endpoint.Middleware {
+func Middleware(key []byte) endpoint.Middleware {
 	claims := papernetClaims{}
 	return kitjwt.NewParser(func(token *jwt.Token) (interface{}, error) {
 		return key, nil
