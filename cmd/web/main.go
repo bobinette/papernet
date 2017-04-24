@@ -170,7 +170,8 @@ func main() {
 	auth.RegisterHTTPRoutes(server, userService, []byte(key.Key))
 
 	// OAuth service
-	googleService, err := oauth.NewGoogleService(cfg.Auth.Google)
+	authUserService := oauth.NewUserClient(userService)
+	googleService, err := oauth.NewGoogleService(cfg.Auth.Google, authUserService)
 	if err != nil {
 		log.Fatalln("could not instantiate google service")
 	}

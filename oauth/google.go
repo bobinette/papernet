@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"sync"
@@ -22,7 +21,8 @@ var (
 )
 
 type GoogleService struct {
-	config oauth2.Config
+	userClient UserClient
+	config     oauth2.Config
 
 	stateMutex sync.Locker
 	state      map[string]struct{}
@@ -34,7 +34,7 @@ type User struct {
 	Email string `json:"email"`
 }
 
-func NewGoogleService(configPath string) (*GoogleService, error) {
+func NewGoogleService(configPath string, userClient UserClient) (*GoogleService, error) {
 	c, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return nil, err
@@ -51,6 +51,7 @@ func NewGoogleService(configPath string) (*GoogleService, error) {
 	}
 
 	return &GoogleService{
+		userClient: userClient,
 		config: oauth2.Config{
 			ClientID:     creds.ClientID,
 			ClientSecret: creds.ClientSecret,
@@ -64,58 +65,56 @@ func NewGoogleService(configPath string) (*GoogleService, error) {
 	}, nil
 }
 
-func (c *GoogleService) LoginURL() string {
-	s := randToken()
-	c.stateMutex.Lock()
-	c.state[s] = struct{}{}
-	c.stateMutex.Unlock()
+func (s *GoogleService) LoginURL() string {
+	state := randToken()
+	s.stateMutex.Lock()
+	s.state[state] = struct{}{}
+	s.stateMutex.Unlock()
 
-	return c.config.AuthCodeURL(s)
+	return s.config.AuthCodeURL(state)
 }
 
-func (c *GoogleService) Login(state, code string) (*User, error) {
-	c.stateMutex.Lock()
-	_, ok := c.state[state]
-	c.stateMutex.Unlock() // no defer because the token exchange could be long
+func (s *GoogleService) Login(state, code string) (interface{}, error) {
+	s.stateMutex.Lock()
+	_, ok := s.state[state]
+	s.stateMutex.Unlock() // no defer because the token exchange could be long
 
 	if !ok {
 		return nil, errors.New("Invalid state")
 	}
 
-	c.stateMutex.Lock()
-	delete(c.state, state)
-	c.stateMutex.Unlock()
+	s.stateMutex.Lock()
+	delete(s.state, state)
+	s.stateMutex.Unlock()
 
-	tok, err := c.config.Exchange(oauth2.NoContext, code)
+	tok, err := s.config.Exchange(oauth2.NoContext, code)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := c.retrieveUser(tok)
+	user, err := s.retrieveUser(tok)
 	if err != nil {
 		return nil, err
 	}
 
-	// @TODO: call auth to upsert user and return it instead of this google user
-
-	return user, nil
+	return s.userClient.Upsert(user)
 }
 
-func (c *GoogleService) retrieveUser(tok *oauth2.Token) (*User, error) {
-	client := c.config.Client(oauth2.NoContext, tok)
+func (s *GoogleService) retrieveUser(tok *oauth2.Token) (User, error) {
+	client := s.config.Client(oauth2.NoContext, tok)
 	res, err := client.Get(userInfoURL)
 	if err != nil {
-		return nil, err
+		return User{}, err
 	}
 
 	defer res.Body.Close()
 
 	var user User
 	if err := json.NewDecoder(res.Body).Decode(&user); err != nil {
-		return nil, err
+		return User{}, err
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func randToken() string {
