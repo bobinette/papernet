@@ -15,6 +15,7 @@ import (
 	"github.com/bobinette/papernet/bleve"
 	"github.com/bobinette/papernet/bolt"
 	"github.com/bobinette/papernet/gin"
+	"github.com/bobinette/papernet/oauth"
 	"github.com/bobinette/papernet/web"
 )
 
@@ -165,8 +166,15 @@ func main() {
 	if err != nil {
 		log.Fatalln("could not create user graph:", err)
 	}
-	authHandler := auth.NewUserService(userRepository)
-	auth.RegisterHTTPRoutes(server, authHandler, []byte(key.Key))
+	userService := auth.NewUserService(userRepository)
+	auth.RegisterHTTPRoutes(server, userService, []byte(key.Key))
+
+	// OAuth service
+	googleService, err := oauth.NewGoogleService(cfg.Auth.Google)
+	if err != nil {
+		log.Fatalln("could not instantiate google service")
+	}
+	oauth.RegisterHTTPRoutes(server, googleService)
 
 	// *************************************************
 	// Start server
