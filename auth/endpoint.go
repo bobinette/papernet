@@ -7,6 +7,7 @@ import (
 	kitjwt "github.com/go-kit/kit/auth/jwt"
 	"github.com/go-kit/kit/endpoint"
 
+	"github.com/bobinette/papernet/auth/jwt"
 	"github.com/bobinette/papernet/errors"
 )
 
@@ -40,12 +41,12 @@ func makeGetUserEndpoint(s *UserService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		user, err := s.Get(callerID)
+		caller, err := s.Get(callerID)
 		if err != nil {
 			return nil, err
 		}
 
-		if userID != callerID && !user.IsAdmin {
+		if userID != callerID && !caller.IsAdmin {
 			return nil, errors.New("persmission denied, admin route", errors.WithCode(http.StatusForbidden))
 		}
 
@@ -63,12 +64,12 @@ func makeUpsertUserEndpoint(s *UserService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		user, err := s.Get(callerID)
+		caller, err := s.Get(callerID)
 		if err != nil {
 			return nil, err
 		}
 
-		if !user.IsAdmin {
+		if !caller.IsAdmin {
 			return nil, errors.New("persmission denied, admin route", errors.WithCode(http.StatusForbidden))
 		}
 
@@ -82,6 +83,41 @@ func makeUpsertUserEndpoint(s *UserService) endpoint.Endpoint {
 }
 
 // --------------------------------------------
+// User -> paper endpoints
+
+type UpdateUserPapersRequest struct {
+	PaperID int  `json:"paper_id"`
+	Owns    bool `json:"owns"`
+
+	UserID int
+}
+
+func makeUpdateUserPapersHandler(s *UserService) endpoint.Endpoint {
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		callerID, err := extractUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		req, ok := r.(UpdateUserPapersRequest)
+		if !ok {
+			return nil, errInvalidRequest
+		}
+
+		caller, err := s.Get(callerID)
+		if err != nil {
+			return nil, err
+		}
+
+		if req.UserID != callerID && !caller.IsAdmin {
+			return nil, errors.New("persmission denied, admin route", errors.WithCode(http.StatusForbidden))
+		}
+
+		return s.UpdateUserPapers(req.UserID, req.PaperID, req.Owns)
+	}
+}
+
+// --------------------------------------------
 // Helpers
 
 func extractUserID(ctx context.Context) (int, error) {
@@ -90,7 +126,7 @@ func extractUserID(ctx context.Context) (int, error) {
 		return 0, errors.New("no user", errors.WithCode(http.StatusUnauthorized))
 	}
 
-	ppnClaims, ok := claims.(*papernetClaims)
+	ppnClaims, ok := claims.(*jwt.Claims)
 	if !ok {
 		return 0, errors.New("invalid claims", errors.WithCode(http.StatusForbidden))
 	}

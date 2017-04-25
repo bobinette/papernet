@@ -10,7 +10,7 @@ type Encoder struct {
 	key []byte
 }
 
-type papernetClaims struct {
+type Claims struct {
 	UserID int `json:"user_id"`
 	jwt.StandardClaims
 }
@@ -22,7 +22,7 @@ func NewEncode(key []byte) *Encoder {
 }
 
 func (e *Encoder) Encode(userID int) (string, error) {
-	claims := papernetClaims{
+	claims := Claims{
 		UserID: userID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().AddDate(0, 2, 0).Unix(),

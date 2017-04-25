@@ -40,6 +40,14 @@ func RegisterHTTPRoutes(srv Server, service *UserService, jwtKey []byte) {
 	)
 	srv.RegisterHandler("/auth/me", "GET", meHandler)
 
+	upsertUserHandler := kithttp.NewServer(
+		authenticationMiddleware(makeUpsertUserEndpoint(service)),
+		decodeUpsertRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+	srv.RegisterHandler("/auth/users", "POST", upsertUserHandler)
+
 	getUserHandler := kithttp.NewServer(
 		authenticationMiddleware(makeGetUserEndpoint(service)),
 		decodeGetUserRequest,
@@ -48,13 +56,13 @@ func RegisterHTTPRoutes(srv Server, service *UserService, jwtKey []byte) {
 	)
 	srv.RegisterHandler("/auth/users/:id", "GET", getUserHandler)
 
-	upsertUserHandler := kithttp.NewServer(
-		authenticationMiddleware(makeUpsertUserEndpoint(service)),
-		decodeUpsertRequest,
+	updateUserPapersHandler := kithttp.NewServer(
+		authenticationMiddleware(makeUpdateUserPapersHandler(service)),
+		decodeUpdateUserPapersHandler,
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
-	srv.RegisterHandler("/auth/users", "POST", upsertUserHandler)
+	srv.RegisterHandler("/auth/users/:id/papers", "POST", updateUserPapersHandler)
 }
 
 func decodeMeRequest(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -95,6 +103,27 @@ func decodeUpsertRequest(ctx context.Context, r *http.Request) (interface{}, err
 		IsAdmin: false, // Never insert admin via web
 	}
 	return user, nil
+}
+
+func decodeUpdateUserPapersHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	params := ctx.Value("params").(map[string]string)
+	userID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		return nil, err
+	}
+
+	req := UpdateUserPapersRequest{
+		UserID: userID,
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {

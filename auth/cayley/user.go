@@ -2,6 +2,7 @@ package cayley
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -13,6 +14,11 @@ import (
 
 	"github.com/bobinette/papernet/auth"
 )
+
+func init() {
+	graph.IgnoreDuplicates = true
+	graph.IgnoreMissing = true
+}
 
 type UserRepository struct {
 	store *cayley.Handle
@@ -93,7 +99,9 @@ func (r *UserRepository) List() ([]auth.User, error) {
 }
 
 // Upsert updates the user passed as argument in the database. If the user has no ID (i.e. user.ID == 0),
-// this method sets the user ID before inserting.
+// this method sets the user ID before inserting. The following fields are updated in the database:
+// name, email, googleID and isAdmin. For links to other entities, such as owned papers, bookmarks or teams,
+// use the appropriate functions.
 func (r *UserRepository) Upsert(user *auth.User) error {
 	if user.ID == 0 {
 		id, err := r.incrementMaxID()
@@ -139,7 +147,7 @@ func (r *UserRepository) Upsert(user *auth.User) error {
 	// Add user to all users
 	tx.AddQuad(quad.Make(allUsersNode, allUsersEdge, quad.IRI(fmt.Sprintf("user:%d", user.ID)), ""))
 
-	return r.store.ApplyDeltas(tx.Deltas, graph.IgnoreOpts{IgnoreMissing: true, IgnoreDup: true})
+	return r.store.ApplyTransaction(tx)
 }
 
 // Delete removes a user from the database based on its id. The first return argument is whether or not
@@ -173,11 +181,58 @@ func (r *UserRepository) Delete(id int) (bool, error) {
 
 	tx.RemoveQuad(quad.Make(allUsersNode, allUsersEdge, quad.IRI(fmt.Sprintf("user:%d", user.ID)), ""))
 
-	err = r.store.ApplyDeltas(tx.Deltas, graph.IgnoreOpts{IgnoreMissing: true})
+	err = r.store.ApplyTransaction(tx)
 	if err != nil {
 		return false, err
 	}
 	return true, nil
+}
+
+// PaperOwner retrieves for a paper defined by its id the user id of the owner of that paper.
+// This supposes that there is only one owner for a given paper. It is the responsibility of
+// the caller to ensure that by checking if a paper already has an owner before adding a
+// new link (for now).
+func (r *UserRepository) PaperOwner(paperID int) (int, error) {
+	p := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("paper:%d", paperID))).In(quad.Raw("owns"))
+
+	it := r.buildIterator(p)
+	defer it.Close()
+
+	if !it.Next() {
+		return 0, nil
+	}
+
+	token := it.Result()                // get a ref to a node (backend-specific)
+	value := r.store.NameOf(token)      // get the value in the node (RDF)
+	nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+	if nativeValue == nil {
+		return 0, nil
+	}
+
+	_, idStr := splitIRI(nativeValue.(quad.IRI))
+	userID, err := strconv.Atoi(idStr)
+	if err != nil {
+		return 0, err
+	}
+
+	return userID, nil
+}
+
+func (r *UserRepository) UpdatePaperOwner(userID, paperID int, owns bool) error {
+	ownsQuad := quad.Make(
+		quad.IRI(fmt.Sprintf("user:%d", userID)),
+		quad.Raw("owns"),
+		quad.IRI(fmt.Sprintf("paper:%d", paperID)),
+		"",
+	)
+
+	if !owns {
+		return r.store.RemoveQuad(ownsQuad)
+
+	}
+
+	return r.store.AddQuad(ownsQuad)
 }
 
 // -----------------------------------------------------------------------------
@@ -198,12 +253,17 @@ func (r *UserRepository) getFromStartingPoint(startingPoint *path.Path) (auth.Us
 	)).Or(startingPoint.Clone().OutWithTags(
 		[]string{"isAdmin"},
 		quad.Raw("isAdmin"),
+	)).Or(startingPoint.Clone().OutWithTags(
+		[]string{"owns"},
+		quad.Raw("owns"),
 	))
 
 	it := r.buildIterator(p)
 	defer it.Close()
 
-	user := auth.User{}
+	user := auth.User{
+		Owns: make([]int, 0),
+	}
 	for it.Next() {
 		token := it.Result()                // get a ref to a node (backend-specific)
 		value := r.store.NameOf(token)      // get the value in the node (RDF)
@@ -223,6 +283,13 @@ func (r *UserRepository) getFromStartingPoint(startingPoint *path.Path) (auth.Us
 		}
 
 		switch tag {
+		case "userID":
+			_, idStr := splitIRI(nativeValue.(quad.IRI))
+			userID, err := strconv.Atoi(idStr)
+			if err != nil {
+				return auth.User{}, err
+			}
+			user.ID = userID
 		case "name":
 			user.Name = string(nativeValue.(quad.Raw))
 		case "email":
@@ -231,17 +298,21 @@ func (r *UserRepository) getFromStartingPoint(startingPoint *path.Path) (auth.Us
 			user.GoogleID = string(nativeValue.(quad.Raw))
 		case "isAdmin":
 			user.IsAdmin = string(nativeValue.(quad.Raw)) == "true"
-		case "userID":
+		case "owns":
 			_, idStr := splitIRI(nativeValue.(quad.IRI))
-			userID, err := strconv.Atoi(idStr)
+			paperID, err := strconv.Atoi(idStr)
 			if err != nil {
 				return auth.User{}, err
 			}
-			user.ID = userID
+			user.Owns = append(user.Owns, paperID)
 		default:
 			// Do nothing
+			fmt.Println("unsupported tag", tag, "with value", nativeValue)
 		}
 	}
+
+	// Sort the paper ids to look normal
+	sort.Ints(user.Owns)
 
 	return user, nil
 }
@@ -303,7 +374,7 @@ func (r *UserRepository) incrementMaxID() (int, error) {
 	)
 	tx.AddQuad(addQuad)
 
-	err = r.store.ApplyDeltas(tx.Deltas, graph.IgnoreOpts{})
+	err = r.store.ApplyTransaction(tx)
 	if err != nil {
 		return current, err
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 func Middleware(key []byte) endpoint.Middleware {
-	claims := papernetClaims{}
+	claims := Claims{}
 	return kitjwt.NewParser(func(token *jwt.Token) (interface{}, error) {
 		return key, nil
 	}, jwt.SigningMethodHS256, &claims)
