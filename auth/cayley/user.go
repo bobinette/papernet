@@ -58,13 +58,18 @@ func (r *UserRepository) Close() error {
 // Get retrieves a user from its id.
 func (r *UserRepository) Get(id int) (auth.User, error) {
 	startingPoint := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("user:%d", id)))
-	return r.getFromStartingPoint(startingPoint)
+	return r.userFromStartingPoint(startingPoint)
 }
 
 // GetByGoogleID retrieves a user by its google id instead of its internal id.
 func (r *UserRepository) GetByGoogleID(googleID string) (auth.User, error) {
 	startingPoint := cayley.StartPath(r.store, quad.Raw(googleID)).In(quad.Raw("googleID"))
-	return r.getFromStartingPoint(startingPoint)
+	return r.userFromStartingPoint(startingPoint)
+}
+
+func (r *UserRepository) GetByEmail(email string) (auth.User, error) {
+	startingPoint := cayley.StartPath(r.store, quad.Raw(email)).In(quad.Raw("email"))
+	return r.userFromStartingPoint(startingPoint)
 }
 
 // List retrieves all the users in the database
@@ -76,7 +81,6 @@ func (r *UserRepository) List() ([]auth.User, error) {
 
 	users := make([]auth.User, 0)
 	for it.Next() {
-
 		token := it.Result()                // get a ref to a node (backend-specific)
 		value := r.store.NameOf(token)      // get the value in the node (RDF)
 		nativeValue := quad.NativeOf(value) // convert value to normal Go type
@@ -236,33 +240,17 @@ func (r *UserRepository) UpdatePaperOwner(userID, paperID int, owns bool) error 
 }
 
 // -----------------------------------------------------------------------------
-// Helpers
+// Teams
 
-func (r *UserRepository) getFromStartingPoint(startingPoint *path.Path) (auth.User, error) {
-	p := startingPoint.Clone().Tag(
-		"userID",
-	).Or(startingPoint.Clone().OutWithTags(
-		[]string{"name"},
-		quad.Raw("name"),
-	)).Or(startingPoint.Clone().OutWithTags(
-		[]string{"email"},
-		quad.Raw("email"),
-	)).Or(startingPoint.Clone().OutWithTags(
-		[]string{"googleID"},
-		quad.Raw("googleID"),
-	)).Or(startingPoint.Clone().OutWithTags(
-		[]string{"isAdmin"},
-		quad.Raw("isAdmin"),
-	)).Or(startingPoint.Clone().OutWithTags(
-		[]string{"owns"},
-		quad.Raw("owns"),
-	))
+func (r *UserRepository) GetTeam(id int) (auth.Team, error) {
+	startingPoint := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("team:%d", id)))
+	p := startingPoint.Clone().SaveOptional(quad.Raw("name"), "name")
 
 	it := r.buildIterator(p)
 	defer it.Close()
 
-	user := auth.User{
-		Owns: make([]int, 0),
+	team := auth.Team{
+		Members: make([]auth.TeamMember, 0),
 	}
 	for it.Next() {
 		token := it.Result()                // get a ref to a node (backend-specific)
@@ -273,46 +261,563 @@ func (r *UserRepository) getFromStartingPoint(startingPoint *path.Path) (auth.Us
 			continue
 		}
 
+		_, idStr := splitIRI(nativeValue.(quad.IRI))
+		teamID, err := strconv.Atoi(idStr)
+		if err != nil {
+			return auth.Team{}, err
+		}
+		team.ID = teamID
+
+		m := make(map[string]graph.Value)
+		it.TagResults(m)
+		for tag, token := range m {
+			value := r.store.NameOf(token)      // get the value in the node (RDF)
+			nativeValue := quad.NativeOf(value) // convert value to normal Go type
+			switch tag {
+			case "name":
+				team.Name = string(nativeValue.(quad.Raw))
+			default:
+				// Do nothing
+				fmt.Println("unsupported tag", tag, "with value", nativeValue)
+			}
+		}
+
+	}
+
+	admins := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("team:%d", team.ID))).InWithTags(
+		[]string{"isAdminOf"},
+		quad.Raw("isAdminOf"),
+	).SaveOptional(
+		quad.Raw("name"), "name",
+	).SaveOptional(
+		quad.Raw("email"), "email",
+	)
+
+	members := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("team:%d", team.ID))).InWithTags(
+		[]string{"isMemberOf"},
+		quad.Raw("isMemberOf"),
+	).SaveOptional(
+		quad.Raw("name"), "name",
+	).SaveOptional(
+		quad.Raw("email"), "email",
+	)
+
+	p = admins.Or(members)
+	it = r.buildIterator(p)
+	defer it.Close()
+
+	for it.Next() {
+		token := it.Result()                // get a ref to a node (backend-specific)
+		value := r.store.NameOf(token)      // get the value in the node (RDF)
+		nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+		if nativeValue == nil {
+			continue
+		}
+
+		_, idStr := splitIRI(nativeValue.(quad.IRI))
+		memberID, err := strconv.Atoi(idStr)
+		if err != nil {
+			return auth.Team{}, err
+		}
+
+		member := auth.TeamMember{
+			ID: memberID,
+		}
+
+		m := make(map[string]graph.Value)
+		it.TagResults(m)
+
+		fmt.Println(team, nativeValue, m)
+		for tag, token := range m {
+			value := r.store.NameOf(token)      // get the value in the node (RDF)
+			nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+			switch tag {
+			case "isAdminOf":
+				member.IsTeamAdmin = true
+			case "name":
+				member.Name = string(nativeValue.(quad.Raw))
+			case "email":
+				member.Email = string(nativeValue.(quad.Raw))
+			default:
+				fmt.Println("unsupported tag", tag, "with value", nativeValue)
+			}
+		}
+
+		team.Members = append(team.Members, member)
+	}
+
+	return team, nil
+}
+
+func (r *UserRepository) UserTeams(userID int) ([]auth.Team, error) {
+	startingPoint := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("user:%d", userID)))
+
+	adminOf := startingPoint.Clone().Out(quad.Raw("isAdminOf")).Save(quad.Raw("name"), "name")
+
+	memberOf := startingPoint.Clone().Out(quad.Raw("isMemberOf")).Save(quad.Raw("name"), "name")
+
+	p := adminOf.Or(memberOf)
+	it := r.buildIterator(p)
+	defer it.Close()
+
+	teams := make([]auth.Team, 0)
+	for it.Next() {
+		token := it.Result()                // get a ref to a node (backend-specific)
+		value := r.store.NameOf(token)      // get the value in the node (RDF)
+		nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+		if nativeValue == nil {
+			continue
+		}
+
+		_, idStr := splitIRI(nativeValue.(quad.IRI))
+		teamID, err := strconv.Atoi(idStr)
+		if err != nil {
+			return nil, err
+		}
+
+		team := auth.Team{
+			ID:      teamID,
+			Members: make([]auth.TeamMember, 0),
+			CanSee:  make([]int, 0),
+			CanEdit: make([]int, 0),
+		}
+
+		m := make(map[string]graph.Value)
+		it.TagResults(m)
+
+		for tag, token := range m {
+			value := r.store.NameOf(token)      // get the value in the node (RDF)
+			nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+			switch tag {
+			case "name":
+				team.Name = string(nativeValue.(quad.Raw))
+			default:
+				fmt.Println("unsupported tag", tag, "with value", nativeValue)
+			}
+		}
+
+		teams = append(teams, team)
+	}
+
+	// Retrieve team members and permissions
+	for i, team := range teams {
+		admins := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("team:%d", team.ID))).InWithTags(
+			[]string{"isAdminOf"},
+			quad.Raw("isAdminOf"),
+		).SaveOptional(
+			quad.Raw("name"), "name",
+		).SaveOptional(
+			quad.Raw("email"), "email",
+		)
+
+		members := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("team:%d", team.ID))).InWithTags(
+			[]string{"isMemberOf"},
+			quad.Raw("isMemberOf"),
+		).SaveOptional(
+			quad.Raw("name"), "name",
+		).SaveOptional(
+			quad.Raw("email"), "email",
+		)
+
+		p := admins.Or(members)
+		it := r.buildIterator(p)
+		defer it.Close()
+
+		for it.Next() {
+			token := it.Result()                // get a ref to a node (backend-specific)
+			value := r.store.NameOf(token)      // get the value in the node (RDF)
+			nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+			if nativeValue == nil {
+				continue
+			}
+
+			_, idStr := splitIRI(nativeValue.(quad.IRI))
+			memberID, err := strconv.Atoi(idStr)
+			if err != nil {
+				return nil, err
+			}
+
+			member := auth.TeamMember{
+				ID: memberID,
+			}
+
+			m := make(map[string]graph.Value)
+			it.TagResults(m)
+
+			fmt.Println(team, nativeValue, m)
+			for tag, token := range m {
+				value := r.store.NameOf(token)      // get the value in the node (RDF)
+				nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+				switch tag {
+				case "isAdminOf":
+					member.IsTeamAdmin = true
+				case "name":
+					member.Name = string(nativeValue.(quad.Raw))
+				case "email":
+					member.Email = string(nativeValue.(quad.Raw))
+				default:
+					fmt.Println("unsupported tag", tag, "with value", nativeValue)
+				}
+			}
+
+			team.Members = append(team.Members, member)
+		}
+
+		canSee := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("team:%d", team.ID))).OutWithTags(
+			[]string{"canSee"},
+			quad.Raw("canSee"),
+		)
+		canEdit := cayley.StartPath(r.store, quad.IRI(fmt.Sprintf("team:%d", team.ID))).OutWithTags(
+			[]string{"canEdit"},
+			quad.Raw("canEdit"),
+		)
+
+		p = canSee.Or(canEdit)
+		it = r.buildIterator(p)
+		defer it.Close()
+
+		for it.Next() {
+			token := it.Result()                // get a ref to a node (backend-specific)
+			value := r.store.NameOf(token)      // get the value in the node (RDF)
+			nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+			if nativeValue == nil {
+				continue
+			}
+
+			_, idStr := splitIRI(nativeValue.(quad.IRI))
+			paperID, err := strconv.Atoi(idStr)
+			if err != nil {
+				return nil, err
+			}
+
+			m := make(map[string]graph.Value)
+			it.TagResults(m)
+
+			fmt.Println(team, nativeValue, m)
+			for tag, token := range m {
+				value := r.store.NameOf(token)      // get the value in the node (RDF)
+				nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+				switch tag {
+				case "canSee":
+					team.CanSee = append(team.CanSee, paperID)
+				case "canEdit":
+					team.CanEdit = append(team.CanEdit, paperID)
+				default:
+					fmt.Println("unsupported tag", tag, "with value", nativeValue)
+				}
+			}
+		}
+
+		teams[i] = team
+	}
+
+	return teams, nil
+}
+
+func (r *UserRepository) UpsertTeam(team *auth.Team) error {
+	if team.ID == 0 {
+		id, err := r.incrementMaxID()
+		if err != nil {
+			return err
+		}
+
+		team.ID = id
+	}
+
+	replace := func(tx *graph.Transaction, teamID int, predicate, oldValue, newValue string) {
+		// Remove old value
+		removeQuad := quad.Make(
+			quad.IRI(fmt.Sprintf("team:%d", teamID)),
+			quad.Raw(predicate),
+			quad.Raw(oldValue),
+			"",
+		)
+		tx.RemoveQuad(removeQuad)
+
+		// Set new value
+		addQuad := quad.Make(
+			quad.IRI(fmt.Sprintf("team:%d", teamID)),
+			quad.Raw(predicate),
+			quad.Raw(newValue),
+			"",
+		)
+		tx.AddQuad(addQuad)
+	}
+
+	// Upsert
+	oldTeam, err := r.Get(team.ID)
+	if err != nil {
+		return err
+	}
+	tx := graph.NewTransaction()
+
+	replace(tx, team.ID, "name", oldTeam.Name, team.Name)
+
+	// Add new members
+	for _, m := range team.Members {
+		if m.IsTeamAdmin {
+			tx.AddQuad(quad.Make(
+				quad.IRI(fmt.Sprintf("user:%d", m.ID)),
+				quad.Raw("isAdminOf"),
+				quad.IRI(fmt.Sprintf("team:%d", team.ID)),
+				"",
+			))
+		} else {
+			tx.AddQuad(quad.Make(
+				quad.IRI(fmt.Sprintf("user:%d", m.ID)),
+				quad.Raw("isMemberOf"),
+				quad.IRI(fmt.Sprintf("team:%d", team.ID)),
+				"",
+			))
+		}
+	}
+
+	// Add team to all teams
+	// tx.AddQuad(quad.Make(allUsersNode, allUsersEdge, quad.IRI(fmt.Sprintf("user:%d", user.ID)), ""))
+	return r.store.ApplyTransaction(tx)
+}
+
+func (r *UserRepository) UpdateTeamPermission(teamID, paperID int, canSee, canEdit bool) error {
+	canSeeQuad := quad.Make(
+		quad.IRI(fmt.Sprintf("team:%d", teamID)),
+		quad.Raw("canSee"),
+		quad.IRI(fmt.Sprintf("paper:%d", paperID)),
+		"",
+	)
+
+	if !canSee {
+		err := r.store.RemoveQuad(canSeeQuad)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := r.store.AddQuad(canSeeQuad)
+		if err != nil {
+			return err
+		}
+	}
+
+	canEditQuad := quad.Make(
+		quad.IRI(fmt.Sprintf("team:%d", teamID)),
+		quad.Raw("canEdit"),
+		quad.IRI(fmt.Sprintf("paper:%d", paperID)),
+		"",
+	)
+
+	if !canEdit {
+		err := r.store.RemoveQuad(canEditQuad)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := r.store.AddQuad(canEditQuad)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *UserRepository) UpdateTeamMember(userID, teamID int, isMember, isAdmin bool) error {
+	isMemberQuad := quad.Make(
+		quad.IRI(fmt.Sprintf("user:%d", userID)),
+		quad.Raw("isMemberOf"),
+		quad.IRI(fmt.Sprintf("team:%d", teamID)),
+		"",
+	)
+
+	if !isMember {
+		err := r.store.RemoveQuad(isMemberQuad)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := r.store.AddQuad(isMemberQuad)
+		if err != nil {
+			return err
+		}
+	}
+
+	isAdminQuad := quad.Make(
+		quad.IRI(fmt.Sprintf("user:%d", userID)),
+		quad.Raw("isAdminOf"),
+		quad.IRI(fmt.Sprintf("team:%d", teamID)),
+		"",
+	)
+
+	if !isAdmin {
+		err := r.store.RemoveQuad(isAdminQuad)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := r.store.AddQuad(isAdminQuad)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// -----------------------------------------------------------------------------
+// Helpers
+
+func (r *UserRepository) userFromStartingPoint(startingPoint *path.Path) (auth.User, error) {
+	p := startingPoint.Clone().SaveOptional(
+		quad.Raw("name"), "name",
+	).SaveOptional(
+		quad.Raw("email"), "email",
+	).SaveOptional(
+		quad.Raw("googleID"), "googleID",
+	).SaveOptional(
+		quad.Raw("isAdmin"), "isAdmin",
+	)
+
+	it := r.buildIterator(p)
+	defer it.Close()
+
+	user := auth.User{
+		Owns:      make([]int, 0),
+		CanSee:    make([]int, 0),
+		CanEdit:   make([]int, 0),
+		Bookmarks: make([]int, 0),
+	}
+	for it.Next() {
+		token := it.Result()                // get a ref to a node (backend-specific)
+		value := r.store.NameOf(token)      // get the value in the node (RDF)
+		nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+		if nativeValue == nil {
+			continue
+		}
+
+		_, idStr := splitIRI(nativeValue.(quad.IRI))
+		userID, err := strconv.Atoi(idStr)
+		if err != nil {
+			return auth.User{}, err
+		}
+		user.ID = userID
+
+		m := make(map[string]graph.Value)
+		it.TagResults(m)
+		for tag, token := range m {
+			value := r.store.NameOf(token)      // get the value in the node (RDF)
+			nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+			switch tag {
+			case "name":
+				user.Name = string(nativeValue.(quad.Raw))
+			case "email":
+				user.Email = string(nativeValue.(quad.Raw))
+			case "googleID":
+				user.GoogleID = string(nativeValue.(quad.Raw))
+			case "isAdmin":
+				user.IsAdmin = string(nativeValue.(quad.Raw)) == "true"
+			default:
+				// Do nothing
+				fmt.Println("unsupported tag", tag, "with value", nativeValue)
+			}
+		}
+
+	}
+
+	// Owned papers
+	ownsPath := startingPoint.Clone().OutWithTags(
+		[]string{"owns"},
+		quad.Raw("owns"),
+	)
+	bookmarksPath := startingPoint.Clone().OutWithTags(
+		[]string{"bookmarks"},
+		quad.Raw("bookmarks"),
+	)
+	canSeePath := startingPoint.Clone().Out(
+		quad.Raw("isAdminOf"),
+		quad.Raw("isMemberOf"),
+	).OutWithTags(
+		[]string{"canSee"},
+		quad.Raw("canSee"),
+	)
+	canEditPath := startingPoint.Clone().Out(
+		quad.Raw("isAdminOf"),
+		quad.Raw("isMemberOf"),
+	).OutWithTags(
+		[]string{"canEdit"},
+		quad.Raw("canEdit"),
+	)
+
+	p = ownsPath.Or(bookmarksPath).Or(canSeePath).Or(canEditPath)
+	it = r.buildIterator(p)
+	defer it.Close()
+
+	owns := make(map[int]struct{})
+	canSee := make(map[int]struct{})
+	canEdit := make(map[int]struct{})
+	for it.Next() {
+		token := it.Result()                // get a ref to a node (backend-specific)
+		value := r.store.NameOf(token)      // get the value in the node (RDF)
+		nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+		if nativeValue == nil {
+			continue
+		}
+		_, idStr := splitIRI(nativeValue.(quad.IRI))
+		paperID, err := strconv.Atoi(idStr)
+		if err != nil {
+			return auth.User{}, err
+		}
+
 		m := make(map[string]graph.Value)
 		it.TagResults(m)
 		var tag string
-		for t, _ := range m {
-			// only one in map, so we just need the key
-			tag = t
+		for k := range m {
+			tag = k
 			break
 		}
 
 		switch tag {
-		case "userID":
-			_, idStr := splitIRI(nativeValue.(quad.IRI))
-			userID, err := strconv.Atoi(idStr)
-			if err != nil {
-				return auth.User{}, err
-			}
-			user.ID = userID
-		case "name":
-			user.Name = string(nativeValue.(quad.Raw))
-		case "email":
-			user.Email = string(nativeValue.(quad.Raw))
-		case "googleID":
-			user.GoogleID = string(nativeValue.(quad.Raw))
-		case "isAdmin":
-			user.IsAdmin = string(nativeValue.(quad.Raw)) == "true"
+		case "canSee":
+			canSee[paperID] = struct{}{}
+		case "canEdit":
+			canSee[paperID] = struct{}{}
+			canEdit[paperID] = struct{}{}
 		case "owns":
-			_, idStr := splitIRI(nativeValue.(quad.IRI))
-			paperID, err := strconv.Atoi(idStr)
-			if err != nil {
-				return auth.User{}, err
-			}
-			user.Owns = append(user.Owns, paperID)
+			owns[paperID] = struct{}{}
+			canSee[paperID] = struct{}{}
+			canEdit[paperID] = struct{}{}
+		case "bookmarks":
+			user.Bookmarks = append(user.Bookmarks, paperID)
 		default:
-			// Do nothing
-			fmt.Println("unsupported tag", tag, "with value", nativeValue)
+			fmt.Printf("unsupported tag %s with value %v\n", tag, nativeValue)
 		}
+	}
+
+	for paperID := range owns {
+		user.Owns = append(user.Owns, paperID)
+	}
+
+	for paperID := range canSee {
+		user.CanSee = append(user.CanSee, paperID)
+	}
+
+	for paperID := range canEdit {
+		user.CanEdit = append(user.CanEdit, paperID)
 	}
 
 	// Sort the paper ids to look normal
 	sort.Ints(user.Owns)
+	sort.Ints(user.CanSee)
+	sort.Ints(user.CanEdit)
+	sort.Ints(user.Bookmarks)
 
 	return user, nil
 }

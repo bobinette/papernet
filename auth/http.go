@@ -58,11 +58,43 @@ func RegisterHTTPRoutes(srv Server, service *UserService, jwtKey []byte) {
 
 	updateUserPapersHandler := kithttp.NewServer(
 		authenticationMiddleware(makeUpdateUserPapersHandler(service)),
-		decodeUpdateUserPapersHandler,
+		decodeUpdateUserPapersRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
 	srv.RegisterHandler("/auth/users/:id/papers", "POST", updateUserPapersHandler)
+
+	myTeamsHandler := kithttp.NewServer(
+		authenticationMiddleware(makeMyTeamsHandler(service)),
+		decodeMyTeamsRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+	srv.RegisterHandler("/auth/teams", "GET", myTeamsHandler)
+
+	insertTeamHandler := kithttp.NewServer(
+		authenticationMiddleware(makeInsertTeamHandler(service)),
+		decodeInsertTeamRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+	srv.RegisterHandler("/auth/teams", "POST", insertTeamHandler)
+
+	sharePaperHandler := kithttp.NewServer(
+		authenticationMiddleware(makeSharePaperHandler(service)),
+		decodeSharePaperRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+	srv.RegisterHandler("/auth/teams/:id/share", "POST", sharePaperHandler)
+
+	inviteTeamMemberHandler := kithttp.NewServer(
+		authenticationMiddleware(makeInviteTeamMemberHandler(service)),
+		decodeInviteTeamMemberRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+	srv.RegisterHandler("/auth/teams/:id/invite", "POST", inviteTeamMemberHandler)
 }
 
 func decodeMeRequest(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -105,7 +137,7 @@ func decodeUpsertRequest(ctx context.Context, r *http.Request) (interface{}, err
 	return user, nil
 }
 
-func decodeUpdateUserPapersHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+func decodeUpdateUserPapersRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	defer r.Body.Close()
 
 	params := ctx.Value("params").(map[string]string)
@@ -118,6 +150,63 @@ func decodeUpdateUserPapersHandler(ctx context.Context, r *http.Request) (interf
 		UserID: userID,
 	}
 
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func decodeMyTeamsRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+	return nil, nil
+}
+
+func decodeInsertTeamRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	var req Team
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func decodeSharePaperRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	params := ctx.Value("params").(map[string]string)
+	teamID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		return nil, err
+	}
+
+	req := sharePaperRequest{
+		TeamID: teamID,
+	}
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func decodeInviteTeamMemberRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	params := ctx.Value("params").(map[string]string)
+	teamID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		return nil, err
+	}
+
+	req := inviteTeamMember{
+		TeamID: teamID,
+	}
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return nil, err

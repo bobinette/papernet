@@ -118,6 +118,81 @@ func makeUpdateUserPapersHandler(s *UserService) endpoint.Endpoint {
 }
 
 // --------------------------------------------
+// Teams endpoints
+
+func makeMyTeamsHandler(s *UserService) endpoint.Endpoint {
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		userID, err := extractUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return s.UserTeams(userID)
+	}
+}
+
+func makeInsertTeamHandler(s *UserService) endpoint.Endpoint {
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		userID, err := extractUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		req, ok := r.(Team)
+		if !ok {
+			return nil, errInvalidRequest
+		}
+
+		return s.InsertTeam(userID, req)
+	}
+}
+
+type sharePaperRequest struct {
+	TeamID  int
+	PaperID int  `json:"paperID"`
+	CanSee  bool `json:"canSee"`
+	CanEdit bool `json:"canEdit"`
+}
+
+func makeSharePaperHandler(s *UserService) endpoint.Endpoint {
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		userID, err := extractUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		req, ok := r.(sharePaperRequest)
+		if !ok {
+			return nil, errInvalidRequest
+		}
+
+		return s.SharePaper(userID, req.TeamID, req.PaperID, req.CanSee, req.CanEdit)
+	}
+}
+
+type inviteTeamMember struct {
+	TeamID int
+	Email  string `json:"email"`
+	Admin  bool   `json:"admin"`
+}
+
+func makeInviteTeamMemberHandler(s *UserService) endpoint.Endpoint {
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		callerID, err := extractUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		req, ok := r.(inviteTeamMember)
+		if !ok {
+			return nil, errInvalidRequest
+		}
+
+		return s.UpdateTeamMember(callerID, req.Email, req.TeamID, true, req.Admin)
+	}
+}
+
+// --------------------------------------------
 // Helpers
 
 func extractUserID(ctx context.Context) (int, error) {

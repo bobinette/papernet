@@ -32,6 +32,7 @@ var (
 	// stores
 	paperStore papernet.PaperStore
 	userStore  papernet.UserStore
+	teamStore  papernet.TeamStore
 
 	// indices
 	paperIndex papernet.PaperIndex
@@ -97,8 +98,10 @@ var RootCmd = cobra.Command{
 		boltDriver.Open(cfg.Bolt.Store)
 		paperStore = &bolt.PaperStore{Driver: boltDriver}
 		userStore = &bolt.UserStore{Driver: boltDriver}
+		teamStore = &bolt.TeamStore{Driver: boltDriver}
 
 		// Create services
+		// -- user service
 		userRepository, err := cayley.New("data/user.graph")
 		if err != nil {
 			logger.Fatal("could not create user graph:", err)
