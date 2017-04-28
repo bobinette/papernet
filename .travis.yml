@@ -4,10 +4,10 @@ go:
 
 install:
   - go get -u github.com/golang/dep/...
-  - dep ensure
+  - dep ensure -v
 
 # Default is `make`
-script: go test ./...
+script: go test $(go list ./... | grep -v /vendor/)
 
 # Deployment
 before_deploy:
