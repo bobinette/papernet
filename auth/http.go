@@ -64,6 +64,14 @@ func RegisterHTTPRoutes(srv Server, service *UserService, jwtKey []byte) {
 	)
 	srv.RegisterHandler("/auth/users/:id/papers", "POST", updateUserPapersHandler)
 
+	bookmarkHandler := kithttp.NewServer(
+		authenticationMiddleware(makeBookmarksHandler(service)),
+		decodeBookmarkRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+	srv.RegisterHandler("/auth/bookmarks", "POST", bookmarkHandler)
+
 	myTeamsHandler := kithttp.NewServer(
 		authenticationMiddleware(makeMyTeamsHandler(service)),
 		decodeMyTeamsRequest,
@@ -80,6 +88,14 @@ func RegisterHTTPRoutes(srv Server, service *UserService, jwtKey []byte) {
 	)
 	srv.RegisterHandler("/auth/teams", "POST", insertTeamHandler)
 
+	deleteTeamHandler := kithttp.NewServer(
+		authenticationMiddleware(makeDeleteTeamHandler(service)),
+		decodeDeleteTeamRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+	srv.RegisterHandler("/auth/teams/:id", "DELETE", deleteTeamHandler)
+
 	sharePaperHandler := kithttp.NewServer(
 		authenticationMiddleware(makeSharePaperHandler(service)),
 		decodeSharePaperRequest,
@@ -95,6 +111,14 @@ func RegisterHTTPRoutes(srv Server, service *UserService, jwtKey []byte) {
 		opts...,
 	)
 	srv.RegisterHandler("/auth/teams/:id/invite", "POST", inviteTeamMemberHandler)
+
+	kickTeamMemberHandler := kithttp.NewServer(
+		authenticationMiddleware(makeKickTeamMemberHandler(service)),
+		decodeKickTeamMemberRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+	srv.RegisterHandler("/auth/teams/:id/kick", "POST", kickTeamMemberHandler)
 }
 
 func decodeMeRequest(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -137,6 +161,18 @@ func decodeUpsertRequest(ctx context.Context, r *http.Request) (interface{}, err
 	return user, nil
 }
 
+func decodeBookmarkRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	var req bookmarkRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func decodeUpdateUserPapersRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	defer r.Body.Close()
 
@@ -146,7 +182,7 @@ func decodeUpdateUserPapersRequest(ctx context.Context, r *http.Request) (interf
 		return nil, err
 	}
 
-	req := UpdateUserPapersRequest{
+	req := updateUserPapersRequest{
 		UserID: userID,
 	}
 
@@ -173,6 +209,18 @@ func decodeInsertTeamRequest(ctx context.Context, r *http.Request) (interface{},
 	}
 
 	return req, nil
+}
+
+func decodeDeleteTeamRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	params := ctx.Value("params").(map[string]string)
+	teamID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		return nil, err
+	}
+
+	return teamID, nil
 }
 
 func decodeSharePaperRequest(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -205,6 +253,26 @@ func decodeInviteTeamMemberRequest(ctx context.Context, r *http.Request) (interf
 	}
 
 	req := inviteTeamMember{
+		TeamID: teamID,
+	}
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func decodeKickTeamMemberRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	params := ctx.Value("params").(map[string]string)
+	teamID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		return nil, err
+	}
+
+	req := kickTeamMember{
 		TeamID: teamID,
 	}
 	err = json.NewDecoder(r.Body).Decode(&req)

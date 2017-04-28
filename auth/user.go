@@ -22,24 +22,6 @@ type User struct {
 	Bookmarks []int `json:"bookmarks"`
 }
 
-type TeamMember struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-
-	IsTeamAdmin bool `json:"isTeamAdmin"`
-}
-
-type Team struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-
-	Members []TeamMember `json:"members"`
-
-	CanSee  []int `json:"canSee"`
-	CanEdit []int `json:"canEdit"`
-}
-
 type UserRepository interface {
 	// User information
 	Get(int) (User, error)
@@ -48,12 +30,14 @@ type UserRepository interface {
 	Upsert(*User) error
 
 	// Paper ownership
+	Bookmark(userID, paperID int, bookmark bool) error
 	PaperOwner(paperID int) (int, error)
 	UpdatePaperOwner(userID, paperID int, owns bool) error
 
 	// Team membership
 	GetTeam(int) (Team, error)
 	UpsertTeam(*Team) error
+	DeleteTeam(int) error
 	UserTeams(userID int) ([]Team, error)
 	UpdateTeamMember(userID, teamID int, isMember, isAdmin bool) error
 
@@ -152,6 +136,48 @@ func (s *UserService) UpdateUserPapers(userID, paperID int, owns bool) (User, er
 	return s.repository.Get(userID)
 }
 
+func (s *UserService) BookmarkPaper(userID, paperID int, bookmark bool) (User, error) {
+	user, err := s.repository.Get(userID)
+	if err != nil {
+		return User{}, err
+	} else if user.ID == 0 {
+		return User{}, errors.New(fmt.Sprintf("<User %d> not found", userID), errors.WithCode(http.StatusNotFound))
+	}
+
+	// If the user cannot see the paper, consider it not found
+	found := false
+	for _, pID := range user.CanSee {
+		if pID == paperID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return User{}, errors.New(fmt.Sprintf("<Paper %d> not found", paperID), errors.WithCode(http.StatusNotFound))
+	}
+
+	bookmarked := false
+	for _, pID := range user.Bookmarks {
+		if pID == paperID {
+			bookmarked = true
+			break
+		}
+	}
+	if !bookmark && !bookmark {
+		return user, nil
+	} else if bookmark && bookmarked {
+		return user, nil
+	}
+
+	err = s.repository.Bookmark(userID, paperID, bookmark)
+	if err != nil {
+		return User{}, err
+	}
+
+	// Get again to have updated user
+	return s.repository.Get(userID)
+}
+
 // -----------------------------------------------------------------------------
 // Teams
 
@@ -179,6 +205,16 @@ func (s *UserService) InsertTeam(userID int, team Team) (Team, error) {
 
 	// Reload team to get everything
 	return s.repository.GetTeam(team.ID)
+}
+
+func (s *UserService) DeleteTeam(userID int, teamID int) error {
+	if userIsAdmin, err := s.userIsAdminOfTeam(userID, teamID); err != nil {
+		return err
+	} else if !userIsAdmin {
+		return errors.New("Inviter should be admin of the team", errors.WithCode(http.StatusForbidden))
+	}
+
+	return s.repository.DeleteTeam(teamID)
 }
 
 func (s *UserService) UpdateTeamMember(inviterID int, memberEmail string, teamID int, isMember, isAdmin bool) (Team, error) {

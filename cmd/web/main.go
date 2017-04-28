@@ -162,10 +162,11 @@ func main() {
 	// *************************************************
 
 	// Auth service
-	userRepository, err := cayley.New("data/user.graph")
+	authStore, err := cayley.NewStore("data/user.graph")
 	if err != nil {
 		log.Fatalln("could not create user graph:", err)
 	}
+	userRepository := cayley.NewUserRepository(authStore)
 	userService := auth.NewUserService(userRepository)
 	auth.RegisterHTTPRoutes(server, userService, []byte(key.Key))
 

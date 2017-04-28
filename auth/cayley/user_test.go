@@ -18,11 +18,12 @@ func createRepository(t *testing.T) (*UserRepository, func()) {
 	require.NoError(t, err, "could not create tmp file")
 
 	filename := tmpFile.Name()
-	repo, err := New(filename)
-	require.NoError(t, err, "could not create repository")
+	store, err := NewStore(filename)
+	require.NoError(t, err, "could not create store")
 
+	repo := NewUserRepository(store)
 	return repo, func() {
-		repo.Close()
+		store.Close()
 		os.Remove(filename)
 	}
 }
@@ -35,6 +36,13 @@ func TestUserRepository(t *testing.T) {
 		auth.User{Name: "Pizza Yolo", Email: "pizza@yolo.test", GoogleID: "1", IsAdmin: false},
 		auth.User{Name: "Anakin Skywalker", Email: "anakin@skywalker.sw", GoogleID: "2", IsAdmin: false},
 		auth.User{Name: "Luke Skywalker", Email: "luke@skywalker.sw", GoogleID: "3", IsAdmin: false},
+	}
+
+	for i := range users {
+		users[i].Owns = make([]int, 0)
+		users[i].CanSee = make([]int, 0)
+		users[i].CanEdit = make([]int, 0)
+		users[i].Bookmarks = make([]int, 0)
 	}
 
 	// We start by inserting
@@ -91,7 +99,7 @@ func testGet(t *testing.T, repo *UserRepository, users []auth.User) {
 	for _, expectedUser := range users {
 		user, err := repo.Get(expectedUser.ID)
 		if assert.NoError(t, err, "error getting", expectedUser.Name) {
-			assert.Equal(t, expectedUser, user, "users should be equal")
+			assert.Equal(t, expectedUser, user, "%s - users should be equal", "get")
 		}
 	}
 }
@@ -101,7 +109,7 @@ func testGetByGoogleID(t *testing.T, repo *UserRepository, users []auth.User) {
 	for _, expectedUser := range users {
 		user, err := repo.GetByGoogleID(expectedUser.GoogleID)
 		if assert.NoError(t, err, "error getting", expectedUser.Name) {
-			assert.Equal(t, expectedUser, user, "users should be equal")
+			assert.Equal(t, expectedUser, user, "%s - users should be equal", "get by google id")
 		}
 	}
 }
@@ -120,13 +128,11 @@ func testUpdate(t *testing.T, repo *UserRepository, users []auth.User) {
 func testDelete(t *testing.T, repo *UserRepository, id int) bool {
 	success := true
 
-	ok, err := repo.Delete(id)
+	err := repo.Delete(id)
 	success = success && assert.NoError(t, err, "error deleting")
-	success = success && assert.True(t, ok, "user should have been found")
 
-	ok, err = repo.Delete(10)
+	err = repo.Delete(10)
 	success = success && assert.NoError(t, err, "error deleting")
-	success = success && assert.False(t, ok, "no user should have been found")
 
 	return success
 }

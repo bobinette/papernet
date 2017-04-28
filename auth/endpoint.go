@@ -11,6 +11,12 @@ import (
 	"github.com/bobinette/papernet/errors"
 )
 
+type statusCoder struct {
+	code int
+}
+
+func (s statusCoder) StatusCode() int { return s.code }
+
 var (
 	errInvalidRequest = errors.New("invalid request")
 )
@@ -85,7 +91,28 @@ func makeUpsertUserEndpoint(s *UserService) endpoint.Endpoint {
 // --------------------------------------------
 // User -> paper endpoints
 
-type UpdateUserPapersRequest struct {
+type bookmarkRequest struct {
+	PaperID  int  `json:"paper_id"`
+	Bookmark bool `json:"bookmark"`
+}
+
+func makeBookmarksHandler(s *UserService) endpoint.Endpoint {
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		userID, err := extractUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		req, ok := r.(bookmarkRequest)
+		if !ok {
+			return nil, errInvalidRequest
+		}
+
+		return s.BookmarkPaper(userID, req.PaperID, req.Bookmark)
+	}
+}
+
+type updateUserPapersRequest struct {
 	PaperID int  `json:"paper_id"`
 	Owns    bool `json:"owns"`
 
@@ -99,7 +126,7 @@ func makeUpdateUserPapersHandler(s *UserService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		req, ok := r.(UpdateUserPapersRequest)
+		req, ok := r.(updateUserPapersRequest)
 		if !ok {
 			return nil, errInvalidRequest
 		}
@@ -146,6 +173,25 @@ func makeInsertTeamHandler(s *UserService) endpoint.Endpoint {
 		return s.InsertTeam(userID, req)
 	}
 }
+func makeDeleteTeamHandler(s *UserService) endpoint.Endpoint {
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		userID, err := extractUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		teamID, ok := r.(int)
+		if !ok {
+			return nil, errInvalidRequest
+		}
+
+		err = s.DeleteTeam(userID, teamID)
+		if err != nil {
+			return nil, err
+		}
+		return statusCoder{code: http.StatusNoContent}, nil
+	}
+}
 
 type sharePaperRequest struct {
 	TeamID  int
@@ -189,6 +235,27 @@ func makeInviteTeamMemberHandler(s *UserService) endpoint.Endpoint {
 		}
 
 		return s.UpdateTeamMember(callerID, req.Email, req.TeamID, true, req.Admin)
+	}
+}
+
+type kickTeamMember struct {
+	TeamID int
+	Email  string `json:"email"`
+}
+
+func makeKickTeamMemberHandler(s *UserService) endpoint.Endpoint {
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		callerID, err := extractUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		req, ok := r.(kickTeamMember)
+		if !ok {
+			return nil, errInvalidRequest
+		}
+
+		return s.UpdateTeamMember(callerID, req.Email, req.TeamID, false, false)
 	}
 }
 
