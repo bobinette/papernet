@@ -35,6 +35,7 @@ func NewStore(dbpath string) (*Store, error) {
 	}, nil
 }
 
+// Close closes the underlying store, returning the error if any.
 func (s *Store) Close() error {
 	return s.Handle.Close()
 }

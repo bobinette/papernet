@@ -1,7 +1,7 @@
 package auth
 
 import (
-	// "fmt"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -138,13 +138,58 @@ func TestTeamService(t *testing.T) {
 		assert.NotContains(t, retrieved.Members, TeamMember{ID: otherMemberID, IsTeamAdmin: false}, "member should be in team anymore")
 	}
 
+	// Invitations to test the get for user
+	_, err = service.Invite(adminID, team.ID, memberID)
+	require.NoError(t, err, "inviting after delete in 1st team must not fail")
+
+	otherTeam, err := service.Insert(memberID, Team{Name: "Yolo team"})
+	require.NoError(t, err, "inserting after delete must not fail")
+	_, err = service.Invite(memberID, otherTeam.ID, otherMemberID)
+	require.NoError(t, err, "inviting after delete in 2nd team must not fail")
+
+	// Get the users' teams. admin should have 1 team of which it is admin. member
+	// should have 2 teams one of which it is admin. otherMember has 1 team of which
+	// it is not admin. nonMember has no team.
+	var teams []Team
+
+	teams, err = service.GetForUser(adminID)
+	assert.NoError(t, err, "get for admin should not fail")
+	for _, retrieved = range teams {
+		if retrieved.ID == team.ID {
+			assert.True(t, userIsMemberOfTeam(adminID, retrieved), "admin should be member of the Pizza team")
+			assert.True(t, userIsAdminOfTeam(adminID, retrieved), "admin should be admin of the Pizza team")
+		} else {
+			assert.Fail(t, fmt.Sprintf("team %d should not appear for admin", retrieved.ID))
+		}
+	}
+
+	teams, err = service.GetForUser(memberID)
+	assert.NoError(t, err, "get for member should not fail")
+	for _, retrieved = range teams {
+		if retrieved.ID == team.ID {
+			assert.True(t, userIsMemberOfTeam(memberID, retrieved), "member should be member of the Pizza team")
+			assert.False(t, userIsAdminOfTeam(memberID, retrieved), "member should not be admin of the Pizza team")
+		} else if retrieved.ID == otherTeam.ID {
+			assert.True(t, userIsMemberOfTeam(memberID, retrieved), "member should be member of the Pizza team")
+			assert.True(t, userIsAdminOfTeam(memberID, retrieved), "member should be admin of the Pizza team")
+		} else {
+			assert.Fail(t, fmt.Sprintf("team %d should not appear for member", retrieved.ID))
+		}
+	}
+
+	teams, err = service.GetForUser(otherMemberID)
+	assert.NoError(t, err, "get for otherMember should not fail")
+	for _, retrieved = range teams {
+		if retrieved.ID == otherTeam.ID {
+			assert.True(t, userIsMemberOfTeam(otherMemberID, retrieved), "otherMember should be member of the Pizza team")
+			assert.False(t, userIsAdminOfTeam(otherMemberID, team), "otherMember should not be admin of the Pizza team")
+		} else {
+			assert.Fail(t, fmt.Sprintf("team %d should not appear for otherMember", retrieved.ID))
+		}
+	}
+
 	// Delete a team. Only the admin should be able to delete a team.
 	// Non member -> 404. Non admin -> 403.
-	createdTeam, err = service.Insert(adminID, team)
-	require.NoError(t, err, "inserting (for delete) must not fail")
-	_, err = service.Invite(adminID, createdTeam.ID, memberID)
-	require.NoError(t, err, "inviting (for delete) must not fail")
-
 	err = service.Delete(nonMemberID, createdTeam.ID)
 	if assert.Error(t, err, "deleting from a non member team should fail") {
 		errors.AssertCode(t, err, 404)
@@ -157,6 +202,30 @@ func TestTeamService(t *testing.T) {
 
 	err = service.Delete(adminID, createdTeam.ID)
 	assert.NoError(t, err, "deleting from an admin should be ok")
+}
+
+func TestUserIsMemberOfTeam(t *testing.T) {
+	team := Team{
+		Members: []TeamMember{
+			{ID: 1, IsTeamAdmin: false},
+			{ID: 2, IsTeamAdmin: false},
+			{ID: 3, IsTeamAdmin: true},
+			{ID: 4, IsTeamAdmin: false},
+		},
+	}
+	tts := map[string]struct {
+		userID  int
+		isAdmin bool
+	}{
+		"non admin member": {1, true},
+		"admin member":     {3, true},
+		"not a member":     {5, false},
+	}
+
+	for name, tt := range tts {
+		isAdmin := userIsMemberOfTeam(tt.userID, team)
+		assert.Equal(t, tt.isAdmin, isAdmin, name)
+	}
 }
 
 func TestUserIsAdminOfTeam(t *testing.T) {
