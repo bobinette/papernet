@@ -2,8 +2,11 @@
 
 # Auth files
 [auth]
-key = "configuration/hs256.json"
-google = "configuration/oauth_google.json"
+  key = "configuration/hs256.json"
+  google = "configuration/oauth_google.json"
+
+  [auth.cayley]
+    store = "data/auth.graph"
 
 [bolt]
 store = "data/papernet.db"

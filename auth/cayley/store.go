@@ -117,3 +117,67 @@ func (s *Store) entity(token graph.Value, entityType string) (int, error) {
 
 	return id, nil
 }
+
+func (s *Store) getMaxID(node, edge quad.Value) (int, error) {
+	p := cayley.StartPath(s, node).Out(edge)
+
+	it := s.buildIterator(p)
+	defer it.Close()
+
+	// We only care about the first node
+	if !it.Next() {
+		return 0, nil
+	}
+
+	token := it.Result()                // get a ref to a node (backend-specific)
+	value := s.NameOf(token)            // get the value in the node (RDF)
+	nativeValue := quad.NativeOf(value) // convert value to normal Go type
+
+	if nativeValue == nil {
+		return 0, nil
+	}
+
+	maxIDStr := nativeValue.(quad.Raw)
+	maxID, err := strconv.Atoi(string(maxIDStr))
+	if err != nil {
+		return 0, err
+	}
+
+	return maxID, nil
+}
+
+func (s *Store) incrementMaxID(node, edge quad.Value) (int, error) {
+	current, err := s.getMaxID(node, edge)
+	if err != nil {
+		return 0, nil
+	}
+
+	// Create transaction
+	tx := graph.NewTransaction()
+
+	// Remove old value
+	if current != 0 {
+		removeQuad := quad.Make(
+			node,
+			edge,
+			quad.Raw(strconv.Itoa(current)),
+			"",
+		)
+		tx.RemoveQuad(removeQuad)
+	}
+
+	// Set new value
+	addQuad := quad.Make(
+		node,
+		edge,
+		quad.Raw(strconv.Itoa(current+1)),
+		"",
+	)
+	tx.AddQuad(addQuad)
+
+	err = s.ApplyTransaction(tx)
+	if err != nil {
+		return current, err
+	}
+	return current + 1, nil
+}

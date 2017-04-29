@@ -88,6 +88,7 @@ func testInsertTeam(t *testing.T, repo TeamRepository, teams []*Team) {
 		require.NotEqual(t, ids[i], ids[i+1], "all ids should be different")
 	}
 }
+
 func testGetTeam(t *testing.T, repo TeamRepository, id int, team *Team, name string) {
 	retrieved, err := repo.Get(id)
 	if assert.NoError(t, err, "get should not fail") {

@@ -9,7 +9,7 @@ install:
 # Default is `make`
 script: go test $(go list ./... | grep -v /vendor/)
 
-# Deployment
+# Build web and cli for linux
 before_deploy:
   - GOOS=linux GOARCH=amd64 go build -o bin/papernet-linux-amd64-web cmd/web/main.go
   - GOOS=linux GOARCH=amd64 go build -o bin/papernet-linux-amd64-cli cmd/cli/*.go
@@ -31,3 +31,10 @@ notifications:
   email:
     on_success: change
     on_failure: change
+
+# Build only the master branch. The PRs will still be built
+# branches:
+#   only:
+#     - master
+#     # Regex for tags, needed for releases
+#     - /^\d+\.\d+(\.\d+)?(-\S*)?$/

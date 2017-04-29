@@ -6,14 +6,6 @@ import (
 	"github.com/bobinette/papernet/errors"
 )
 
-func errTeamNotFound(id int) error {
-	return errors.New(fmt.Sprintf("No team for id %d", id), errors.NotFound())
-}
-
-func errNotTeamAdmin(id int) error {
-	return errors.New(fmt.Sprintf("You are not an admin of team %d", id), errors.Forbidden())
-}
-
 type TeamMember struct {
 	ID    int    `json:"id"`
 	Name  string `json:"name"`
@@ -41,12 +33,14 @@ type TeamRepository interface {
 }
 
 type TeamService struct {
-	repository TeamRepository
+	repository     TeamRepository
+	userRepository UserRepository
 }
 
-func NewTeamService(repo TeamRepository) *TeamService {
+func NewTeamService(repo TeamRepository, userRepo UserRepository) *TeamService {
 	return &TeamService{
-		repository: repo,
+		repository:     repo,
+		userRepository: userRepo,
 	}
 }
 
@@ -88,7 +82,7 @@ func (s *TeamService) Insert(callerID int, team Team) (Team, error) {
 	return team, nil
 }
 
-func (s *TeamService) Invite(callerID, teamID, memberID int) (Team, error) {
+func (s *TeamService) Invite(callerID, teamID int, memberEmail string) (Team, error) {
 	team, err := s.repository.Get(teamID)
 	if err != nil {
 		return Team{}, err
@@ -109,7 +103,14 @@ func (s *TeamService) Invite(callerID, teamID, memberID int) (Team, error) {
 		return Team{}, errNotTeamAdmin(teamID)
 	}
 
-	team.Members = append(team.Members, TeamMember{ID: memberID, IsTeamAdmin: false})
+	user, err := s.userRepository.GetByEmail(memberEmail)
+	if err != nil {
+		return Team{}, err
+	} else if user.ID == 0 {
+		return Team{}, errors.New(fmt.Sprintf("no user found for email %s", memberEmail), errors.NotFound())
+	}
+
+	team.Members = append(team.Members, TeamMember{ID: user.ID, IsTeamAdmin: false})
 	err = s.repository.Upsert(&team)
 	if err != nil {
 		return Team{}, err
@@ -183,6 +184,81 @@ func (s *TeamService) Delete(callerID, teamID int) error {
 	}
 
 	return s.repository.Delete(team.ID)
+}
+
+func (s *TeamService) Share(callerID, teamID, paperID int, canEdit bool) (Team, error) {
+	user, err := s.userRepository.Get(callerID)
+	if err != nil {
+		return Team{}, err
+	} else if user.ID == 0 {
+		return Team{}, errUserNotFound(callerID)
+	}
+
+	found := false
+	for _, pID := range user.CanSee {
+		if pID == paperID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return Team{}, errPaperNotFound(paperID)
+	}
+
+	found = false
+	for _, pID := range user.Owns {
+		if pID == paperID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return Team{}, errors.New(fmt.Sprintf("you cannot share paper %d because you are not the owner", paperID), errors.Forbidden())
+	}
+
+	team, err := s.repository.Get(teamID)
+	if err != nil {
+		return Team{}, err
+	} else if team.ID == 0 {
+		return Team{}, errTeamNotFound(teamID)
+	}
+
+	// If the user is not a member of the team -> 404
+	if !userIsMemberOfTeam(callerID, team) {
+		return Team{}, errTeamNotFound(teamID)
+	}
+
+	found = false
+	for _, canSeeID := range team.CanSee {
+		if canSeeID == paperID {
+			found = true
+			fmt.Println(team.CanSee, paperID)
+			break
+		}
+	}
+	if !found {
+		team.CanSee = append(team.CanSee, paperID)
+	}
+
+	if canEdit {
+		found = false
+		for _, canEditID := range team.CanEdit {
+			if canEditID == paperID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			team.CanEdit = append(team.CanEdit, paperID)
+		}
+	}
+
+	err = s.repository.Upsert(&team)
+	if err != nil {
+		return Team{}, err
+	}
+
+	return team, nil
 }
 
 func userIsMemberOfTeam(userID int, team Team) bool {

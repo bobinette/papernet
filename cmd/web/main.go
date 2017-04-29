@@ -5,25 +5,24 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 
 	"github.com/BurntSushi/toml"
 
 	"github.com/bobinette/papernet"
 	"github.com/bobinette/papernet/auth"
-	"github.com/bobinette/papernet/auth/cayley"
 	"github.com/bobinette/papernet/bleve"
 	"github.com/bobinette/papernet/bolt"
 	"github.com/bobinette/papernet/gin"
+	"github.com/bobinette/papernet/log"
 	"github.com/bobinette/papernet/oauth"
 	"github.com/bobinette/papernet/web"
+
+	// packages used for migration to go-kit
+	kitauth "github.com/bobinette/papernet/auth/cmd"
 )
 
 type Configuration struct {
-	Auth struct {
-		Key    string `toml:"key"`
-		Google string `toml:"google"`
-	} `toml:"auth"`
+	Auth kitauth.Configuration `toml:"auth"`
 	Bolt struct {
 		Store string `toml:"store"`
 	} `toml:"bolt"`
@@ -36,14 +35,16 @@ func main() {
 	env := flag.String("env", "dev", "environment")
 	flag.Parse()
 
+	logger := log.New(*env)
+
 	data, err := ioutil.ReadFile(fmt.Sprintf("configuration/config.%s.toml", *env))
 	if err != nil {
-		log.Fatalln("could not read configuration file:", err)
+		logger.Fatal("could not read configuration file:", err)
 	}
 	var cfg Configuration
 	err = toml.Unmarshal(data, &cfg)
 	if err != nil {
-		log.Fatalln("error unmarshalling configuration:", err)
+		logger.Fatal("error unmarshalling configuration:", err)
 	}
 
 	// Create repositories
@@ -51,7 +52,7 @@ func main() {
 	defer driver.Close()
 	err = driver.Open(cfg.Bolt.Store)
 	if err != nil {
-		log.Fatalln("could not open db:", err)
+		logger.Fatal("could not open db:", err)
 	}
 
 	paperStore := bolt.PaperStore{Driver: &driver}
@@ -64,7 +65,7 @@ func main() {
 	err = index.Open(cfg.Bleve.Store)
 	defer index.Close()
 	if err != nil {
-		log.Fatalln("could not open index:", err)
+		logger.Fatal("could not open index:", err)
 	}
 
 	// Importers
@@ -73,19 +74,19 @@ func main() {
 	importer.Register("medium.com", &papernet.MediumImporter{})
 
 	// Auth
-	keyData, err := ioutil.ReadFile(cfg.Auth.Key)
+	keyData, err := ioutil.ReadFile(cfg.Auth.KeyPath)
 	if err != nil {
-		log.Fatalln("could not open key file:", err)
+		logger.Fatal("could not open key file:", err)
 	}
 	var key papernet.SigningKey
 	err = json.Unmarshal(keyData, &key)
 	if err != nil {
-		log.Fatalln("could not read key file:", err)
+		logger.Fatal("could not read key file:", err)
 	}
 
 	googleOAuthClient, err := auth.NewGoogleClient(cfg.Auth.Google)
 	if err != nil {
-		log.Fatalln("could not read google oauth config:", err)
+		logger.Fatal("could not read google oauth config:", err)
 	}
 
 	encoder := auth.EncodeDecoder{Key: key.Key}
@@ -98,7 +99,7 @@ func main() {
 	addr := ":1705"
 	server, err := gin.New(addr, authenticator)
 	if err != nil {
-		log.Fatalln("could not start server:", err)
+		logger.Fatal("could not start server:", err)
 	}
 
 	// Paper handler
@@ -162,19 +163,13 @@ func main() {
 	// *************************************************
 
 	// Auth service
-	authStore, err := cayley.NewStore("data/user.graph")
-	if err != nil {
-		log.Fatalln("could not create user graph:", err)
-	}
-	userRepository := cayley.NewUserRepository(authStore)
-	userService := auth.NewUserService(userRepository)
-	auth.RegisterHTTPRoutes(server, userService, []byte(key.Key))
+	userService := kitauth.Start(server, cfg.Auth, logger)
 
 	// OAuth service
 	authUserService := oauth.NewUserClient(userService)
 	googleService, err := oauth.NewGoogleService(cfg.Auth.Google, authUserService)
 	if err != nil {
-		log.Fatalln("could not instantiate google service")
+		logger.Fatal("could not instantiate google service")
 	}
 	oauth.RegisterHTTPRoutes(server, googleService)
 
@@ -182,6 +177,6 @@ func main() {
 	// Start server
 	// *************************************************
 
-	log.Println("server started, listening on", addr)
-	log.Fatal(server.Start())
+	logger.Print("server started, listening on", addr)
+	logger.Fatal(server.Start())
 }

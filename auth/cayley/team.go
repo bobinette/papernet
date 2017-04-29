@@ -3,7 +3,6 @@ package cayley
 import (
 	"fmt"
 	"sort"
-	"strconv"
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
@@ -192,7 +191,7 @@ func (r *TeamRepository) GetForUser(userID int) ([]auth.Team, error) {
 
 func (r *TeamRepository) Upsert(team *auth.Team) error {
 	if team.ID == 0 {
-		id, err := r.incrementMaxID()
+		id, err := r.store.incrementMaxID(maxTeamIDNode, maxTeamIDEdge)
 		if err != nil {
 			return err
 		}
@@ -255,62 +254,4 @@ func (r *TeamRepository) Delete(id int) error {
 	tx := graph.NewTransaction()
 	addQuad(tx, deletedNode, deletedEdge, teamQuad(id))
 	return r.store.ApplyTransaction(tx)
-}
-
-// -----------------------------------------------------------------------------
-// Helpers
-
-func (r *TeamRepository) getMaxID() (int, error) {
-	p := cayley.StartPath(r.store, maxTeamIDNode).Out(maxTeamIDEdge)
-
-	it := r.store.buildIterator(p)
-	defer it.Close()
-
-	// We only care about the first node
-	if !it.Next() {
-		return 0, nil
-	}
-
-	maxID, err := r.store.int(it.Result())
-	if err != nil {
-		return 0, err
-	}
-
-	return maxID, nil
-}
-
-func (r *TeamRepository) incrementMaxID() (int, error) {
-	current, err := r.getMaxID()
-	if err != nil {
-		return 0, nil
-	}
-
-	// Create transaction
-	tx := graph.NewTransaction()
-
-	// Remove old value
-	if current != 0 {
-		removeQuad := quad.Make(
-			maxTeamIDNode,
-			maxTeamIDEdge,
-			quad.Raw(strconv.Itoa(current)),
-			"",
-		)
-		tx.RemoveQuad(removeQuad)
-	}
-
-	// Set new value
-	addQuad := quad.Make(
-		maxTeamIDNode,
-		maxTeamIDEdge,
-		quad.Raw(strconv.Itoa(current+1)),
-		"",
-	)
-	tx.AddQuad(addQuad)
-
-	err = r.store.ApplyTransaction(tx)
-	if err != nil {
-		return 0, err
-	}
-	return current + 1, nil
 }

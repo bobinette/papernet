@@ -13,8 +13,12 @@ var (
 	deletedNode = quad.Raw("deleted")
 	deletedEdge = quad.Raw("isDeleted")
 
-	nameEdge  = quad.Raw("name")
-	emailEdge = quad.Raw("email")
+	nameEdge      = quad.Raw("name")
+	emailEdge     = quad.Raw("email")
+	googleIDEdge  = quad.Raw("googleID")
+	isAdminEdge   = quad.Raw("isAdmin")
+	ownsEdge      = quad.Raw("owns")
+	bookmarksEdge = quad.Raw("bookmarks")
 
 	isAdminOfEdge  = quad.Raw("isAdminOf")
 	isMemberOfEdge = quad.Raw("isMemberOf")

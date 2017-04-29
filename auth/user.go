@@ -28,24 +28,10 @@ type UserRepository interface {
 	GetByGoogleID(string) (User, error)
 	GetByEmail(string) (User, error)
 	Upsert(*User) error
+	Delete(int) error
 
-	// Paper ownership
-	Bookmark(userID, paperID int, bookmark bool) error
+	// User -> Paper
 	PaperOwner(paperID int) (int, error)
-	UpdatePaperOwner(userID, paperID int, owns bool) error
-
-	// Team membership
-	GetTeam(int) (Team, error)
-	UpsertTeam(*Team) error
-	DeleteTeam(int) error
-	UserTeams(userID int) ([]Team, error)
-	UpdateTeamMember(userID, teamID int, isMember, isAdmin bool) error
-
-	// Team permissions
-	UpdateTeamPermission(teamID, paperID int, canSee, canEdit bool) error
-
-	// All the users
-	List() ([]User, error)
 }
 
 type UserService struct {
@@ -65,7 +51,7 @@ func (s *UserService) Get(id int) (User, error) {
 	}
 
 	if user.ID == 0 {
-		return User{}, errors.New(fmt.Sprintf("<User %d> not found", id), errors.WithCode(http.StatusNotFound))
+		return User{}, errUserNotFound(id)
 	}
 	return user, nil
 }
@@ -78,7 +64,7 @@ func (s *UserService) Upsert(u User) (User, error) {
 		if err != nil {
 			return User{}, err
 		} else if user.ID == 0 {
-			return User{}, errors.New(fmt.Sprintf("<User %d> not found", u.ID), errors.WithCode(http.StatusNotFound))
+			return User{}, errUserNotFound(u.ID)
 		}
 	} else {
 		var err error
@@ -95,7 +81,6 @@ func (s *UserService) Upsert(u User) (User, error) {
 
 	// Because admin is always false from web, and we do not want to remove the privilege
 	// every time an admin logs in
-	// @TODO: find a way to remove admin privilege from a user.
 	user.IsAdmin = user.IsAdmin || u.IsAdmin
 
 	err := s.repository.Upsert(&user)
@@ -106,42 +91,44 @@ func (s *UserService) Upsert(u User) (User, error) {
 	return user, nil
 }
 
-func (s *UserService) UpdateUserPapers(userID, paperID int, owns bool) (User, error) {
-	user, err := s.repository.Get(userID)
+func (s *UserService) CreatePaper(callerID, paperID int) (User, error) {
+	user, err := s.repository.Get(callerID)
 	if err != nil {
 		return User{}, err
 	} else if user.ID == 0 {
-		return User{}, errors.New(fmt.Sprintf("<User %d> not found", userID), errors.WithCode(http.StatusNotFound))
+		return User{}, errUserNotFound(callerID)
 	}
 
-	// @TODO: add a "transfer" parameter to transfer ownership if needed
-	owner, err := s.repository.PaperOwner(paperID)
+	ownerID, err := s.repository.PaperOwner(paperID)
 	if err != nil {
 		return User{}, err
 	}
 
-	if owner != 0 && owner != userID {
+	if ownerID == callerID {
+		return user, nil
+	}
+	if ownerID != 0 {
 		return User{}, errors.New(
-			fmt.Sprintf("<Paper %d> already has an owner", paperID),
+			fmt.Sprintf("paper %d is already owned", paperID),
 			errors.WithCode(http.StatusForbidden),
 		)
 	}
 
-	err = s.repository.UpdatePaperOwner(userID, paperID, owns)
+	user.Owns = append(user.Owns, paperID)
+	err = s.repository.Upsert(&user)
 	if err != nil {
 		return User{}, err
 	}
 
-	// Get again to have updated user
-	return s.repository.Get(userID)
+	return user, nil
 }
 
-func (s *UserService) BookmarkPaper(userID, paperID int, bookmark bool) (User, error) {
-	user, err := s.repository.Get(userID)
+func (s *UserService) Bookmark(callerID, paperID int, bookmark bool) (User, error) {
+	user, err := s.repository.Get(callerID)
 	if err != nil {
 		return User{}, err
 	} else if user.ID == 0 {
-		return User{}, errors.New(fmt.Sprintf("<User %d> not found", userID), errors.WithCode(http.StatusNotFound))
+		return User{}, errUserNotFound(callerID)
 	}
 
 	// If the user cannot see the paper, consider it not found
@@ -153,121 +140,38 @@ func (s *UserService) BookmarkPaper(userID, paperID int, bookmark bool) (User, e
 		}
 	}
 	if !found {
-		return User{}, errors.New(fmt.Sprintf("<Paper %d> not found", paperID), errors.WithCode(http.StatusNotFound))
+		return User{}, errPaperNotFound(paperID)
 	}
 
-	bookmarked := false
-	for _, pID := range user.Bookmarks {
+	index := -1
+	for i, pID := range user.Bookmarks {
 		if pID == paperID {
-			bookmarked = true
+			index = i
 			break
 		}
 	}
-	if !bookmark && !bookmark {
-		return user, nil
-	} else if bookmark && bookmarked {
-		return user, nil
+
+	if !bookmark { // Remove bookmark
+		if index == -1 {
+			return user, nil
+		}
+
+		if index == len(user.Bookmarks)-1 {
+			user.Bookmarks = user.Bookmarks[0:index]
+		} else {
+			user.Bookmarks = append(user.Bookmarks[0:index], user.Bookmarks[index+1:len(user.Bookmarks)-1]...)
+		}
+	} else { // Add bookmark
+		if index != -1 {
+			return user, nil
+		}
+		user.Bookmarks = append(user.Bookmarks, paperID)
 	}
 
-	err = s.repository.Bookmark(userID, paperID, bookmark)
+	err = s.repository.Upsert(&user)
 	if err != nil {
 		return User{}, err
 	}
 
-	// Get again to have updated user
-	return s.repository.Get(userID)
-}
-
-// -----------------------------------------------------------------------------
-// Teams
-
-func (s *UserService) UserTeams(userID int) ([]Team, error) {
-	return s.repository.UserTeams(userID)
-}
-
-func (s *UserService) InsertTeam(userID int, team Team) (Team, error) {
-	if team.ID != 0 {
-		return Team{}, errors.New("cannot update team via this handler", errors.WithCode(http.StatusBadRequest))
-	}
-
-	// No need for name and email
-	team.Members = []TeamMember{
-		TeamMember{
-			ID:          userID,
-			IsTeamAdmin: true,
-		},
-	}
-
-	err := s.repository.UpsertTeam(&team)
-	if err != nil {
-		return Team{}, err
-	}
-
-	// Reload team to get everything
-	return s.repository.GetTeam(team.ID)
-}
-
-func (s *UserService) DeleteTeam(userID int, teamID int) error {
-	if userIsAdmin, err := s.userIsAdminOfTeam(userID, teamID); err != nil {
-		return err
-	} else if !userIsAdmin {
-		return errors.New("Inviter should be admin of the team", errors.WithCode(http.StatusForbidden))
-	}
-
-	return s.repository.DeleteTeam(teamID)
-}
-
-func (s *UserService) UpdateTeamMember(inviterID int, memberEmail string, teamID int, isMember, isAdmin bool) (Team, error) {
-	// Check that caller is admin of the team
-	if inviterIsAdmin, err := s.userIsAdminOfTeam(inviterID, teamID); err != nil {
-		return Team{}, err
-	} else if !inviterIsAdmin {
-		return Team{}, errors.New("Inviter should be admin of the team", errors.WithCode(http.StatusForbidden))
-	}
-
-	member, err := s.repository.GetByEmail(memberEmail)
-	if err != nil {
-		return Team{}, err
-	} else if member.ID == 0 {
-		return Team{}, errors.New(fmt.Sprintf("No user with email %s", memberEmail), errors.WithCode(http.StatusNotFound))
-	}
-
-	err = s.repository.UpdateTeamMember(member.ID, teamID, isMember, isAdmin)
-	if err != nil {
-		return Team{}, err
-	}
-
-	return s.repository.GetTeam(teamID)
-}
-
-func (s *UserService) SharePaper(userID, teamID, paperID int, canSee, canEdit bool) (Team, error) {
-	err := s.repository.UpdateTeamPermission(teamID, paperID, canSee, canEdit)
-	if err != nil {
-		return Team{}, err
-	}
-	return s.repository.GetTeam(teamID)
-}
-
-func (s *UserService) userIsAdminOfTeam(userID, teamID int) (bool, error) {
-	team, err := s.repository.GetTeam(teamID)
-	if err != nil {
-		return false, err
-	} else if team.ID == 0 {
-		return false, errors.New(fmt.Sprintf("<Team %d> not found", teamID), errors.WithCode(http.StatusNotFound))
-	}
-
-	for _, m := range team.Members {
-		if m.ID == userID {
-			return m.IsTeamAdmin, nil
-		}
-	}
-
-	return false, nil
-}
-
-// -----------------------------------------------------------------------------
-// List all users
-
-func (s *UserService) List() ([]User, error) {
-	return s.repository.List()
+	return user, nil
 }
