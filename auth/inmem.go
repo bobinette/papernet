@@ -117,6 +117,51 @@ func (r *InMemUserRepository) Get(userID int) (User, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	return r.get(userID)
+}
+
+func (r *InMemUserRepository) GetByGoogleID(googleID string) (User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, user := range r.users {
+		if user.GoogleID == googleID {
+			return r.get(user.ID)
+		}
+	}
+
+	return User{}, nil
+}
+
+func (r *InMemUserRepository) GetByEmail(email string) (User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, user := range r.users {
+		if user.Email == email {
+			return r.get(user.ID)
+		}
+	}
+
+	return User{}, nil
+}
+
+func (r *InMemUserRepository) List() ([]User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var err error
+	users := make([]User, len(r.users))
+	for i, user := range r.users {
+		users[i], err = r.get(user.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return users, nil
+}
+
+func (r *InMemUserRepository) get(userID int) (User, error) {
 	var user User
 	for _, u := range r.users {
 		if u.ID == userID {
@@ -160,34 +205,6 @@ func (r *InMemUserRepository) Get(userID int) (User, error) {
 	}
 
 	return user, nil
-}
-
-func (r *InMemUserRepository) GetByGoogleID(googleID string) (User, error) {
-	r.mu.Lock()
-
-	for _, user := range r.users {
-		if user.GoogleID == googleID {
-			r.mu.Unlock()
-			return r.Get(user.ID)
-		}
-	}
-
-	r.mu.Unlock()
-	return User{}, nil
-}
-
-func (r *InMemUserRepository) GetByEmail(email string) (User, error) {
-	r.mu.Lock()
-
-	for _, user := range r.users {
-		if user.Email == email {
-			r.mu.Unlock()
-			return r.Get(user.ID)
-		}
-	}
-
-	r.mu.Unlock()
-	return User{}, nil
 }
 
 func (r *InMemUserRepository) Upsert(user *User) error {

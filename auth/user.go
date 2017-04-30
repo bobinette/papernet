@@ -27,6 +27,7 @@ type UserRepository interface {
 	Get(int) (User, error)
 	GetByGoogleID(string) (User, error)
 	GetByEmail(string) (User, error)
+	List() ([]User, error)
 	Upsert(*User) error
 	Delete(int) error
 
@@ -185,4 +186,8 @@ func (s *UserService) Bookmark(callerID, paperID int, bookmark bool) (User, erro
 
 func (s *UserService) Token(userID int) (string, error) {
 	return s.encoder.Encode(userID)
+}
+
+func (s *UserService) All() ([]User, error) {
+	return s.repository.List()
 }

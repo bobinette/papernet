@@ -140,6 +140,31 @@ func (r *UserRepository) PaperOwner(paperID int) (int, error) {
 	return userID, nil
 }
 
+// List returns all the user in the database
+func (r *UserRepository) List() ([]auth.User, error) {
+	p := cayley.StartPath(r.store, allUsersNode).Out(allUsersEdge)
+	p = p.Except(p.HasReverse(deletedEdge, deletedNode))
+
+	it := r.store.buildIterator(p)
+	defer it.Close()
+
+	users := make([]auth.User, 0)
+	for it.Next() {
+		userID, err := r.store.entity(it.Result(), "user")
+		if err != nil {
+			return nil, err
+		}
+
+		user, err := r.Get(userID)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
 // -----------------------------------------------------------------------------
 // Helpers
 

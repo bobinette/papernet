@@ -49,6 +49,8 @@ func TestUserRepository(t *testing.T, repo UserRepository) {
 	users[1].Bookmarks = []int{1, 2}
 	testUpdateUser(t, repo, users[1])
 
+	// Test retrieving all the users
+
 	// Retrieve paper owner
 	testGetPaperOwner(t, repo, 1, users[1].ID)
 
@@ -119,6 +121,30 @@ func testGetPaperOwner(t *testing.T, repo UserRepository, paperID, ownerID int) 
 	userID, err := repo.PaperOwner(paperID)
 	assert.NoError(t, err, "getting paper owner should not fail")
 	assert.Equal(t, ownerID, userID, "incorrect owner id retrieved")
+}
+
+func testAllUsers(t *testing.T, repo UserRepository, users []*User) {
+	retrieved, err := repo.List()
+	if !assert.NoError(t, err, "listing all users should not fail") {
+		return
+	}
+
+	if !assert.Equal(t, len(users), len(retrieved), "incorrect number of users retrieved") {
+		return
+	}
+
+	for _, user := range users {
+		found := false
+		for _, retrievedUser := range retrieved {
+			if retrievedUser.ID == user.ID {
+				found = true
+				assertUser(t, *user, retrievedUser, fmt.Sprintf("all - %s", user.Name))
+			}
+		}
+		if !found {
+			assert.Fail(t, "user %s not retrieved", user.Name)
+		}
+	}
 }
 
 func assertUser(t *testing.T, expected, actual User, name string) {
