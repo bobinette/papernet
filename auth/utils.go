@@ -8,8 +8,8 @@ import (
 
 	kitjwt "github.com/go-kit/kit/auth/jwt"
 
-	"github.com/bobinette/papernet/auth/jwt"
 	"github.com/bobinette/papernet/errors"
+	"github.com/bobinette/papernet/jwt"
 )
 
 // Variables and functions for specific errors

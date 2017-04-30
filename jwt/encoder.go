@@ -15,7 +15,7 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
-func NewEncode(key []byte) *Encoder {
+func NewEncoder(key []byte) *Encoder {
 	return &Encoder{
 		key: key,
 	}

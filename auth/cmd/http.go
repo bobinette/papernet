@@ -6,14 +6,13 @@ import (
 
 	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/auth/cayley"
+	"github.com/bobinette/papernet/jwt"
 	"github.com/bobinette/papernet/log"
 )
 
 type Configuration struct {
 	KeyPath string `toml:"key"`
-	Google  string `toml:"google"`
-
-	Cayley struct {
+	Cayley  struct {
 		Store string `toml:"store"`
 	} `toml:"cayley"`
 }
@@ -34,6 +33,7 @@ func Start(srv auth.HTTPServer, conf Configuration, logger log.Logger) *auth.Use
 	if err != nil {
 		logger.Fatal("could not read key file:", err)
 	}
+	tokenEncoder := jwt.NewEncoder([]byte(key.Key))
 
 	// Create repositories
 	store, err := cayley.NewStore(conf.Cayley.Store)
@@ -44,7 +44,7 @@ func Start(srv auth.HTTPServer, conf Configuration, logger log.Logger) *auth.Use
 	teamRepository := cayley.NewTeamRepository(store)
 
 	// Start user endpoint
-	userService := auth.NewUserService(userRepository)
+	userService := auth.NewUserService(userRepository, tokenEncoder)
 	auth.RegisterUserHTTP(srv, userService, []byte(key.Key))
 
 	// Start team endpoint

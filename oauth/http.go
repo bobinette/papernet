@@ -20,6 +20,10 @@ type Server interface {
 	RegisterHandler(path, method string, f http.Handler)
 }
 
+type Configuration struct {
+	GooglePath string `toml:"google"`
+}
+
 // MakeHTTPHandler returns a http handler for the auth service. It defines the following routes:
 // set/get paper owner,
 // get user permissions,

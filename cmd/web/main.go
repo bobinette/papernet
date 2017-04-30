@@ -14,16 +14,17 @@ import (
 	"github.com/bobinette/papernet/bolt"
 	"github.com/bobinette/papernet/gin"
 	"github.com/bobinette/papernet/log"
-	"github.com/bobinette/papernet/oauth"
 	"github.com/bobinette/papernet/web"
 
 	// packages used for migration to go-kit
 	kitauth "github.com/bobinette/papernet/auth/cmd"
+	"github.com/bobinette/papernet/oauth"
 )
 
 type Configuration struct {
-	Auth kitauth.Configuration `toml:"auth"`
-	Bolt struct {
+	Auth  kitauth.Configuration `toml:"auth"`
+	Oauth oauth.Configuration   `toml:"oauth"`
+	Bolt  struct {
 		Store string `toml:"store"`
 	} `toml:"bolt"`
 	Bleve struct {
@@ -84,7 +85,7 @@ func main() {
 		logger.Fatal("could not read key file:", err)
 	}
 
-	googleOAuthClient, err := auth.NewGoogleClient(cfg.Auth.Google)
+	googleOAuthClient, err := auth.NewGoogleClient(cfg.Oauth.GooglePath)
 	if err != nil {
 		logger.Fatal("could not read google oauth config:", err)
 	}
@@ -167,7 +168,7 @@ func main() {
 
 	// OAuth service
 	authUserService := oauth.NewUserClient(userService)
-	googleService, err := oauth.NewGoogleService(cfg.Auth.Google, authUserService)
+	googleService, err := oauth.NewGoogleService(cfg.Oauth.GooglePath, authUserService)
 	if err != nil {
 		logger.Fatal("could not instantiate google service")
 	}

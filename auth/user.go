@@ -34,13 +34,20 @@ type UserRepository interface {
 	PaperOwner(paperID int) (int, error)
 }
 
-type UserService struct {
-	repository UserRepository
+type Encoder interface {
+	Encode(int) (string, error)
 }
 
-func NewUserService(repo UserRepository) *UserService {
+type UserService struct {
+	repository UserRepository
+
+	encoder Encoder
+}
+
+func NewUserService(repo UserRepository, encoder Encoder) *UserService {
 	return &UserService{
 		repository: repo,
+		encoder:    encoder,
 	}
 }
 
@@ -174,4 +181,8 @@ func (s *UserService) Bookmark(callerID, paperID int, bookmark bool) (User, erro
 	}
 
 	return user, nil
+}
+
+func (s *UserService) Token(userID int) (string, error) {
+	return s.encoder.Encode(userID)
 }

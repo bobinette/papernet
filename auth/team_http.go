@@ -9,7 +9,7 @@ import (
 	kitjwt "github.com/go-kit/kit/auth/jwt"
 	kithttp "github.com/go-kit/kit/transport/http"
 
-	"github.com/bobinette/papernet/auth/jwt"
+	"github.com/bobinette/papernet/jwt"
 )
 
 func RegisterTeamHTTP(srv HTTPServer, service *TeamService, jwtKey []byte) {

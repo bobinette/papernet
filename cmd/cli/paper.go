@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -19,6 +20,7 @@ func init() {
 	SearchCommand.PersistentFlags().String("file", "", "filename to load the payload")
 
 	PaperCommand.AddCommand(&SavePaperCommand)
+	PaperCommand.AddCommand(&PaperAllCommand)
 	PaperCommand.AddCommand(&DeletePaperCommand)
 	PaperCommand.AddCommand(&SearchCommand)
 
@@ -62,6 +64,37 @@ var PaperCommand = cobra.Command{
 
 		cmd.Println(string(pj))
 		return nil
+	},
+}
+
+var PaperAllCommand = cobra.Command{
+	Use:   "all",
+	Short: "List all the papers",
+	Long:  "List all the papers",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) > 0 && args[0] == "help" {
+			cmd.Help()
+			return
+		}
+
+		addr := cmd.Flag("store").Value.String()
+		store, f, err := createStore(addr)
+		defer f()
+		if err != nil {
+			log.Fatalln(errors.New("error opening db", errors.WithCause(err)))
+		}
+
+		papers, err := store.List()
+		if err != nil {
+			log.Fatalln(errors.New("error getting papers", errors.WithCause(err)))
+		}
+
+		data, err := json.Marshal(papers)
+		if err != nil {
+			log.Fatalln(errors.New("error marshalling results", errors.WithCause(err)))
+		}
+
+		cmd.Println(string(data))
 	},
 }
 
