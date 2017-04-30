@@ -1,6 +1,8 @@
 package gin
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -44,7 +46,7 @@ func JSONRenderer(next papernet.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
-func New(addr string, authenticator auth.Authenticator) (papernet.Server, error) {
+func New(addr string, authenticator auth.Authenticator) (*Server, error) {
 	router := gin.Default()
 
 	// CORS
@@ -61,7 +63,7 @@ func New(addr string, authenticator auth.Authenticator) (papernet.Server, error)
 
 	// Unknown route
 	router.NoRoute(func(c *gin.Context) {
-		c.JSON(404, gin.H{"message": "Route not found"})
+		c.JSON(404, gin.H{"message": fmt.Sprintf("route not found: %s", c.Request.URL)})
 	})
 
 	// Ping
@@ -85,6 +87,25 @@ func (s *Server) Register(route papernet.EndPoint) error {
 	return nil
 }
 
+func (s *Server) RegisterHandler(path, method string, h http.Handler) {
+	s.Handle(method, path, wrapH(h))
+}
+
+func (s *Server) RegisterHandlerFunc(path, method string, f http.HandlerFunc) {
+	s.Handle(method, path, wrapH(f))
+}
+
 func (s *Server) Start() error {
 	return http.ListenAndServe(s.Addr, s)
+}
+
+func wrapH(h http.Handler) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		params := make(map[string]string)
+		for _, p := range c.Params {
+			params[p.Key] = p.Value
+		}
+
+		h.ServeHTTP(c.Writer, c.Request.WithContext(context.WithValue(c.Request.Context(), "params", params)))
+	}
 }
