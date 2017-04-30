@@ -3,3 +3,5 @@ data/*
 # Credentials
 oauth_*.json
 hs256.json
+
+vendor/*
