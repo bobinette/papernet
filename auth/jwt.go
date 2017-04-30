@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -21,17 +20,13 @@ type EncodeDecoder struct {
 }
 
 type papernetClaims struct {
-	UserID int `json:"user_id"`
+	UserID string `json:"user_id"`
 	jwt.StandardClaims
 }
 
 func (e EncodeDecoder) Encode(userID string) (string, error) {
-	id, err := strconv.Atoi(userID)
-	if err != nil {
-		return "", errors.New("userID should be int")
-	}
 	claims := papernetClaims{
-		id,
+		userID,
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().AddDate(0, 2, 0).Unix(),
 			Issuer:    "papernet",
@@ -53,7 +48,7 @@ func (e EncodeDecoder) Decode(bearer string) (string, error) {
 	}
 
 	if claims, ok := token.Claims.(*papernetClaims); ok && token.Valid {
-		return strconv.Itoa(claims.UserID), nil
+		return claims.UserID, nil
 	}
 
 	return "", errors.New("could not get claims")
