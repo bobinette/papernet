@@ -16,7 +16,7 @@ func init() {
 	UserCommand.PersistentFlags().String("store", "data/papernet.db", "address of the bolt db file")
 
 	UserCommand.AddCommand(&CreateUserCommand)
-	UserCommand.AddCommand(&UserTokenCommand)
+	UserCommand.AddCommand(&UserAllCommand)
 	RootCmd.AddCommand(&UserCommand)
 }
 
@@ -24,38 +24,15 @@ var UserCommand = cobra.Command{
 	Use:   "user",
 	Short: "List all users",
 	Long:  "List all users",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 0 && args[0] == "help" {
-			return cmd.Help()
-		}
-
-		addr := cmd.Flag("store").Value.String()
-		driver := bolt.Driver{}
-
-		err := driver.Open(addr)
-		defer driver.Close()
-		if err != nil {
-			return errors.New("error opening db", errors.WithCause(err))
-		}
-
-		store := bolt.UserStore{Driver: &driver}
-
-		users, err := store.List()
-		if err != nil {
-			return errors.New("error getting papers", errors.WithCause(err))
-		}
-		for _, user := range users {
-			cmd.Printf("%+v\n", user)
-		}
-
-		return nil
+	Run: func(cmd *cobra.Command, args []string) {
+		log.Fatalln("not ready")
 	},
 }
 
 var CreateUserCommand = cobra.Command{
 	Use:   "create",
-	Short: "List all users",
-	Long:  "List all users",
+	Short: "Create a user",
+	Long:  "Create a user",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return errors.New("takes only one argument: the user in json")
@@ -90,16 +67,14 @@ var CreateUserCommand = cobra.Command{
 	},
 }
 
-var UserTokenCommand = cobra.Command{
-	Use:   "user",
+var UserAllCommand = cobra.Command{
+	Use:   "all",
 	Short: "List all users",
 	Long:  "List all users",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
-			return errors.New("takes only one argument: the id of the user")
-		}
-		if args[0] == "help" {
-			return cmd.Help()
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) > 0 && args[0] == "help" {
+			cmd.Help()
+			return
 		}
 
 		addr := cmd.Flag("store").Value.String()
@@ -108,19 +83,21 @@ var UserTokenCommand = cobra.Command{
 		err := driver.Open(addr)
 		defer driver.Close()
 		if err != nil {
-			return errors.New("error opening db", errors.WithCause(err))
+			log.Fatalln(errors.New("error opening db", errors.WithCause(err)))
 		}
 
 		store := bolt.UserStore{Driver: &driver}
 
 		users, err := store.List()
 		if err != nil {
-			return errors.New("error getting papers", errors.WithCause(err))
+			log.Fatalln(errors.New("error getting papers", errors.WithCause(err)))
 		}
 		for _, user := range users {
-			cmd.Printf("%+v\n", user)
+			data, err := json.Marshal(user)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			cmd.Println(string(data))
 		}
-
-		return nil
 	},
 }
