@@ -25,7 +25,35 @@ var UserCommand = cobra.Command{
 	Short: "List all users",
 	Long:  "List all users",
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Fatalln("not ready")
+		if len(args) != 1 {
+			logger.Fatal(errors.New("takes only one argument: the user id"))
+		}
+		if args[0] == "help" {
+			cmd.Help()
+			return
+		}
+
+		addr := cmd.Flag("store").Value.String()
+		driver := bolt.Driver{}
+
+		err := driver.Open(addr)
+		defer driver.Close()
+		if err != nil {
+			logger.Fatal(errors.New("error opening db", errors.WithCause(err)))
+		}
+		store := bolt.UserStore{Driver: &driver}
+
+		userID := args[0]
+		user, err := store.Get(userID)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		data, err := json.Marshal(user)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		cmd.Println(string(data))
 	},
 }
 

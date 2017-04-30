@@ -42,7 +42,6 @@ func RegisterHTTPRoutes(srv Server, service *GoogleService) {
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
-	srv.RegisterHandler("/login/google", "GET", googleLoginURLHandler)
 
 	googleLoginHandler := kithttp.NewServer(
 		makeGoogleLoginEndpoint(service),
@@ -50,6 +49,8 @@ func RegisterHTTPRoutes(srv Server, service *GoogleService) {
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
+
+	srv.RegisterHandler("/login/google", "GET", googleLoginURLHandler)
 	srv.RegisterHandler("/login/google", "POST", googleLoginHandler)
 }
 
