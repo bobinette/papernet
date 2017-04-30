@@ -3,7 +3,7 @@ go:
   - 1.7.1
 
 install:
-  - go get -u github.com/golang/dep/...
+  - go get -u -v github.com/golang/dep/...
   - dep ensure -v
 
 # Default is `make`

@@ -41,7 +41,7 @@ func TestTeamService(t *testing.T) {
 	// Create a new team. The caller should be the only user of the team.
 	// If the team has some, they are removed and the caller is set as admin.
 	// If they are some permissions, they should be removed.
-	createdTeam, err := service.Insert(admin.ID, team)
+	createdTeam, err := service.Create(admin.ID, team)
 	require.NoError(t, err, "inserting must not fail")
 	require.NotEqual(t, 0, createdTeam.ID, "created team should have an id")
 
@@ -56,7 +56,7 @@ func TestTeamService(t *testing.T) {
 	}
 	assertTeam(t, team, createdTeam, "team gotten from insert")
 
-	otherTeam, err := service.Insert(member.ID, Team{Name: "Yolo team"})
+	otherTeam, err := service.Create(member.ID, Team{Name: "Yolo team"})
 	require.NoError(t, err, "inserting after delete must not fail")
 
 	var retrieved Team
@@ -77,6 +77,16 @@ func TestTeamService(t *testing.T) {
 	retrieved, err = service.Invite(admin.ID, team.ID, member.Email)
 	if assert.NoError(t, err, "inviting from an admin should not fail") {
 		assertTeam(t, team, retrieved, "invited from admin")
+	}
+
+	retrieved, err = service.Invite(admin.ID, team.ID, admin.Email)
+	if assert.NoError(t, err, "admin inviting itself should not fail") {
+		assertTeam(t, team, retrieved, "admin invited itself")
+	}
+
+	retrieved, err = service.Invite(admin.ID, team.ID, member.Email)
+	if assert.NoError(t, err, "inviting user already member should not fail") {
+		assertTeam(t, team, retrieved, "member invited again")
 	}
 
 	retrieved, err = service.Invite(member.ID, team.ID, otherMember.Email)

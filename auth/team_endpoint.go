@@ -34,7 +34,7 @@ func (ep TeamEndpoint) Create(ctx context.Context, r interface{}) (interface{}, 
 		return nil, errInvalidRequest
 	}
 
-	return ep.service.Insert(userID, team)
+	return ep.service.Create(userID, team)
 }
 
 type inviteRequest struct {

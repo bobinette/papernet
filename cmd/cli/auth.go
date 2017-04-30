@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"strconv"
 
@@ -33,19 +34,23 @@ var (
 
 	// Other variables
 	userService *auth.UserService
+	teamService *auth.TeamService
 )
 
 func init() {
 	AuthCommand.AddCommand(&AuthUserCommand)
-	AuthCommand.AddCommand(&AuthTokenCommand)
-	AuthCommand.AddCommand(&AuthMigrationCommand)
 
+	AuthUserCommand.AddCommand(&AuthTokenCommand)
 	AuthUserCommand.AddCommand(&AuthAllUsersCommand)
+	AuthUserCommand.AddCommand(&AuthUpsertUserCommand)
+
+	AuthCommand.AddCommand(&AuthMigrationCommand)
 
 	inheritPersistentPreRun(&AuthCommand)
 	inheritPersistentPreRun(&AuthUserCommand)
 	inheritPersistentPreRun(&AuthTokenCommand)
 	inheritPersistentPreRun(&AuthMigrationCommand)
+	inheritPersistentPreRun(&AuthUpsertUserCommand)
 
 	inheritPersistentPreRun(&AuthAllUsersCommand)
 
@@ -107,9 +112,11 @@ var AuthCommand = cobra.Command{
 			logger.Fatal("could not open user graph:", err)
 		}
 		userRepository := cayley.NewUserRepository(store)
+		teamRepository := cayley.NewTeamRepository(store)
 
 		// Create user service
 		userService = auth.NewUserService(userRepository, tokenEncoder)
+		teamService = auth.NewTeamService(teamRepository, userRepository)
 	},
 }
 
@@ -119,7 +126,7 @@ var AuthUserCommand = cobra.Command{
 	Long:  "Retrieve a user based on its id",
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
-			logger.Fatal("user token wants 1 argument: the id of the user")
+			logger.Fatal("user 1 argument: the id of the user")
 		}
 
 		if args[0] == "help" {
@@ -196,6 +203,40 @@ var AuthAllUsersCommand = cobra.Command{
 	},
 }
 
+var AuthUpsertUserCommand = cobra.Command{
+	Use:   "upsert",
+	Short: "Upsert a user from a json",
+	Long:  "Upsert a user from a json",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) != 1 {
+			logger.Fatalf("user upsert wants 1 argument: the json to upsert the user, got %v", args)
+		}
+
+		if args[0] == "help" {
+			cmd.Help()
+			return
+		}
+
+		var user auth.User
+		err := json.Unmarshal([]byte(args[0]), &user)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		user, err = userService.Upsert(user)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		data, err := json.Marshal(user)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		cmd.Println("user upserted: ", string(data))
+	},
+}
+
 // ------------------------------------------------------------------------------------
 // Migration command
 
@@ -214,16 +255,22 @@ var AuthMigrationCommand = cobra.Command{
 		if err != nil {
 			logger.Fatal(errors.New("error opening db", errors.WithCause(err)))
 		}
-		userBoltStore := bolt.UserStore{Driver: &driver}
 
-		oldUsers, err := userBoltStore.List()
+		// ------------------------------------------------
+		// Migrate Users
+		userStore := bolt.UserStore{Driver: &driver}
+		paperStore := bolt.PaperStore{Driver: &driver}
+		teamStore := bolt.TeamStore{Driver: &driver}
+
+		oldUsers, err := userStore.List()
 		if err != nil {
 			logger.Fatal(errors.New("error getting papers", errors.WithCause(err)))
 		}
 
+		users := make(map[int]auth.User)
+		usersByGoogleID := make(map[string]auth.User)
 		paperPermission := make(map[int][]int)
 		userBookmarks := make(map[int][]int)
-
 		for _, oldUser := range oldUsers {
 			user := auth.User{
 				Name:      oldUser.Name,
@@ -236,6 +283,8 @@ var AuthMigrationCommand = cobra.Command{
 			if err != nil {
 				logger.Fatal(err)
 			}
+			users[user.ID] = user
+			usersByGoogleID[user.GoogleID] = user
 
 			for _, paperID := range oldUser.CanEdit {
 				paperPermission[paperID] = append(paperPermission[paperID], user.ID)
@@ -250,15 +299,51 @@ var AuthMigrationCommand = cobra.Command{
 			cmd.Printf("user %d created: %s\n", user.ID, data)
 		}
 
+		paperOwner := make(map[int]int)
 		for paperID, userIDs := range paperPermission {
+			papers, err := paperStore.Get(paperID)
+			if err != nil {
+				logger.Fatal(err)
+			} else if len(papers) == 0 {
+				cmd.Printf("paper %d does not exist anymore.\n", paperID)
+				continue
+			}
+
 			if len(userIDs) == 1 {
 				_, err := userService.CreatePaper(userIDs[0], paperID)
 				if err != nil {
 					logger.Fatal(err)
 				}
+				paperOwner[paperID] = userIDs[0]
 				cmd.Printf("paper %d attributed to user %d\n", paperID, userIDs[0])
 			} else {
-				cmd.Printf("conflict of owner on paper %d between users %v\n", paperID, userIDs)
+				paper := papers[0]
+				cmd.Printf("Conflict of owner for paper %d: %s\n", paper.ID, paper.Title)
+				for _, userID := range userIDs {
+					cmd.Printf("%d: %s\n", users[userID].ID, users[userID].Name)
+				}
+
+				cmd.Print("Owner: ")
+				var userID int
+				fmt.Scanln(&userID)
+
+				valid := false
+				for _, uID := range userIDs {
+					if uID == userID {
+						valid = true
+						break
+					}
+				}
+				if !valid {
+					logger.Fatalf("invalid user id %d, not in %v", userID, userIDs)
+				}
+
+				_, err = userService.CreatePaper(userID, paperID)
+				if err != nil {
+					logger.Fatal(err)
+				}
+				cmd.Printf("paper %d attributed to user %d\n", paperID, userID)
+				paperOwner[paperID] = userID
 			}
 		}
 
@@ -271,6 +356,61 @@ var AuthMigrationCommand = cobra.Command{
 					cmd.Printf("paper %d bookmarked for user %d\n", paperID, userID)
 				}
 			}
+		}
+
+		// ------------------------------------------------
+		// Migrate Teams
+
+		oldTeams, err := teamStore.All()
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		for _, oldTeam := range oldTeams {
+			team := auth.Team{
+				Name: oldTeam.Name,
+			}
+			adminGoogleID := oldTeam.Admins[0]
+			admin := usersByGoogleID[adminGoogleID]
+
+			team, err := teamService.Create(admin.ID, team)
+			if err != nil {
+				logger.Fatal(err)
+			}
+
+			for _, memberGoogleID := range oldTeam.Members {
+				team, err = teamService.Invite(admin.ID, team.ID, usersByGoogleID[memberGoogleID].Email)
+				if err != nil {
+					logger.Fatal(err)
+				}
+			}
+
+			for _, paperID := range oldTeam.CanSee {
+				canEdit := false
+				for _, pID := range oldTeam.CanEdit {
+					if pID == paperID {
+						canEdit = true
+						break
+					}
+				}
+
+				owner, ok := paperOwner[paperID]
+				if !ok {
+					cmd.Printf("no owner found for paper %d, paper has probably been deleted\n", paperID)
+					continue
+				}
+
+				team, err = teamService.Share(owner, team.ID, paperID, canEdit)
+				if err != nil {
+					logger.Fatal(err)
+				}
+			}
+
+			data, err := json.Marshal(team)
+			if err != nil {
+				logger.Fatal(err)
+			}
+			cmd.Printf("team %d created: %s\n", team.ID, data)
 		}
 	},
 }

@@ -67,7 +67,7 @@ func (s *TeamService) GetForUser(callerID int) ([]Team, error) {
 	return s.repository.GetForUser(callerID)
 }
 
-func (s *TeamService) Insert(callerID int, team Team) (Team, error) {
+func (s *TeamService) Create(callerID int, team Team) (Team, error) {
 	team.Members = []TeamMember{
 		{ID: callerID, IsTeamAdmin: true},
 	}
@@ -108,6 +108,10 @@ func (s *TeamService) Invite(callerID, teamID int, memberEmail string) (Team, er
 		return Team{}, err
 	} else if user.ID == 0 {
 		return Team{}, errors.New(fmt.Sprintf("no user found for email %s", memberEmail), errors.NotFound())
+	}
+
+	if userIsMemberOfTeam(user.ID, team) {
+		return team, nil
 	}
 
 	team.Members = append(team.Members, TeamMember{ID: user.ID, IsTeamAdmin: false})
