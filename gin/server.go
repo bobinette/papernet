@@ -15,7 +15,7 @@ import (
 type Server struct {
 	*gin.Engine
 
-	Authenticator auth.Authenticator
+	Authenticator *auth.Authenticator
 	Addr          string
 }
 
@@ -46,7 +46,7 @@ func JSONRenderer(next papernet.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
-func New(addr string, authenticator auth.Authenticator) (*Server, error) {
+func New(addr string, authenticator *auth.Authenticator) (*Server, error) {
 	router := gin.Default()
 
 	// CORS

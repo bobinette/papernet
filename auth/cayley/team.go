@@ -75,10 +75,10 @@ func (r *TeamRepository) Get(id int) (auth.Team, error) {
 	admins := startingPoint.InWithTags(
 		[]string{"isAdminOf"},
 		isAdminOfEdge,
-	) //.SaveOptional(nameEdge, "name").SaveOptional(emailEdge, "email")
+	).SaveOptional(nameEdge, "name").SaveOptional(emailEdge, "email")
 	members := startingPoint.In(
 		isMemberOfEdge,
-	) //.SaveOptional(emailEdge, "name").SaveOptional(emailEdge, "email")
+	).SaveOptional(nameEdge, "name").SaveOptional(emailEdge, "email")
 
 	p = admins.Or(members)
 	it = r.store.buildIterator(p)

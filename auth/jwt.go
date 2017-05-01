@@ -8,11 +8,11 @@ import (
 )
 
 type TokenEncoder interface {
-	Encode(string) (string, error)
+	Encode(int) (string, error)
 }
 
 type TokenDecoder interface {
-	Decode(string) (string, error)
+	Decode(string) (int, error)
 }
 
 type EncodeDecoder struct {
@@ -20,11 +20,11 @@ type EncodeDecoder struct {
 }
 
 type papernetClaims struct {
-	UserID string `json:"user_id"`
+	UserID int `json:"user_id"`
 	jwt.StandardClaims
 }
 
-func (e EncodeDecoder) Encode(userID string) (string, error) {
+func (e EncodeDecoder) Encode(userID int) (string, error) {
 	claims := papernetClaims{
 		userID,
 		jwt.StandardClaims{
@@ -37,19 +37,19 @@ func (e EncodeDecoder) Encode(userID string) (string, error) {
 	return token.SignedString([]byte(e.Key))
 }
 
-func (e EncodeDecoder) Decode(bearer string) (string, error) {
+func (e EncodeDecoder) Decode(bearer string) (int, error) {
 	claims := papernetClaims{}
 
 	token, err := jwt.ParseWithClaims(bearer, &claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(e.Key), nil
 	})
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	if claims, ok := token.Claims.(*papernetClaims); ok && token.Valid {
 		return claims.UserID, nil
 	}
 
-	return "", errors.New("could not get claims")
+	return 0, errors.New("could not get claims")
 }

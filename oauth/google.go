@@ -74,13 +74,13 @@ func (s *GoogleService) LoginURL() string {
 	return s.config.AuthCodeURL(state)
 }
 
-func (s *GoogleService) Login(state, code string) (interface{}, error) {
+func (s *GoogleService) Login(state, code string) (string, error) {
 	s.stateMutex.Lock()
 	_, ok := s.state[state]
 	s.stateMutex.Unlock() // no defer because the token exchange could be long
 
 	if !ok {
-		return nil, errors.New("Invalid state")
+		return "", errors.New("Invalid state")
 	}
 
 	s.stateMutex.Lock()
@@ -89,12 +89,12 @@ func (s *GoogleService) Login(state, code string) (interface{}, error) {
 
 	tok, err := s.config.Exchange(oauth2.NoContext, code)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	user, err := s.retrieveUser(tok)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	return s.userClient.Upsert(user)

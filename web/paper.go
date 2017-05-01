@@ -22,7 +22,7 @@ type PaperHandler struct {
 
 	TagIndex papernet.TagIndex
 
-	UserStore papernet.UserStore
+	UserService *auth.UserService
 }
 
 func (h *PaperHandler) Routes() []papernet.EndPoint {
@@ -165,9 +165,7 @@ func (h *PaperHandler) Insert(req *Request) (interface{}, error) {
 	}
 
 	// Give ownership
-	user.CanSee = append(user.CanSee, paper.ID)
-	user.CanEdit = append(user.CanEdit, paper.ID)
-	err = h.UserStore.Upsert(user)
+	user, err = h.UserService.CreatePaper(user.ID, paper.ID)
 	if err != nil {
 		return nil, errors.New("error setting rights on user", errors.WithCause(err))
 	}

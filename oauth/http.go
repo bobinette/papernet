@@ -76,7 +76,11 @@ func makeGoogleLoginEndpoint(s *GoogleService) endpoint.Endpoint {
 			return nil, errInvalidRequest
 		}
 
-		return s.Login(req.State, req.Code)
+		token, err := s.Login(req.State, req.Code)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]interface{}{"access_token": token}, nil
 	}
 }
 

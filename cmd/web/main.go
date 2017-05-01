@@ -58,8 +58,6 @@ func main() {
 
 	paperStore := bolt.PaperStore{Driver: &driver}
 	tagIndex := bolt.TagIndex{Driver: &driver}
-	userStore := bolt.UserStore{Driver: &driver}
-	teamStore := bolt.TeamStore{Driver: &driver}
 
 	// Create index
 	index := bleve.PaperIndex{}
@@ -85,42 +83,50 @@ func main() {
 		logger.Fatal("could not read key file:", err)
 	}
 
-	googleOAuthClient, err := auth.NewGoogleClient(cfg.Oauth.GooglePath)
-	if err != nil {
-		logger.Fatal("could not read google oauth config:", err)
-	}
-
 	encoder := auth.EncodeDecoder{Key: key.Key}
 	authenticator := auth.Authenticator{
 		Decoder: &encoder,
-		Store:   &userStore,
 	}
 
 	// Start web server
 	addr := ":1705"
-	server, err := gin.New(addr, authenticator)
+	server, err := gin.New(addr, &authenticator)
 	if err != nil {
 		logger.Fatal("could not start server:", err)
 	}
 
+	// *************************************************
+	// Migration to go-kit
+	// *************************************************
+
+	// Auth service
+	userService := kitauth.Start(server, cfg.Auth, logger)
+
+	// OAuth service
+	authUserService := oauth.NewUserClient(userService)
+	googleService, err := oauth.NewGoogleService(cfg.Oauth.GooglePath, authUserService)
+	if err != nil {
+		logger.Fatal("could not instantiate google service")
+	}
+	oauth.RegisterHTTPRoutes(server, googleService)
+
+	// *************************************************
+	// Migration to go-kit
+	// *************************************************
+
+	// Oops
+	authenticator.Service = userService
+	// ----
+
 	// Paper handler
 	paperHandler := &web.PaperHandler{
-		Store:     &paperStore,
-		Index:     &index,
-		TagIndex:  &tagIndex,
-		UserStore: &userStore,
+		Store:    &paperStore,
+		Index:    &index,
+		TagIndex: &tagIndex,
+
+		UserService: userService,
 	}
 	for _, route := range paperHandler.Routes() {
-		server.Register(route)
-	}
-
-	// User handler
-	userHandler := &web.UserHandler{
-		Encoder:      &encoder,
-		GoogleClient: googleOAuthClient,
-		Store:        &userStore,
-	}
-	for _, route := range userHandler.Routes() {
 		server.Register(route)
 	}
 
@@ -148,31 +154,6 @@ func main() {
 	for _, route := range importHandler.Routes() {
 		server.Register(route)
 	}
-
-	// Import handler
-	teamHandler := &web.TeamHandler{
-		Store:      &teamStore,
-		PaperStore: &paperStore,
-		UserStore:  &userStore,
-	}
-	for _, route := range teamHandler.Routes() {
-		server.Register(route)
-	}
-
-	// *************************************************
-	// Migration to go-kit
-	// *************************************************
-
-	// Auth service
-	userService := kitauth.Start(server, cfg.Auth, logger)
-
-	// OAuth service
-	authUserService := oauth.NewUserClient(userService)
-	googleService, err := oauth.NewGoogleService(cfg.Oauth.GooglePath, authUserService)
-	if err != nil {
-		logger.Fatal("could not instantiate google service")
-	}
-	oauth.RegisterHTTPRoutes(server, googleService)
 
 	// *************************************************
 	// Start server

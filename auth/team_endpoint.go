@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"net/http"
 )
 
 type TeamEndpoint struct {
@@ -93,4 +94,26 @@ func (ep TeamEndpoint) Share(ctx context.Context, r interface{}) (interface{}, e
 	}
 
 	return ep.service.Share(callerID, req.TeamID, req.PaperID, req.CanEdit)
+}
+
+type deleteTeamRequest struct {
+	TeamID int
+}
+
+func (ep TeamEndpoint) Delete(ctx context.Context, r interface{}) (interface{}, error) {
+	callerID, err := extractUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req, ok := r.(deleteTeamRequest)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	err = ep.service.Delete(callerID, req.TeamID)
+	if err != nil {
+		return nil, err
+	}
+	return statusCoder{code: http.StatusNoContent}, nil
 }

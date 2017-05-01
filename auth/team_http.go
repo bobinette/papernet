@@ -62,9 +62,18 @@ func RegisterTeamHTTP(srv HTTPServer, service *TeamService, jwtKey []byte) {
 		opts...,
 	)
 
+	// Delete team handler
+	deleteHandler := kithttp.NewServer(
+		authenticationMiddleware(ep.Delete),
+		decodeDeleteTeamRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+
 	// Register all handlers
 	srv.RegisterHandler("/auth/v2/teams", "GET", userTeamsHandler)
 	srv.RegisterHandler("/auth/v2/teams", "POST", createTeamHandler)
+	srv.RegisterHandler("/auth/v2/teams/:id", "DELETE", deleteHandler)
 	srv.RegisterHandler("/auth/v2/teams/:id/invite", "POST", inviteHandler)
 	srv.RegisterHandler("/auth/v2/teams/:id/kick", "POST", kickHandler)
 	srv.RegisterHandler("/auth/v2/teams/:id/share", "POST", shareHandler)
@@ -122,7 +131,7 @@ func decodeKickRequest(ctx context.Context, r *http.Request) (interface{}, error
 	}
 
 	var body struct {
-		ID int `json:"memberID"`
+		ID int `json:"userID"`
 	}
 	err = json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
@@ -158,6 +167,21 @@ func decodeShareRequest(ctx context.Context, r *http.Request) (interface{}, erro
 		TeamID:  teamID,
 		PaperID: body.PaperID,
 		CanEdit: body.CanEdit,
+	}
+	return req, nil
+}
+
+func decodeDeleteTeamRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	params := ctx.Value("params").(map[string]string)
+	teamID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		return nil, err
+	}
+
+	req := deleteTeamRequest{
+		TeamID: teamID,
 	}
 	return req, nil
 }

@@ -7,7 +7,7 @@ import (
 type UserClient interface {
 	// Upsert returns an interface because we do not care about the return
 	// structure, it will just be forwarded on the login route
-	Upsert(User) (interface{}, error)
+	Upsert(User) (string, error)
 }
 
 type userClient struct {
@@ -19,12 +19,16 @@ func NewUserClient(service *auth.UserService) UserClient {
 	return &userClient{service: service}
 }
 
-func (s *userClient) Upsert(user User) (interface{}, error) {
+func (s *userClient) Upsert(user User) (string, error) {
 	authUser := auth.User{
 		Name:     user.Name,
 		Email:    user.Email,
 		GoogleID: user.ID,
 	}
 
-	return s.service.Upsert(authUser)
+	authUser, err := s.service.Upsert(authUser)
+	if err != nil {
+		return "", err
+	}
+	return s.service.Token(authUser.ID)
 }

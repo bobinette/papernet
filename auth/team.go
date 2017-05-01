@@ -11,7 +11,7 @@ type TeamMember struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 
-	IsTeamAdmin bool `json:"isTeamAdmin"`
+	IsTeamAdmin bool `json:"admin"`
 }
 
 type Team struct {

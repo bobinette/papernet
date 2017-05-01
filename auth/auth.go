@@ -11,7 +11,7 @@ import (
 
 type Authenticator struct {
 	Decoder TokenDecoder
-	Store   papernet.UserStore
+	Service *UserService
 }
 
 func (a *Authenticator) Authenticate(next papernet.HandlerFunc) papernet.HandlerFunc {
@@ -26,10 +26,10 @@ func (a *Authenticator) Authenticate(next papernet.HandlerFunc) papernet.Handler
 			return nil, errors.New("invalid token", errors.WithCode(http.StatusUnauthorized), errors.WithCause(err))
 		}
 
-		user, err := a.Store.Get(userID)
+		user, err := a.Service.Get(userID)
 		if err != nil {
 			return nil, errors.New("could not get user", errors.WithCause(err))
-		} else if user == nil {
+		} else if user.ID == 0 {
 			return nil, errors.New("unknown user", errors.WithCode(http.StatusUnauthorized))
 		}
 
@@ -37,15 +37,15 @@ func (a *Authenticator) Authenticate(next papernet.HandlerFunc) papernet.Handler
 	}
 }
 
-func UserFromContext(ctx context.Context) (*papernet.User, error) {
+func UserFromContext(ctx context.Context) (User, error) {
 	u := ctx.Value("user")
 	if u == nil {
-		return nil, errors.New("could not extract user", errors.WithCode(http.StatusUnauthorized))
+		return User{}, errors.New("could not extract user", errors.WithCode(http.StatusUnauthorized))
 	}
 
-	user, ok := u.(*papernet.User)
+	user, ok := u.(User)
 	if !ok {
-		return nil, errors.New("could not retrieve user", errors.WithCode(http.StatusUnauthorized))
+		return User{}, errors.New("could not retrieve user", errors.WithCode(http.StatusUnauthorized))
 	}
 
 	return user, nil
