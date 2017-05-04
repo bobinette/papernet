@@ -1,4 +1,4 @@
-package auth
+package testutil
 
 import (
 	"fmt"
@@ -7,10 +7,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bobinette/papernet/auth"
 )
 
-func TestUserRepository(t *testing.T, repo UserRepository) {
-	users := []*User{
+func TestUserRepository(t *testing.T, repo auth.UserRepository) {
+	users := []*auth.User{
 		{
 			Name:     "Pizza",
 			Email:    "pizza@paper.net",
@@ -64,7 +66,7 @@ func TestUserRepository(t *testing.T, repo UserRepository) {
 	testGetPaperOwner(t, repo, 1, 0)
 }
 
-func testInsertUser(t *testing.T, repo UserRepository, users []*User) {
+func testInsertUser(t *testing.T, repo auth.UserRepository, users []*auth.User) {
 	ids := make([]int, len(users))
 	for i, user := range users {
 		err := repo.Upsert(user)
@@ -80,50 +82,50 @@ func testInsertUser(t *testing.T, repo UserRepository, users []*User) {
 	}
 }
 
-func testGetUser(t *testing.T, repo UserRepository, id int, expected User, name string) {
+func testGetUser(t *testing.T, repo auth.UserRepository, id int, expected auth.User, name string) {
 	user, err := repo.Get(id)
 	if assert.NoError(t, err, "%s - getting user should not fail", name) {
-		assertUser(t, expected, user, name)
+		AssertUser(t, expected, user, name)
 	}
 }
 
-func testGetUserByEmail(t *testing.T, repo UserRepository, email string, expected User, name string) {
+func testGetUserByEmail(t *testing.T, repo auth.UserRepository, email string, expected auth.User, name string) {
 	user, err := repo.GetByEmail(email)
 	if assert.NoError(t, err, "%s - getting user by email should not fail", name) {
-		assertUser(t, expected, user, name)
+		AssertUser(t, expected, user, name)
 	}
 }
 
-func testGetUserByGoogleID(t *testing.T, repo UserRepository, googleID string, expected User, name string) {
+func testGetUserByGoogleID(t *testing.T, repo auth.UserRepository, googleID string, expected auth.User, name string) {
 	user, err := repo.GetByGoogleID(googleID)
 	if assert.NoError(t, err, "%s - getting user by google id should not fail", name) {
-		assertUser(t, expected, user, name)
+		AssertUser(t, expected, user, name)
 	}
 }
 
-func testUpdateUser(t *testing.T, repo UserRepository, user *User) {
+func testUpdateUser(t *testing.T, repo auth.UserRepository, user *auth.User) {
 	id := user.ID
 	err := repo.Upsert(user)
 	assert.NoError(t, err, "%s - update should not have failed", user.Name)
 	assert.Equal(t, id, user.ID, "id should not change")
 }
 
-func testDeleteUser(t *testing.T, repo UserRepository, userID int, name string) {
+func testDeleteUser(t *testing.T, repo auth.UserRepository, userID int, name string) {
 	err := repo.Delete(userID)
 	assert.NoError(t, err, "%s - delete should not fail", name)
 
 	retrieved, err := repo.Get(userID)
 	assert.NoError(t, err, "%s - get after delete should not fail", name)
-	assertUser(t, User{}, retrieved, name)
+	AssertUser(t, auth.User{}, retrieved, name)
 }
 
-func testGetPaperOwner(t *testing.T, repo UserRepository, paperID, ownerID int) {
+func testGetPaperOwner(t *testing.T, repo auth.UserRepository, paperID, ownerID int) {
 	userID, err := repo.PaperOwner(paperID)
 	assert.NoError(t, err, "getting paper owner should not fail")
 	assert.Equal(t, ownerID, userID, "incorrect owner id retrieved")
 }
 
-func testAllUsers(t *testing.T, repo UserRepository, users []*User) {
+func testAllUsers(t *testing.T, repo auth.UserRepository, users []*auth.User) {
 	retrieved, err := repo.List()
 	if !assert.NoError(t, err, "listing all users should not fail") {
 		return
@@ -138,7 +140,7 @@ func testAllUsers(t *testing.T, repo UserRepository, users []*User) {
 		for _, retrievedUser := range retrieved {
 			if retrievedUser.ID == user.ID {
 				found = true
-				assertUser(t, *user, retrievedUser, fmt.Sprintf("all - %s", user.Name))
+				AssertUser(t, *user, retrievedUser, fmt.Sprintf("all - %s", user.Name))
 			}
 		}
 		if !found {
@@ -147,7 +149,7 @@ func testAllUsers(t *testing.T, repo UserRepository, users []*User) {
 	}
 }
 
-func assertUser(t *testing.T, expected, actual User, name string) {
+func AssertUser(t *testing.T, expected, actual auth.User, name string) {
 	// General information
 	assert.Equal(t, expected.ID, actual.ID, "%s - ids should be equal", name)
 	assert.Equal(t, expected.Name, actual.Name, "%s - names should be equal", name)

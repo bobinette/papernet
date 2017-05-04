@@ -9,9 +9,13 @@ import (
 	"github.com/bobinette/papernet/errors"
 )
 
+type UserGetter interface {
+	Get(userID int) (User, error)
+}
+
 type Authenticator struct {
 	Decoder TokenDecoder
-	Service *UserService
+	Service UserGetter
 }
 
 func (a *Authenticator) Authenticate(next papernet.HandlerFunc) papernet.HandlerFunc {

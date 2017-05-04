@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bobinette/papernet/auth"
+	"github.com/bobinette/papernet/auth/testutil"
 )
 
 func createTeamRepository(t *testing.T) (*TeamRepository, func()) {
@@ -29,5 +29,5 @@ func TestTeamRepository(t *testing.T) {
 	repo, tearDown := createTeamRepository(t)
 	defer tearDown()
 
-	auth.TestTeamRepository(t, repo)
+	testutil.TestTeamRepository(t, repo)
 }

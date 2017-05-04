@@ -11,6 +11,7 @@ import (
 
 	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/auth/cayley"
+	"github.com/bobinette/papernet/auth/services"
 	"github.com/bobinette/papernet/bolt"
 	"github.com/bobinette/papernet/errors"
 	"github.com/bobinette/papernet/jwt"
@@ -33,8 +34,8 @@ var (
 	authConfig AuthConfiguration
 
 	// Other variables
-	userService *auth.UserService
-	teamService *auth.TeamService
+	userService *services.UserService
+	teamService *services.TeamService
 )
 
 func init() {
@@ -115,8 +116,8 @@ var AuthCommand = cobra.Command{
 		teamRepository := cayley.NewTeamRepository(store)
 
 		// Create user service
-		userService = auth.NewUserService(userRepository, tokenEncoder)
-		teamService = auth.NewTeamService(teamRepository, userRepository)
+		userService = services.NewUserService(userRepository, tokenEncoder)
+		teamService = services.NewTeamService(teamRepository, userRepository)
 	},
 }
 

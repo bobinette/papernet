@@ -12,10 +12,15 @@ type UserClient interface {
 
 type userClient struct {
 	// We can keep calls internal for now
-	service *auth.UserService
+	service UserService
 }
 
-func NewUserClient(service *auth.UserService) UserClient {
+type UserService interface {
+	Upsert(auth.User) (auth.User, error)
+	Token(int) (string, error)
+}
+
+func NewUserClient(service UserService) UserClient {
 	return &userClient{service: service}
 }
 

@@ -1,15 +1,18 @@
-package auth
+package endpoints
 
 import (
 	"context"
 	"net/http"
+
+	"github.com/bobinette/papernet/auth"
+	"github.com/bobinette/papernet/auth/services"
 )
 
 type TeamEndpoint struct {
-	service *TeamService
+	service *services.TeamService
 }
 
-func NewTeamEndpoint(s *TeamService) TeamEndpoint {
+func NewTeamEndpoint(s *services.TeamService) TeamEndpoint {
 	return TeamEndpoint{
 		service: s,
 	}
@@ -30,7 +33,7 @@ func (ep TeamEndpoint) Create(ctx context.Context, r interface{}) (interface{}, 
 		return nil, err
 	}
 
-	team, ok := r.(Team)
+	team, ok := r.(auth.Team)
 	if !ok {
 		return nil, errInvalidRequest
 	}
@@ -38,7 +41,7 @@ func (ep TeamEndpoint) Create(ctx context.Context, r interface{}) (interface{}, 
 	return ep.service.Create(userID, team)
 }
 
-type inviteRequest struct {
+type InviteRequest struct {
 	TeamID int
 	Email  string
 }
@@ -49,7 +52,7 @@ func (ep TeamEndpoint) Invite(ctx context.Context, r interface{}) (interface{}, 
 		return nil, err
 	}
 
-	req, ok := r.(inviteRequest)
+	req, ok := r.(InviteRequest)
 	if !ok {
 		return nil, errInvalidRequest
 	}
@@ -57,7 +60,7 @@ func (ep TeamEndpoint) Invite(ctx context.Context, r interface{}) (interface{}, 
 	return ep.service.Invite(callerID, req.TeamID, req.Email)
 }
 
-type kickRequest struct {
+type KickRequest struct {
 	TeamID   int
 	MemberID int
 }
@@ -68,7 +71,7 @@ func (ep TeamEndpoint) Kick(ctx context.Context, r interface{}) (interface{}, er
 		return nil, err
 	}
 
-	req, ok := r.(kickRequest)
+	req, ok := r.(KickRequest)
 	if !ok {
 		return nil, errInvalidRequest
 	}
@@ -76,7 +79,7 @@ func (ep TeamEndpoint) Kick(ctx context.Context, r interface{}) (interface{}, er
 	return ep.service.Kick(callerID, req.TeamID, req.MemberID)
 }
 
-type shareRequest struct {
+type ShareRequest struct {
 	TeamID  int
 	PaperID int
 	CanEdit bool
@@ -88,7 +91,7 @@ func (ep TeamEndpoint) Share(ctx context.Context, r interface{}) (interface{}, e
 		return nil, err
 	}
 
-	req, ok := r.(shareRequest)
+	req, ok := r.(ShareRequest)
 	if !ok {
 		return nil, errInvalidRequest
 	}
@@ -96,7 +99,7 @@ func (ep TeamEndpoint) Share(ctx context.Context, r interface{}) (interface{}, e
 	return ep.service.Share(callerID, req.TeamID, req.PaperID, req.CanEdit)
 }
 
-type deleteTeamRequest struct {
+type DeleteTeamRequest struct {
 	TeamID int
 }
 
@@ -106,7 +109,7 @@ func (ep TeamEndpoint) Delete(ctx context.Context, r interface{}) (interface{}, 
 		return nil, err
 	}
 
-	req, ok := r.(deleteTeamRequest)
+	req, ok := r.(DeleteTeamRequest)
 	if !ok {
 		return nil, errInvalidRequest
 	}

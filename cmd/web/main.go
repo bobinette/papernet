@@ -124,7 +124,7 @@ func main() {
 		Index:    &index,
 		TagIndex: &tagIndex,
 
-		UserService: userService,
+		PaperOwnershipRegistry: userService,
 	}
 	for _, route := range paperHandler.Routes() {
 		server.Register(route)

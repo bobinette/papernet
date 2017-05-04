@@ -1,14 +1,16 @@
-package auth
+package endpoints
 
 import (
 	"context"
+
+	"github.com/bobinette/papernet/auth/services"
 )
 
 type UserEndpoint struct {
-	service *UserService
+	service *services.UserService
 }
 
-func NewUserEndpoint(s *UserService) UserEndpoint {
+func NewUserEndpoint(s *services.UserService) UserEndpoint {
 	return UserEndpoint{
 		service: s,
 	}
@@ -23,7 +25,7 @@ func (ep UserEndpoint) Me(ctx context.Context, _ interface{}) (interface{}, erro
 	return ep.service.Get(callerID)
 }
 
-type bookmarkRequest struct {
+type BookmarkRequest struct {
 	PaperID  int
 	Bookmark bool
 }
@@ -34,7 +36,7 @@ func (ep UserEndpoint) Bookmark(ctx context.Context, r interface{}) (interface{}
 		return nil, err
 	}
 
-	req, ok := r.(bookmarkRequest)
+	req, ok := r.(BookmarkRequest)
 	if !ok {
 		return nil, errInvalidRequest
 	}

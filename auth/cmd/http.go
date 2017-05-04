@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/auth/cayley"
+	"github.com/bobinette/papernet/auth/http"
+	"github.com/bobinette/papernet/auth/services"
 	"github.com/bobinette/papernet/jwt"
 	"github.com/bobinette/papernet/log"
 )
@@ -18,7 +19,7 @@ type Configuration struct {
 }
 
 // Start registers
-func Start(srv auth.HTTPServer, conf Configuration, logger log.Logger) *auth.UserService {
+func Start(srv http.Server, conf Configuration, logger log.Logger) *services.UserService {
 	// Load key from file
 	keyData, err := ioutil.ReadFile(conf.KeyPath)
 	if err != nil {
@@ -44,12 +45,12 @@ func Start(srv auth.HTTPServer, conf Configuration, logger log.Logger) *auth.Use
 	teamRepository := cayley.NewTeamRepository(store)
 
 	// Start user endpoint
-	userService := auth.NewUserService(userRepository, tokenEncoder)
-	auth.RegisterUserHTTP(srv, userService, []byte(key.Key))
+	userService := services.NewUserService(userRepository, tokenEncoder)
+	http.RegisterUserEndpoints(srv, userService, []byte(key.Key))
 
 	// Start team endpoint
-	teamService := auth.NewTeamService(teamRepository, userRepository)
-	auth.RegisterTeamHTTP(srv, teamService, []byte(key.Key))
+	teamService := services.NewTeamService(teamRepository, userRepository)
+	http.RegisterTeamEndpoints(srv, teamService, []byte(key.Key))
 
 	return userService
 }

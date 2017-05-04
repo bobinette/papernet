@@ -1,4 +1,4 @@
-package auth
+package services
 
 import (
 	"fmt"
@@ -7,31 +7,34 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bobinette/papernet/auth"
+	"github.com/bobinette/papernet/auth/inmem"
+	"github.com/bobinette/papernet/auth/testutil"
 	"github.com/bobinette/papernet/errors"
 )
 
 func TestTeamService(t *testing.T) {
-	repo := NewInMemTeamRepository()
-	userRepo := NewInMemUserRepository(repo)
+	repo := inmem.NewInMemTeamRepository()
+	userRepo := inmem.NewInMemUserRepository(repo)
 	service := NewTeamService(repo, userRepo)
 
 	// Insert users to be able to retrieve them by email when inviting
-	admin := User{Email: "admin@paper.net", Owns: []int{1, 2}}
+	admin := auth.User{Email: "admin@paper.net", Owns: []int{1, 2}}
 	require.NoError(t, userRepo.Upsert(&admin), "inserting admin must not fail")
 
-	member := User{Email: "member@paper.net"}
+	member := auth.User{Email: "member@paper.net"}
 	require.NoError(t, userRepo.Upsert(&member), "inserting member must not fail")
 
-	otherMember := User{Email: "otherMember@paper.net"}
+	otherMember := auth.User{Email: "otherMember@paper.net"}
 	require.NoError(t, userRepo.Upsert(&otherMember), "inserting otherMember must not fail")
 
-	nonMember := User{Email: "nonMember@paper.net"}
+	nonMember := auth.User{Email: "nonMember@paper.net"}
 	require.NoError(t, userRepo.Upsert(&nonMember), "inserting nonMember must not fail")
 
 	// Pizza team
-	team := Team{
+	team := auth.Team{
 		Name: "Pizza team",
-		Members: []TeamMember{
+		Members: []auth.TeamMember{
 			{ID: member.ID, IsTeamAdmin: true},
 		},
 		CanSee:  []int{1, 2},
@@ -45,21 +48,21 @@ func TestTeamService(t *testing.T) {
 	require.NoError(t, err, "inserting must not fail")
 	require.NotEqual(t, 0, createdTeam.ID, "created team should have an id")
 
-	team = Team{
+	team = auth.Team{
 		ID:   createdTeam.ID,
 		Name: "Pizza team",
-		Members: []TeamMember{
+		Members: []auth.TeamMember{
 			{ID: admin.ID, IsTeamAdmin: true},
 		},
 		CanSee:  []int{},
 		CanEdit: []int{},
 	}
-	assertTeam(t, team, createdTeam, "team gotten from insert")
+	testutil.AssertTeam(t, team, createdTeam, "team gotten from insert")
 
-	otherTeam, err := service.Create(member.ID, Team{Name: "Yolo team"})
+	otherTeam, err := service.Create(member.ID, auth.Team{Name: "Yolo team"})
 	require.NoError(t, err, "inserting after delete must not fail")
 
-	var retrieved Team
+	var retrieved auth.Team
 
 	// Invite a new member. If the user is not a member of the team, it should
 	// get a 404, if not an admin -> 403, if the team does not exist -> 404
@@ -73,20 +76,20 @@ func TestTeamService(t *testing.T) {
 		errors.AssertCode(t, err, 404)
 	}
 
-	team.Members = append(team.Members, TeamMember{ID: member.ID, IsTeamAdmin: false})
+	team.Members = append(team.Members, auth.TeamMember{ID: member.ID, IsTeamAdmin: false})
 	retrieved, err = service.Invite(admin.ID, team.ID, member.Email)
 	if assert.NoError(t, err, "inviting from an admin should not fail") {
-		assertTeam(t, team, retrieved, "invited from admin")
+		testutil.AssertTeam(t, team, retrieved, "invited from admin")
 	}
 
 	retrieved, err = service.Invite(admin.ID, team.ID, admin.Email)
 	if assert.NoError(t, err, "admin inviting itself should not fail") {
-		assertTeam(t, team, retrieved, "admin invited itself")
+		testutil.AssertTeam(t, team, retrieved, "admin invited itself")
 	}
 
 	retrieved, err = service.Invite(admin.ID, team.ID, member.Email)
 	if assert.NoError(t, err, "inviting user already member should not fail") {
-		assertTeam(t, team, retrieved, "member invited again")
+		testutil.AssertTeam(t, team, retrieved, "member invited again")
 	}
 
 	retrieved, err = service.Invite(member.ID, team.ID, otherMember.Email)
@@ -99,22 +102,22 @@ func TestTeamService(t *testing.T) {
 		errors.AssertCode(t, err, 404)
 	}
 
-	team.Members = append(team.Members, TeamMember{ID: otherMember.ID, IsTeamAdmin: false})
+	team.Members = append(team.Members, auth.TeamMember{ID: otherMember.ID, IsTeamAdmin: false})
 	retrieved, err = service.Invite(admin.ID, team.ID, otherMember.Email)
 	if assert.NoError(t, err, "inviting another member from an admin should not fail") {
-		assertTeam(t, team, retrieved, "invited from admin again")
+		testutil.AssertTeam(t, team, retrieved, "invited from admin again")
 	}
 
 	// Get the team. If the user is a member of the team, it should be good,
 	// otherwise 404, and if the team does not exist -> 404
 	retrieved, err = service.Get(admin.ID, team.ID)
 	if assert.NoError(t, err, "getting team for admin should not fail") {
-		assertTeam(t, team, retrieved, "retrieved for admin")
+		testutil.AssertTeam(t, team, retrieved, "retrieved for admin")
 	}
 
 	retrieved, err = service.Get(member.ID, team.ID)
 	if assert.NoError(t, err, "getting team for member should not fail") {
-		assertTeam(t, team, retrieved, "retrieved for member")
+		testutil.AssertTeam(t, team, retrieved, "retrieved for member")
 	}
 
 	retrieved, err = service.Get(nonMember.ID, team.ID)
@@ -186,12 +189,12 @@ func TestTeamService(t *testing.T) {
 
 	retrieved, err = service.Kick(member.ID, team.ID, member.ID)
 	if assert.NoError(t, err, "member should be able to leave a team") {
-		assert.NotContains(t, retrieved.Members, TeamMember{ID: member.ID, IsTeamAdmin: false}, "member should be in team anymore")
+		assert.NotContains(t, retrieved.Members, auth.TeamMember{ID: member.ID, IsTeamAdmin: false}, "member should be in team anymore")
 	}
 
 	retrieved, err = service.Kick(admin.ID, team.ID, otherMember.ID)
 	if assert.NoError(t, err, "admin should be able to kick member") {
-		assert.NotContains(t, retrieved.Members, TeamMember{ID: otherMember.ID, IsTeamAdmin: false}, "member should be in team anymore")
+		assert.NotContains(t, retrieved.Members, auth.TeamMember{ID: otherMember.ID, IsTeamAdmin: false}, "member should be in team anymore")
 	}
 
 	// Invitations to test the get for user
@@ -203,7 +206,7 @@ func TestTeamService(t *testing.T) {
 	// Get the users' teams. admin should have 1 team of which it is admin. member
 	// should have 2 teams one of which it is admin. otherMember has 1 team of which
 	// it is not admin. nonMember has no team.
-	var teams []Team
+	var teams []auth.Team
 
 	teams, err = service.GetForUser(admin.ID)
 	assert.NoError(t, err, "get for admin should not fail")
@@ -258,8 +261,8 @@ func TestTeamService(t *testing.T) {
 }
 
 func TestUserIsMemberOfTeam(t *testing.T) {
-	team := Team{
-		Members: []TeamMember{
+	team := auth.Team{
+		Members: []auth.TeamMember{
 			{ID: 1, IsTeamAdmin: false},
 			{ID: 2, IsTeamAdmin: false},
 			{ID: 3, IsTeamAdmin: true},
@@ -282,8 +285,8 @@ func TestUserIsMemberOfTeam(t *testing.T) {
 }
 
 func TestUserIsAdminOfTeam(t *testing.T) {
-	team := Team{
-		Members: []TeamMember{
+	team := auth.Team{
+		Members: []auth.TeamMember{
 			{ID: 1, IsTeamAdmin: false},
 			{ID: 2, IsTeamAdmin: false},
 			{ID: 3, IsTeamAdmin: true},

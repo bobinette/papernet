@@ -1,4 +1,4 @@
-package auth
+package http
 
 import (
 	"context"
@@ -8,10 +8,12 @@ import (
 	kitjwt "github.com/go-kit/kit/auth/jwt"
 	kithttp "github.com/go-kit/kit/transport/http"
 
+	"github.com/bobinette/papernet/auth/endpoints"
+	"github.com/bobinette/papernet/auth/services"
 	"github.com/bobinette/papernet/jwt"
 )
 
-func RegisterUserHTTP(srv HTTPServer, service *UserService, jwtKey []byte) {
+func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []byte) {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(kitjwt.ToHTTPContext()),
@@ -19,7 +21,7 @@ func RegisterUserHTTP(srv HTTPServer, service *UserService, jwtKey []byte) {
 	authenticationMiddleware := jwt.Middleware(jwtKey)
 
 	// Create endpoint
-	ep := NewUserEndpoint(service)
+	ep := endpoints.NewUserEndpoint(service)
 
 	// Me handler
 	meHandler := kithttp.NewServer(
@@ -58,7 +60,7 @@ func decodeBookmarkRequest(ctx context.Context, r *http.Request) (interface{}, e
 		return nil, err
 	}
 
-	req := bookmarkRequest{
+	req := endpoints.BookmarkRequest{
 		PaperID:  body.PaperID,
 		Bookmark: body.Bookmark,
 	}

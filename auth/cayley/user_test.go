@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bobinette/papernet/auth"
+	"github.com/bobinette/papernet/auth/testutil"
 )
 
 // createRepository returns a user repository and a tearDown function for cleaning
@@ -30,5 +30,5 @@ func TestUserRepository(t *testing.T) {
 	repo, tearDown := createRepository(t)
 	defer tearDown()
 
-	auth.TestUserRepository(t, repo)
+	testutil.TestUserRepository(t, repo)
 }

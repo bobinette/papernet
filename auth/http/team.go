@@ -1,4 +1,4 @@
-package auth
+package http
 
 import (
 	"context"
@@ -9,10 +9,13 @@ import (
 	kitjwt "github.com/go-kit/kit/auth/jwt"
 	kithttp "github.com/go-kit/kit/transport/http"
 
+	"github.com/bobinette/papernet/auth"
+	"github.com/bobinette/papernet/auth/endpoints"
+	"github.com/bobinette/papernet/auth/services"
 	"github.com/bobinette/papernet/jwt"
 )
 
-func RegisterTeamHTTP(srv HTTPServer, service *TeamService, jwtKey []byte) {
+func RegisterTeamEndpoints(srv Server, service *services.TeamService, jwtKey []byte) {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(kitjwt.ToHTTPContext()),
@@ -20,7 +23,7 @@ func RegisterTeamHTTP(srv HTTPServer, service *TeamService, jwtKey []byte) {
 	authenticationMiddleware := jwt.Middleware(jwtKey)
 
 	// Create endpoint
-	ep := NewTeamEndpoint(service)
+	ep := endpoints.NewTeamEndpoint(service)
 
 	// User teams handler
 	userTeamsHandler := kithttp.NewServer(
@@ -88,7 +91,7 @@ func decodeCreateTeamRequest(ctx context.Context, r *http.Request) (interface{},
 	defer r.Body.Close() // Close body
 
 	// Decode team from body
-	var req Team
+	var req auth.Team
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return nil, err
@@ -114,7 +117,7 @@ func decodeInviteRequest(ctx context.Context, r *http.Request) (interface{}, err
 		return nil, err
 	}
 
-	req := inviteRequest{
+	req := endpoints.InviteRequest{
 		TeamID: teamID,
 		Email:  body.Email,
 	}
@@ -138,7 +141,7 @@ func decodeKickRequest(ctx context.Context, r *http.Request) (interface{}, error
 		return nil, err
 	}
 
-	req := kickRequest{
+	req := endpoints.KickRequest{
 		TeamID:   teamID,
 		MemberID: body.ID,
 	}
@@ -163,7 +166,7 @@ func decodeShareRequest(ctx context.Context, r *http.Request) (interface{}, erro
 		return nil, err
 	}
 
-	req := shareRequest{
+	req := endpoints.ShareRequest{
 		TeamID:  teamID,
 		PaperID: body.PaperID,
 		CanEdit: body.CanEdit,
@@ -180,7 +183,7 @@ func decodeDeleteTeamRequest(ctx context.Context, r *http.Request) (interface{},
 		return nil, err
 	}
 
-	req := deleteTeamRequest{
+	req := endpoints.DeleteTeamRequest{
 		TeamID: teamID,
 	}
 	return req, nil

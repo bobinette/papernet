@@ -16,13 +16,17 @@ func paperNotFound(id int) error {
 	return errors.New(fmt.Sprintf("<Paper %d> not found", id), errors.WithCode(http.StatusNotFound))
 }
 
+type PaperOwnershipRegistry interface {
+	CreatePaper(userID, paperID int) (auth.User, error)
+}
+
 type PaperHandler struct {
 	Store papernet.PaperStore
 	Index papernet.PaperIndex
 
 	TagIndex papernet.TagIndex
 
-	UserService *auth.UserService
+	PaperOwnershipRegistry PaperOwnershipRegistry
 }
 
 func (h *PaperHandler) Routes() []papernet.EndPoint {
@@ -165,7 +169,7 @@ func (h *PaperHandler) Insert(req *Request) (interface{}, error) {
 	}
 
 	// Give ownership
-	user, err = h.UserService.CreatePaper(user.ID, paper.ID)
+	user, err = h.PaperOwnershipRegistry.CreatePaper(user.ID, paper.ID)
 	if err != nil {
 		return nil, errors.New("error setting rights on user", errors.WithCause(err))
 	}
