@@ -34,7 +34,7 @@ func Start(srv http.Server, conf Configuration, logger log.Logger) *services.Use
 	if err != nil {
 		logger.Fatal("could not read key file:", err)
 	}
-	tokenEncoder := jwt.NewEncoder([]byte(key.Key))
+	tokenEncoder := jwt.NewEncodeDecoder([]byte(key.Key))
 
 	// Create repositories
 	store, err := cayley.NewStore(conf.Cayley.Store)

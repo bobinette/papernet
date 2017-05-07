@@ -105,7 +105,7 @@ var AuthCommand = cobra.Command{
 		if err != nil {
 			logger.Fatal("could not read key file:", err)
 		}
-		tokenEncoder := jwt.NewEncoder([]byte(key.Key))
+		tokenEncoder := jwt.NewEncodeDecoder([]byte(key.Key))
 
 		// Create user repository
 		store, err := cayley.NewStore(authConfig.Auth.Cayley.Store)

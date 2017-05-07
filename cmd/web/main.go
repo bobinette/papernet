@@ -18,6 +18,7 @@ import (
 
 	// packages used for migration to go-kit
 	kitauth "github.com/bobinette/papernet/auth/cmd"
+	"github.com/bobinette/papernet/jwt"
 	"github.com/bobinette/papernet/oauth"
 )
 
@@ -83,9 +84,9 @@ func main() {
 		logger.Fatal("could not read key file:", err)
 	}
 
-	encoder := auth.EncodeDecoder{Key: key.Key}
+	decoder := jwt.NewEncodeDecoder([]byte(key.Key))
 	authenticator := auth.Authenticator{
-		Decoder: &encoder,
+		Decoder: decoder,
 	}
 
 	// Start web server

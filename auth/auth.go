@@ -13,8 +13,12 @@ type UserGetter interface {
 	Get(userID int) (User, error)
 }
 
+type Decoder interface {
+	Decode(string) (int, error)
+}
+
 type Authenticator struct {
-	Decoder TokenDecoder
+	Decoder Decoder
 	Service UserGetter
 }
 
