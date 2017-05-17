@@ -27,8 +27,22 @@ export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 The dependencies are handled with `godep`:
 ```bash
 go get -u github.com/tools/godep
-godep restore
+dep ensure
 ```
+
+## Auth
+
+### Key file
+
+You need to generate your shared secret for the authentication. You can use this site to do so: https://mkjwk.org/, with the following settings:
+![image](https://cloud.githubusercontent.com/assets/9349295/26157368/53806e4e-3b19-11e7-816e-6f9f8f774a5b.png)
+You decide what you want to use as key ID
+
+### Google oauth
+
+If you want to use Google to handle the auth, you need credentials for the project. Follow the instructions here: https://developers.google.com/identity/protocols/OAuth2, to create those credentials.
+
+If you do not want to use google for oauth, you can simply remove the oauth lines from files in `cmd/web` and `cmd/cli`, create your user manually via the cli, generate a token also via the cli and use that token to call the API.
 
 ## Web server
 To start the web server, you have to create the `data` folder, and setup the index:
