@@ -36,7 +36,18 @@ store="data/imports.db"
 # ----------------------------------------
 
 # ----------------------------------------
-# legacy
+# Paper service
+[paper]
+key = "configuration/hs256.json"
+
+[paper.bolt]
+store = "data/paper.db"
+
+[paper.bleve]
+store = "data/paper.index"
+# Paper service
+# ----------------------------------------
+
 [bolt]
 store = "data/papernet.db"
 
