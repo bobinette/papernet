@@ -1,4 +1,4 @@
-package oauth
+package services
 
 import (
 	"net/url"

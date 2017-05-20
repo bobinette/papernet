@@ -1,4 +1,4 @@
-package oauth
+package services
 
 import (
 	"encoding/base64"
@@ -10,6 +10,8 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+
+	"github.com/bobinette/papernet/oauth"
 )
 
 var (
@@ -21,20 +23,14 @@ var (
 )
 
 type GoogleService struct {
-	userClient UserClient
+	userClient *oauth.UserClient
 	config     oauth2.Config
 
 	stateMutex sync.Locker
 	state      map[string]struct{}
 }
 
-type User struct {
-	ID    string `json:"sub"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-}
-
-func NewGoogleService(configPath string, userClient UserClient) (*GoogleService, error) {
+func NewGoogleService(configPath string, userClient *oauth.UserClient) (*GoogleService, error) {
 	c, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return nil, err
@@ -100,18 +96,18 @@ func (s *GoogleService) Login(state, code string) (string, error) {
 	return s.userClient.Upsert(user)
 }
 
-func (s *GoogleService) retrieveUser(tok *oauth2.Token) (User, error) {
+func (s *GoogleService) retrieveUser(tok *oauth2.Token) (oauth.User, error) {
 	client := s.config.Client(oauth2.NoContext, tok)
 	res, err := client.Get(userInfoURL)
 	if err != nil {
-		return User{}, err
+		return oauth.User{}, err
 	}
 
 	defer res.Body.Close()
 
-	var user User
+	var user oauth.User
 	if err := json.NewDecoder(res.Body).Decode(&user); err != nil {
-		return User{}, err
+		return oauth.User{}, err
 	}
 
 	return user, nil

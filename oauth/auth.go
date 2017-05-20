@@ -4,15 +4,10 @@ import (
 	"github.com/bobinette/papernet/auth"
 )
 
-type UserClient interface {
-	// Upsert returns an interface because we do not care about the return
-	// structure, it will just be forwarded on the login route
-	Upsert(User) (string, error)
-}
-
-type userClient struct {
-	// We can keep calls internal for now
-	service UserService
+type User struct {
+	ID    string `json:"sub"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 type UserService interface {
@@ -20,11 +15,16 @@ type UserService interface {
 	Token(int) (string, error)
 }
 
-func NewUserClient(service UserService) UserClient {
-	return &userClient{service: service}
+type UserClient struct {
+	// We can keep calls internal for now
+	service UserService
 }
 
-func (s *userClient) Upsert(user User) (string, error) {
+func NewUserClient(service UserService) *UserClient {
+	return &UserClient{service: service}
+}
+
+func (s *UserClient) Upsert(user User) (string, error) {
 	authUser := auth.User{
 		Name:     user.Name,
 		Email:    user.Email,

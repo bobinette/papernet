@@ -19,12 +19,12 @@ import (
 	// packages used for migration to go-kit
 	kitauth "github.com/bobinette/papernet/auth/cmd"
 	"github.com/bobinette/papernet/jwt"
-	"github.com/bobinette/papernet/oauth"
+	kitoauth "github.com/bobinette/papernet/oauth/cmd"
 )
 
 type Configuration struct {
-	Auth  kitauth.Configuration `toml:"auth"`
-	Oauth oauth.Configuration   `toml:"oauth"`
+	Auth  kitauth.Configuration  `toml:"auth"`
+	Oauth kitoauth.Configuration `toml:"oauth"`
 	Bolt  struct {
 		Store string `toml:"store"`
 	} `toml:"bolt"`
@@ -104,12 +104,7 @@ func main() {
 	userService := kitauth.Start(server, cfg.Auth, logger)
 
 	// OAuth service
-	authUserService := oauth.NewUserClient(userService)
-	googleService, err := oauth.NewGoogleService(cfg.Oauth.GooglePath, authUserService)
-	if err != nil {
-		logger.Fatal("could not instantiate google service")
-	}
-	oauth.RegisterHTTPRoutes(server, googleService)
+	kitoauth.Start(server, cfg.Oauth, logger, userService)
 
 	// *************************************************
 	// Migration to go-kit
