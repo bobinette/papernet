@@ -23,6 +23,21 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&configFile, "config", "", "configuration file")
 }
 
+func inheritPersistentPreRun(cmd *cobra.Command) {
+	ppr := cmd.PersistentPreRun
+	cmd.PersistentPreRun = func(c *cobra.Command, args []string) {
+		// Run parent persistent pre run
+		if cmd.Parent() != nil && cmd.Parent().PersistentPreRun != nil {
+			cmd.Parent().PersistentPreRun(c, args)
+		}
+
+		// Run command persistent pre run
+		if ppr != nil {
+			ppr(c, args)
+		}
+	}
+}
+
 var RootCmd = cobra.Command{
 	Use:   "papernet",
 	Short: "Keep track of your knowledge with Papernet",

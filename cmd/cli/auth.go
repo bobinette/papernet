@@ -58,21 +58,6 @@ func init() {
 	RootCmd.AddCommand(&AuthCommand)
 }
 
-func inheritPersistentPreRun(cmd *cobra.Command) {
-	ppr := cmd.PersistentPreRun
-	cmd.PersistentPreRun = func(c *cobra.Command, args []string) {
-		// Run parent persistent pre run
-		if cmd.Parent() != nil && cmd.Parent().PersistentPreRun != nil {
-			cmd.Parent().PersistentPreRun(c, args)
-		}
-
-		// Run command persistent pre run
-		if ppr != nil {
-			ppr(c, args)
-		}
-	}
-}
-
 var AuthCommand = cobra.Command{
 	Use:   "auth",
 	Short: "List all the auth command availables",

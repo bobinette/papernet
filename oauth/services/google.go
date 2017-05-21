@@ -1,11 +1,10 @@
 package services
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"sync"
 
 	"golang.org/x/oauth2"
@@ -22,7 +21,14 @@ var (
 	}
 )
 
+type googleUser struct {
+	GoogleID string `json:"sub"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+}
+
 type GoogleService struct {
+	repository oauth.GoogleRepository
 	userClient *oauth.UserClient
 	config     oauth2.Config
 
@@ -30,7 +36,7 @@ type GoogleService struct {
 	state      map[string]struct{}
 }
 
-func NewGoogleService(configPath string, userClient *oauth.UserClient) (*GoogleService, error) {
+func NewGoogleService(repo oauth.GoogleRepository, configPath string, userClient *oauth.UserClient) (*GoogleService, error) {
 	c, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return nil, err
@@ -47,6 +53,7 @@ func NewGoogleService(configPath string, userClient *oauth.UserClient) (*GoogleS
 	}
 
 	return &GoogleService{
+		repository: repo,
 		userClient: userClient,
 		config: oauth2.Config{
 			ClientID:     creds.ClientID,
@@ -62,11 +69,12 @@ func NewGoogleService(configPath string, userClient *oauth.UserClient) (*GoogleS
 }
 
 func (s *GoogleService) LoginURL() string {
-	state := randToken()
+	state := randToken(32)
 	s.stateMutex.Lock()
 	s.state[state] = struct{}{}
 	s.stateMutex.Unlock()
 
+	fmt.Println(state)
 	return s.config.AuthCodeURL(state)
 }
 
@@ -83,38 +91,63 @@ func (s *GoogleService) Login(state, code string) (string, error) {
 	delete(s.state, state)
 	s.stateMutex.Unlock()
 
-	tok, err := s.config.Exchange(oauth2.NoContext, code)
+	// tok, err := s.config.Exchange(oauth2.NoContext, code)
+	// if err != nil {
+	// 	return "", err
+	// }
+
+	gUser, err := s.retrieveGoogleUser(nil)
 	if err != nil {
 		return "", err
 	}
 
-	user, err := s.retrieveUser(tok)
+	userID, err := s.repository.Get(gUser.GoogleID)
 	if err != nil {
 		return "", err
 	}
 
-	return s.userClient.Upsert(user)
+	user := oauth.User{
+		ID:    userID,
+		Name:  gUser.Name,
+		Email: gUser.Email,
+	}
+
+	if user.ID == 0 {
+		user, err = s.userClient.Upsert(user)
+		if err != nil {
+			return "", err
+		} else if user.ID == 0 {
+			return "", errors.New("user got no id")
+		}
+
+		err = s.repository.Insert(gUser.GoogleID, user.ID)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return s.userClient.Token(user)
 }
 
-func (s *GoogleService) retrieveUser(tok *oauth2.Token) (oauth.User, error) {
+func (s *GoogleService) retrieveGoogleUser(tok *oauth2.Token) (googleUser, error) {
+	return googleUser{
+		GoogleID: "107687493762720147648",
+		Name:     "yolo",
+		Email:    "trololo",
+	}, nil
+
 	client := s.config.Client(oauth2.NoContext, tok)
 	res, err := client.Get(userInfoURL)
 	if err != nil {
-		return oauth.User{}, err
+		return googleUser{}, err
 	}
 
 	defer res.Body.Close()
 
-	var user oauth.User
+	var user googleUser
 	if err := json.NewDecoder(res.Body).Decode(&user); err != nil {
-		return oauth.User{}, err
+		return googleUser{}, err
 	}
 
 	return user, nil
-}
-
-func randToken() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.StdEncoding.EncodeToString(b)
 }

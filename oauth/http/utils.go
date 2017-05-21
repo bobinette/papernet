@@ -8,6 +8,10 @@ import (
 	"github.com/bobinette/papernet/errors"
 )
 
+var (
+	errInvalidRequest = errors.New("invalid request")
+)
+
 // Server defines the interface to register the http handlers.
 type Server interface {
 	RegisterHandler(path, method string, f http.Handler)

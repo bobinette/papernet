@@ -9,13 +9,7 @@ import (
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 
-	"github.com/bobinette/papernet/errors"
-
 	"github.com/bobinette/papernet/oauth/services"
-)
-
-var (
-	errInvalidRequest = errors.New("invalid request")
 )
 
 // MakeHTTPHandler returns a http handler for the auth service. It defines the following routes:
