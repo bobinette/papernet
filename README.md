@@ -42,7 +42,7 @@ You decide what you want to use as key ID
 
 If you want to use Google to handle the auth, you need credentials for the project. Follow the instructions here: https://developers.google.com/identity/protocols/OAuth2, to create those credentials.
 
-If you do not want to use google for oauth, you can simply remove the oauth lines from files in `cmd/web` and `cmd/cli`, create your user manually via the cli, generate a token also via the cli and use that token to call the API.
+If you do not want to use google for oauth, you can simply set `enabled=false` in the configuration file and use the simple email/password login system. It does not include email confirmation or password reset, but it will avoid you having to register Papernet on Google.
 
 ## Web server
 To start the web server, you have to create the `data` folder, and setup the index:
