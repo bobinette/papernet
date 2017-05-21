@@ -14,15 +14,13 @@ import (
 func TestUserRepository(t *testing.T, repo auth.UserRepository) {
 	users := []*auth.User{
 		{
-			Name:     "Pizza",
-			Email:    "pizza@paper.net",
-			GoogleID: "1234",
-			IsAdmin:  true,
+			Name:    "Pizza",
+			Email:   "pizza@paper.net",
+			IsAdmin: true,
 		},
 		{
 			Name:      "Yolo",
 			Email:     "yolo@paper.net",
-			GoogleID:  "5678",
 			IsAdmin:   false,
 			Owns:      []int{1, 10},
 			CanSee:    []int{1, 10},
@@ -38,9 +36,6 @@ func TestUserRepository(t *testing.T, repo auth.UserRepository) {
 	for i, user := range users {
 		testGetUser(t, repo, user.ID, *user, fmt.Sprintf("get user %d", i))
 	}
-
-	// Get users by google id
-	testGetUserByGoogleID(t, repo, users[1].GoogleID, *users[1], "get by google id")
 
 	// Update pizza user email
 	users[0].Email = "pizza@yolo.space"
@@ -96,13 +91,6 @@ func testGetUserByEmail(t *testing.T, repo auth.UserRepository, email string, ex
 	}
 }
 
-func testGetUserByGoogleID(t *testing.T, repo auth.UserRepository, googleID string, expected auth.User, name string) {
-	user, err := repo.GetByGoogleID(googleID)
-	if assert.NoError(t, err, "%s - getting user by google id should not fail", name) {
-		AssertUser(t, expected, user, name)
-	}
-}
-
 func testUpdateUser(t *testing.T, repo auth.UserRepository, user *auth.User) {
 	id := user.ID
 	err := repo.Upsert(user)
@@ -154,7 +142,6 @@ func AssertUser(t *testing.T, expected, actual auth.User, name string) {
 	assert.Equal(t, expected.ID, actual.ID, "%s - ids should be equal", name)
 	assert.Equal(t, expected.Name, actual.Name, "%s - names should be equal", name)
 	assert.Equal(t, expected.Email, actual.Email, "%s - emails should be equal", name)
-	assert.Equal(t, expected.GoogleID, actual.GoogleID, "%s - google ids should be equal", name)
 
 	// Papers
 	if assert.Equal(t, len(expected.Owns), len(actual.Owns), "%s - number of owned papers should be the same", name) {

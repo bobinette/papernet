@@ -15,7 +15,6 @@ var (
 
 	nameEdge      = quad.Raw("name")
 	emailEdge     = quad.Raw("email")
-	googleIDEdge  = quad.Raw("googleID")
 	isAdminEdge   = quad.Raw("isAdmin")
 	ownsEdge      = quad.Raw("owns")
 	bookmarksEdge = quad.Raw("bookmarks")
