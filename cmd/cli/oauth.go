@@ -108,6 +108,11 @@ var OAuthMigrateCommand = cobra.Command{
 		}
 
 		for _, user := range users {
+			if user.Email == "" || user.GoogleID == "" {
+				logger.Errorf("cannot migrate user %d: no email", user.ID)
+				continue
+			}
+
 			if err := googleRepository.Insert(user.GoogleID, user.ID); err != nil {
 				logger.Fatalf("error migrating user %d: %v", user.ID, err)
 			}
