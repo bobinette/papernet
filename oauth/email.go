@@ -9,7 +9,7 @@ type User struct {
 	PasswordHash string `json:"password"`
 }
 
-type AuthRepository interface {
+type EmailRepository interface {
 	Get(email string) (User, error)
 	Insert(User) error
 }

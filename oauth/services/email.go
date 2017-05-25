@@ -10,19 +10,19 @@ import (
 	"github.com/bobinette/papernet/oauth"
 )
 
-type AuthService struct {
-	repository oauth.AuthRepository
+type EmailService struct {
+	repository oauth.EmailRepository
 	userClient *oauth.UserClient
 }
 
-func NewAuthService(repo oauth.AuthRepository, userClient *oauth.UserClient) *AuthService {
-	return &AuthService{
+func NewEmailService(repo oauth.EmailRepository, userClient *oauth.UserClient) *EmailService {
+	return &EmailService{
 		repository: repo,
 		userClient: userClient,
 	}
 }
 
-func (s *AuthService) SignUp(email, password string) (string, error) {
+func (s *EmailService) SignUp(email, password string) (string, error) {
 	user, err := s.repository.Get(email)
 	if err != nil {
 		return "", err
@@ -59,7 +59,7 @@ func (s *AuthService) SignUp(email, password string) (string, error) {
 	return s.userClient.Token(user)
 }
 
-func (s *AuthService) Login(email, password string) (string, error) {
+func (s *EmailService) Login(email, password string) (string, error) {
 	user, err := s.repository.Get(email)
 	fmt.Println(user.Salt)
 	if err != nil {

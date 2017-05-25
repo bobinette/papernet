@@ -12,9 +12,9 @@ import (
 type Configuration struct {
 	Provider string `toml:"provider"`
 	Bolt     string `toml:"bolt"`
-	Auth     struct {
+	Email    struct {
 		Enabled bool `toml:"enabled"`
-	} `toml:"auth"`
+	} `toml:"email"`
 	Google struct {
 		Enabled bool   `toml:"enabled"`
 		File    string `toml:"file"`
@@ -31,11 +31,11 @@ func Start(srv http.Server, cfg Configuration, logger log.Logger, userService oa
 	}
 
 	// Basic email / password
-	if cfg.Auth.Enabled {
-		repository := bolt.NewAuthepository(boltDriver)
-		service := services.NewAuthService(repository, userClient)
-		http.RegisterAuthHTTPRoutes(srv, service)
-		providerService.Register("papernet")
+	if cfg.Email.Enabled {
+		repository := bolt.NewEmailRepository(boltDriver)
+		service := services.NewEmailService(repository, userClient)
+		http.RegisterEmailHTTPRoutes(srv, service)
+		providerService.Register("email")
 	}
 
 	// Google

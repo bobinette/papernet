@@ -15,7 +15,7 @@ store = "data/auth.graph"
 [oauth]
 bolt="data/oauth.db"
 
-[oauth.auth]
+[oauth.email]
 enabled=true
 
 [oauth.google]

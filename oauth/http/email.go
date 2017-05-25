@@ -18,7 +18,7 @@ import (
 // get user teams,
 // add/remove user from a team,
 // add/remove/get team permissions on a paper
-func RegisterAuthHTTPRoutes(srv Server, service *services.AuthService) {
+func RegisterEmailHTTPRoutes(srv Server, service *services.EmailService) {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(kitjwt.ToHTTPContext()),
@@ -47,7 +47,7 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-func makeSignUpEndpoint(s *services.AuthService) endpoint.Endpoint {
+func makeSignUpEndpoint(s *services.EmailService) endpoint.Endpoint {
 	return func(_ context.Context, r interface{}) (interface{}, error) {
 		req, ok := r.(LoginRequest)
 		if !ok {
@@ -73,7 +73,7 @@ func decodeSignUpRequest(_ context.Context, r *http.Request) (interface{}, error
 	return req, nil
 }
 
-func makeLoginEndpoint(s *services.AuthService) endpoint.Endpoint {
+func makeLoginEndpoint(s *services.EmailService) endpoint.Endpoint {
 	return func(_ context.Context, r interface{}) (interface{}, error) {
 		req, ok := r.(LoginRequest)
 		if !ok {

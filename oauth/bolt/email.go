@@ -8,19 +8,19 @@ import (
 	"github.com/bobinette/papernet/oauth"
 )
 
-var authBucket = []byte("auth")
+var authBucket = []byte("email")
 
-type Authepository struct {
+type EmailRepository struct {
 	driver *Driver
 }
 
-func NewAuthepository(driver *Driver) *Authepository {
-	return &Authepository{
+func NewEmailRepository(driver *Driver) *EmailRepository {
+	return &EmailRepository{
 		driver: driver,
 	}
 }
 
-func (r *Authepository) Get(email string) (oauth.User, error) {
+func (r *EmailRepository) Get(email string) (oauth.User, error) {
 	var user oauth.User
 	err := r.driver.store.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(googleBucket)
@@ -39,7 +39,7 @@ func (r *Authepository) Get(email string) (oauth.User, error) {
 	return user, nil
 }
 
-func (r *Authepository) Insert(user oauth.User) error {
+func (r *EmailRepository) Insert(user oauth.User) error {
 	return r.driver.store.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(googleBucket)
 
