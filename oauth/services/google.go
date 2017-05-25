@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"sync"
@@ -10,6 +9,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
+	"github.com/bobinette/papernet/errors"
 	"github.com/bobinette/papernet/oauth"
 )
 
@@ -84,19 +84,19 @@ func (s *GoogleService) Login(state, code string) (string, error) {
 	s.stateMutex.Unlock() // no defer because the token exchange could be long
 
 	if !ok {
-		return "", errors.New("Invalid state")
+		return "", errors.New("invalid state", errors.BadRequest())
 	}
 
 	s.stateMutex.Lock()
 	delete(s.state, state)
 	s.stateMutex.Unlock()
 
-	// tok, err := s.config.Exchange(oauth2.NoContext, code)
-	// if err != nil {
-	// 	return "", err
-	// }
+	tok, err := s.config.Exchange(oauth2.NoContext, code)
+	if err != nil {
+		return "", err
+	}
 
-	gUser, err := s.retrieveGoogleUser(nil)
+	gUser, err := s.retrieveGoogleUser(tok)
 	if err != nil {
 		return "", err
 	}
@@ -130,12 +130,6 @@ func (s *GoogleService) Login(state, code string) (string, error) {
 }
 
 func (s *GoogleService) retrieveGoogleUser(tok *oauth2.Token) (googleUser, error) {
-	return googleUser{
-		GoogleID: "107687493762720147648",
-		Name:     "yolo",
-		Email:    "trololo",
-	}, nil
-
 	client := s.config.Client(oauth2.NoContext, tok)
 	res, err := client.Get(userInfoURL)
 	if err != nil {
