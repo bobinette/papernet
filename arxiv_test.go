@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"testing"
 )
 
@@ -91,7 +90,6 @@ func TestArxivSpider_Import(t *testing.T) {
 	tts := map[string]struct {
 		URL            string
 		ExpectedParams map[string][]string
-		Error          bool
 	}{
 		"abstract": {
 			URL: "http://arxiv.org/abs/1234.5678v5",
@@ -100,7 +98,6 @@ func TestArxivSpider_Import(t *testing.T) {
 				"sortBy":    []string{"submittedDate"},
 				"sortOrder": []string{"descending"},
 			},
-			Error: false,
 		},
 		"pdf": {
 			URL: "http://arxiv.org/pdf/1234.5678",
@@ -109,39 +106,30 @@ func TestArxivSpider_Import(t *testing.T) {
 				"sortBy":    []string{"submittedDate"},
 				"sortOrder": []string{"descending"},
 			},
-			Error: false,
 		},
-		"failing because not arxiv": {
-			URL:            "http://medium.org/me/bookmarks",
-			ExpectedParams: map[string][]string{},
-			Error:          true,
+		"physics...": {
+			URL: "http://arxiv.org/abs/quant-ph/1234.5678v5",
+			ExpectedParams: map[string][]string{
+				"id_list":   []string{"1234.5678"},
+				"sortBy":    []string{"submittedDate"},
+				"sortOrder": []string{"descending"},
+			},
 		},
-		"failing because could not extract id": {
+		"still extracts something even if invalid id": {
 			URL:            "http://arxiv.org/abs/not-an-id",
-			ExpectedParams: map[string][]string{},
-			Error:          true,
+			ExpectedParams: map[string][]string{
+				"id_list":   []string{"not-an-id"},
+				"sortBy":    []string{"submittedDate"},
+				"sortOrder": []string{"descending"},
+			},
 		},
 	}
 	for name, tt := range tts {
 		queryParams = nil
 		_, err := importer.Import(tt.URL)
 
-		if err == nil && tt.Error {
-			t.Errorf("%s - should have failed but did not", name)
-		} else if err != nil && !tt.Error {
+		if err != nil{
 			t.Errorf("%s - should not have failed but did with error %v", name, err)
-		} else if err != nil {
-			// I don't know why but a wrapping deep equal does not seem to work...
-			for k, v := range tt.ExpectedParams {
-				if !reflect.DeepEqual(v, queryParams[k]) {
-					t.Errorf("%s - invalid query params %s: expected %v got %v", name, k, v, queryParams[k])
-				}
-			}
-			for k, v := range queryParams {
-				if !reflect.DeepEqual(v, tt.ExpectedParams[k]) {
-					t.Errorf("%s - invalid query params %s: expected %v got %v", name, k, tt.ExpectedParams[k], v)
-				}
-			}
 		}
 	}
 }

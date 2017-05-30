@@ -21,14 +21,9 @@ var (
 		OneLine,
 		strings.TrimSpace,
 	)
-	arxivIDRegExp     *regexp.Regexp
-	arxivImportRegExp *regexp.Regexp
 )
 
 func init() {
-	arxivIDRegExp = regexp.MustCompile("http://arxiv.org/abs/([0-9.]*)(v[0-9]+)?")
-	arxivImportRegExp = regexp.MustCompile("https?://arxiv.org/(abs|pdf)/([0-9.]*)(v[0-9]+)?")
-
 	// Check if arxiv URL is valid
 	_, err := url.Parse(arxivURL)
 	if err != nil {
@@ -137,11 +132,9 @@ func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 			}
 		}
 
-		var arxivID string
-		matches := arxivIDRegExp.FindAllStringSubmatch(entry.ID, -1)
-		if len(matches) > 0 && len(matches[0]) > 1 {
-			arxivID = matches[0][1]
-		}
+		// entryID is in the form "http://arxiv.org/abs/1234.5678v5" => extract 1234.5678
+		urlParts := strings.Split(entry.ID, "/")
+		arxivID := strings.Split(urlParts[len(urlParts) - 1], "v")[0]
 
 		papers[i] = &Paper{
 			Title:   entry.Title,
@@ -168,14 +161,12 @@ func (s *ArxivSpider) Search(search ArxivSearch) (ArxivResult, error) {
 }
 
 func (s *ArxivSpider) Import(url string) (*Paper, error) {
-	matches := arxivImportRegExp.FindAllStringSubmatch(url, -1)
-	if len(matches) == 0 || len(matches[0]) < 4 || matches[0][2] == "" {
-		return nil, errors.New(fmt.Sprintf("could not extract arxiv ID from %s", url), errors.WithCode(http.StatusNotFound))
-	}
+	// The url is in the form "http://arxiv.org/pdf/1234.5678v5" => extract 1234.5678
+	urlParts := strings.Split(url, "/")
+	arxivID := strings.Split(urlParts[len(urlParts) - 1], "v")[0]
 
-	arxivID := matches[0][2]
 	res, err := s.Search(ArxivSearch{
-		IDs: []string{matches[0][2]},
+		IDs: []string{arxivID},
 	})
 	if err != nil {
 		return nil, err
