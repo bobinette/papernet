@@ -48,15 +48,20 @@ var (
 )
 
 func init() {
+
 	PaperCommand.AddCommand(&SavePaperCommand)
 	PaperCommand.AddCommand(&DeletePaperCommand)
 	PaperCommand.AddCommand(&SearchCommand)
 	PaperCommand.AddCommand(&PaperMigrateCommand)
+	PaperCommand.AddCommand(&PaperIndexCommand)
+	PaperIndexCommand.AddCommand(&PaperIndexAllCommand)
 
 	inheritPersistentPreRun(&SavePaperCommand)
 	inheritPersistentPreRun(&DeletePaperCommand)
 	inheritPersistentPreRun(&SearchCommand)
 	inheritPersistentPreRun(&PaperMigrateCommand)
+	inheritPersistentPreRun(&PaperIndexCommand)
+	inheritPersistentPreRun(&PaperIndexAllCommand)
 	inheritPersistentPreRun(&PaperCommand)
 
 	RootCmd.AddCommand(&PaperCommand)
@@ -185,11 +190,15 @@ var SavePaperCommand = cobra.Command{
 			logger.Fatal("error unmarshalling payload:", err)
 		}
 
-		// @TODO: implement
-		// err = store.Upsert(&paper)
-		// if err != nil {
-		// 	logger.Fatal("error saving paper:", err)
-		// }
+		if err := paperRepository.Upsert(&paper); err != nil {
+			logger.Errorf("error migrating paper %d: %v", paper.ID, err)
+		}
+
+		if err := paperIndex.Index(&paper); err != nil {
+			logger.Errorf("error indexing paper %d: %v", paper.ID, err)
+		}
+
+		logger.Printf("paper %d inserted", paper.ID)
 
 		cmd.Println(paper)
 	},
@@ -255,6 +264,63 @@ var PaperMigrateCommand = cobra.Command{
 			}
 
 			logger.Printf("paper %d migrated", paper.ID)
+		}
+	},
+}
+
+var PaperIndexCommand = cobra.Command{
+	Use:   "index",
+	Short: "Index a paper",
+	Long:  "Index a paper",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 1 && args[0] == "help" {
+			cmd.Help()
+			return
+		}
+
+		ids, err := ints(args)
+		if err != nil {
+			logger.Fatal("error reading ids:", err)
+		}
+
+		papers, err := paperRepository.Get(ids...)
+		if err != nil {
+			logger.Fatal("error retrieving papers:", err)
+		}
+
+		for _, paper := range papers {
+			err := paperIndex.Index(&paper)
+			if err != nil {
+				logger.Errorf("error indexing paper %d: %v", paper.ID, err)
+			}
+
+			logger.Printf("indexed paper %d", paper.ID)
+		}
+	},
+}
+
+var PaperIndexAllCommand = cobra.Command{
+	Use:   "all",
+	Short: "Index all papers",
+	Long:  "Index all papers",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 1 && args[0] == "help" {
+			cmd.Help()
+			return
+		}
+
+		papers, err := paperRepository.List()
+		if err != nil {
+			logger.Fatal("error retrieving papers:", err)
+		}
+
+		for _, paper := range papers {
+			err := paperIndex.Index(&paper)
+			if err != nil {
+				logger.Errorf("error indexing paper %d: %v", paper.ID, err)
+			}
+
+			logger.Printf("indexed paper %d", paper.ID)
 		}
 	},
 }
