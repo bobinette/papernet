@@ -1,0 +1,9 @@
+[
+  {
+    "title": "Bookmarks Bar",
+    "links": [
+      {"title": "Paper 1", "url": "p1"},
+      {"title": "Paper 2", "url": "p2"}
+    ]
+  }
+]

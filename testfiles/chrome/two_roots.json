@@ -1,0 +1,16 @@
+[
+  {
+    "title": "Bookmarks Bar",
+    "links": [
+      {"title": "Paper 1", "url": "r1-p1"},
+      {"title": "Paper 2", "url": "r1-p2"}
+    ]
+  },
+  {
+    "title": "Second root",
+    "links": [
+      {"title": "Root 2 - Paper 1", "url": "r2-p1"},
+      {"title": "Root 2 - Paper 2", "url": "r2-p2"}
+    ]
+  }
+]

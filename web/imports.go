@@ -17,6 +17,13 @@ func (h *ImportHandler) Routes() []papernet.EndPoint {
 			Authenticated: false,
 			HandlerFunc:   WrapRequest(h.Import),
 		},
+		papernet.EndPoint{
+			URL:           "/papernet/imports/chrome-bookmarks",
+			Method:        "POST",
+			Renderer:      "JSON",
+			Authenticated: false,
+			HandlerFunc:   WrapRequest(h.ImportChromeBookmarks),
+		},
 	}
 }
 
@@ -34,4 +41,13 @@ func (h *ImportHandler) Import(req *Request) (interface{}, error) {
 	return map[string]interface{}{
 		"data": paper,
 	}, nil
+}
+
+func (h *ImportHandler) ImportChromeBookmarks(req *Request) (interface{}, error) {
+	defer req.Body.Close()
+	papers, err := papernet.ImportChromeBookmarks(req.Body)
+	if err != nil {
+		return nil, err
+	}
+	return papers, nil
 }

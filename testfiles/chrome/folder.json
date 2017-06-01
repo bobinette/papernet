@@ -1,0 +1,15 @@
+[
+  {
+    "title": "Bookmarks Bar",
+    "links": [
+      {"title": "Paper 1", "url": "p1"}
+    ]
+  },
+  {
+    "title": "Folder 1",
+    "links": [
+      {"title": "Folder 1 - Paper 1", "url": "f1-p1"},
+      {"title": "Folder 1 - Paper 2", "url": "f1-p2"}
+    ]
+  }
+]
