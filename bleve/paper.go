@@ -1,13 +1,13 @@
 package bleve
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/blevesearch/bleve"
 	_ "github.com/blevesearch/bleve/analysis/analyzer/keyword"
-	"github.com/blevesearch/bleve/analysis/analyzer/simple"
-	"github.com/blevesearch/bleve/analysis/lang/en"
+	_ "github.com/blevesearch/bleve/analysis/analyzer/simple"
 	"github.com/blevesearch/bleve/search/query"
 
 	"github.com/bobinette/papernet"
@@ -154,8 +154,12 @@ func (s *PaperIndex) searchQ(queryString string) query.Query {
 }
 
 func (s *PaperIndex) searchTitleQ(queryString string) query.Query {
-	analyzer := s.index.Mapping().AnalyzerNamed(en.AnalyzerName)
+	field := "title"
+
+	analyzerName := s.index.Mapping().AnalyzerNameForPath(field)
+	analyzer := s.index.Mapping().AnalyzerNamed(analyzerName)
 	tokens := analyzer.Analyze([]byte(queryString))
+	fmt.Println(tokens)
 	if len(tokens) == 0 {
 		return nil
 	}
@@ -164,7 +168,7 @@ func (s *PaperIndex) searchTitleQ(queryString string) query.Query {
 	for i, token := range tokens {
 		conjuncts[i] = &query.PrefixQuery{
 			Prefix:   string(token.Term),
-			FieldVal: "title",
+			FieldVal: field,
 		}
 	}
 
@@ -172,7 +176,10 @@ func (s *PaperIndex) searchTitleQ(queryString string) query.Query {
 }
 
 func (s *PaperIndex) searchTagsQ(queryString string) query.Query {
-	analyzer := s.index.Mapping().AnalyzerNamed(simple.Name)
+	field := "tags"
+
+	analyzerName := s.index.Mapping().AnalyzerNameForPath(field)
+	analyzer := s.index.Mapping().AnalyzerNamed(analyzerName)
 	tokens := analyzer.Analyze([]byte(queryString))
 	if len(tokens) == 0 {
 		return nil
@@ -182,7 +189,7 @@ func (s *PaperIndex) searchTagsQ(queryString string) query.Query {
 	for i, token := range tokens {
 		conjuncts[i] = &query.PrefixQuery{
 			Prefix:   string(token.Term),
-			FieldVal: "tags",
+			FieldVal: field,
 		}
 	}
 
@@ -190,7 +197,10 @@ func (s *PaperIndex) searchTagsQ(queryString string) query.Query {
 }
 
 func (s *PaperIndex) searchAuthorsQ(queryString string) query.Query {
-	analyzer := s.index.Mapping().AnalyzerNamed(simple.Name)
+	field := "authors"
+
+	analyzerName := s.index.Mapping().AnalyzerNameForPath(field)
+	analyzer := s.index.Mapping().AnalyzerNamed(analyzerName)
 	tokens := analyzer.Analyze([]byte(queryString))
 	if len(tokens) == 0 {
 		return nil
@@ -200,7 +210,7 @@ func (s *PaperIndex) searchAuthorsQ(queryString string) query.Query {
 	for i, token := range tokens {
 		conjuncts[i] = &query.PrefixQuery{
 			Prefix:   string(token.Term),
-			FieldVal: "authors",
+			FieldVal: field,
 		}
 	}
 

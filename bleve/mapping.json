@@ -22,7 +22,7 @@
         "fields": [
           {
             "type": "text",
-            "analyzer": "en",
+            "analyzer": "simple",
             "store": true,
             "index": true,
             "include_term_vectors": true,

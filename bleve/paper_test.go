@@ -65,6 +65,7 @@ func TestFind(t *testing.T) {
 		&papernet.Paper{ID: 8, Title: "learning to build a machine", Tags: []string{"skillz", "DIY"}},
 		&papernet.Paper{ID: 11, Title: "later that day", Tags: []string{"tag"}},
 		&papernet.Paper{ID: 24, Title: "twenty four", Tags: []string{"tag", "24"}},
+		&papernet.Paper{ID: 102, Title: "Information extraction from HTML documents"},
 	}
 	ids := make([]int, len(papers))
 	for i, paper := range papers {
@@ -85,7 +86,7 @@ func TestFind(t *testing.T) {
 				Limit: 10,
 			},
 			Expected: papernet.PaperSearchResults{
-				IDs: ids,
+				IDs: ids[:10],
 				Pagination: papernet.Pagination{
 					Total:  uint64(len(ids)),
 					Limit:  10,
@@ -299,6 +300,21 @@ func TestFind(t *testing.T) {
 				Pagination: papernet.Pagination{
 					Total:  7,
 					Limit:  uint64(len(ids)),
+					Offset: 0,
+				},
+			},
+		},
+		"do to find documents": {
+			Search: papernet.PaperSearch{
+				Q:     "do",
+				IDs:   ids,
+				Limit: 10,
+			},
+			Expected: papernet.PaperSearchResults{
+				IDs: []int{102},
+				Pagination: papernet.Pagination{
+					Total:  1,
+					Limit:  10,
 					Offset: 0,
 				},
 			},
