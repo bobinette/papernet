@@ -14,7 +14,7 @@ type Paper struct {
 	Authors   []string `json:"authors"`
 }
 
-type PaperMapping interface {
+type PaperRepository interface {
 	Save(userID, paperID int, source, ref string) error
 	Get(userID int, source, ref string) (int, error)
 }
@@ -30,7 +30,9 @@ type SearchResults struct {
 	Pagination Pagination `json:"pagination"`
 }
 
-type Searcher interface {
+type Importer interface {
 	Source() string
+
+	Import(ref string, ctx context.Context) (Paper, error)
 	Search(q string, limit, offset int, ctx context.Context) (SearchResults, error)
 }

@@ -25,6 +25,13 @@ file="configuration/oauth_google.json"
 # ----------------------------------------
 
 # ----------------------------------------
+# Imports service
+[imports.bolt]
+store="data/imports.db"
+# Imports service
+# ----------------------------------------
+
+# ----------------------------------------
 # legacy
 [bolt]
 store = "data/papernet.db"

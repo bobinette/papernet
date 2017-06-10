@@ -12,12 +12,6 @@ import (
 	"github.com/bobinette/papernet/oauth/services"
 )
 
-// MakeHTTPHandler returns a http handler for the auth service. It defines the following routes:
-// set/get paper owner,
-// get user permissions,
-// get user teams,
-// add/remove user from a team,
-// add/remove/get team permissions on a paper
 func RegisterGoogleHTTPRoutes(srv Server, service *services.GoogleService) {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),

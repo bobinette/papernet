@@ -17,15 +17,19 @@ import (
 	"github.com/bobinette/papernet/web"
 
 	// packages used for migration to go-kit
-	kitauth "github.com/bobinette/papernet/auth/cmd"
 	"github.com/bobinette/papernet/jwt"
+
+	kitauth "github.com/bobinette/papernet/auth/cmd"
+	kitimports "github.com/bobinette/papernet/imports/cmd"
 	kitoauth "github.com/bobinette/papernet/oauth/cmd"
 )
 
 type Configuration struct {
-	Auth  kitauth.Configuration  `toml:"auth"`
-	Oauth kitoauth.Configuration `toml:"oauth"`
-	Bolt  struct {
+	Auth    kitauth.Configuration    `toml:"auth"`
+	Oauth   kitoauth.Configuration   `toml:"oauth"`
+	Imports kitimports.Configuration `toml:"imports"`
+
+	Bolt struct {
 		Store string `toml:"store"`
 	} `toml:"bolt"`
 	Bleve struct {
@@ -105,6 +109,9 @@ func main() {
 
 	// OAuth service
 	kitoauth.Start(server, cfg.Oauth, logger, userService)
+
+	// Imports service
+	kitimports.Start(server, cfg.Imports, logger)
 
 	// *************************************************
 	// Migration to go-kit
