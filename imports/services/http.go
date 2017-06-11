@@ -12,10 +12,13 @@ import (
 
 	"github.com/bobinette/papernet/errors"
 	"github.com/bobinette/papernet/jwt"
+
+	"github.com/bobinette/papernet/imports"
 )
 
 var (
 	errInvalidRequest = errors.New("invalid request")
+	errNoUser         = errors.New("no user", errors.WithCode(http.StatusUnauthorized))
 )
 
 // Server defines the interface to register the http handlers.
@@ -43,7 +46,7 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 func extractUserID(ctx context.Context) (int, error) {
 	claims := ctx.Value(kitjwt.JWTClaimsContextKey)
 	if claims == nil {
-		return 0, errors.New("no user", errors.WithCode(http.StatusUnauthorized))
+		return 0, errNoUser
 	}
 
 	ppnClaims, ok := claims.(*jwt.Claims)
@@ -54,28 +57,37 @@ func extractUserID(ctx context.Context) (int, error) {
 	return ppnClaims.UserID, nil
 }
 
-func (s *ImportService) RegisterHTTP(srv HTTPServer) {
+func (s *ImportService) RegisterHTTP(srv HTTPServer, jwtKey []byte) {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(kitjwt.ToHTTPContext()),
 	}
+	authenticationMiddleware := jwt.Middleware(jwtKey)
 
 	searchHandler := kithttp.NewServer(
-		makeSearchEndpoint(s),
+		authenticationMiddleware(makeSearchEndpoint(s)),
 		decodeSearchRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
 
 	sourcesHandler := kithttp.NewServer(
-		makeSourcesEndpoint(s),
+		authenticationMiddleware(makeSourcesEndpoint(s)),
 		decodeSourcesRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+
+	importHandler := kithttp.NewServer(
+		authenticationMiddleware(makeImportEndpoint(s)),
+		decodeImportRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
 
 	srv.RegisterHandler("/imports/v2/search", "GET", searchHandler)
 	srv.RegisterHandler("/imports/v2/sources", "GET", sourcesHandler)
+	srv.RegisterHandler("/imports/v2/import", "POST", importHandler)
 }
 
 func makeSourcesEndpoint(s *ImportService) endpoint.Endpoint {
@@ -105,7 +117,7 @@ func makeSearchEndpoint(s *ImportService) endpoint.Endpoint {
 		}
 
 		userID, err := extractUserID(ctx)
-		if err != nil {
+		if err != nil && err != errNoUser {
 			return nil, err
 		}
 
@@ -140,9 +152,6 @@ func decodeSearchRequest(_ context.Context, r *http.Request) (interface{}, error
 		}
 		offset = o
 	}
-	if offset <= 0 {
-		offset = 20
-	}
 
 	sources := r.URL.Query()["sources"]
 
@@ -152,4 +161,30 @@ func decodeSearchRequest(_ context.Context, r *http.Request) (interface{}, error
 		offset:  offset,
 		sources: sources,
 	}, nil
+}
+
+func makeImportEndpoint(s *ImportService) endpoint.Endpoint {
+	return func(ctx context.Context, r interface{}) (interface{}, error) {
+		req, ok := r.(imports.Paper)
+		if !ok {
+			return nil, errInvalidRequest
+		}
+
+		userID, err := extractUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return s.Import(userID, req, ctx)
+	}
+}
+
+func decodeImportRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+	var paper imports.Paper
+	err := json.NewDecoder(r.Body).Decode(&paper)
+	if err != nil {
+		return nil, err
+	}
+	return paper, nil
 }

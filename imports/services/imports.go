@@ -8,25 +8,47 @@ import (
 	"github.com/bobinette/papernet/imports"
 )
 
-type ImportService struct {
-	repository imports.PaperRepository
-	importers  []imports.Importer
+type PaperService interface {
+	Insert(userID int, paper *imports.Paper, ctx context.Context) error
 }
 
-func NewImportService(repository imports.PaperRepository, importers ...imports.Importer) *ImportService {
+type ImportService struct {
+	repository   imports.PaperRepository
+	paperService PaperService
+	searchers    []imports.Searcher
+}
+
+func NewImportService(repository imports.PaperRepository, paperService PaperService, searchers ...imports.Searcher) *ImportService {
 	return &ImportService{
-		repository: repository,
-		importers:  importers,
+		repository:   repository,
+		paperService: paperService,
+		searchers:    searchers,
 	}
 }
 
 func (s *ImportService) Sources() []string {
-	sources := make([]string, len(s.importers))
-	for i, importer := range s.importers {
-		sources[i] = importer.Source()
+	sources := make([]string, len(s.searchers))
+	for i, searcher := range s.searchers {
+		sources[i] = searcher.Source()
 	}
 
 	return sources
+}
+
+func (s *ImportService) Import(userID int, paper imports.Paper, ctx context.Context) (imports.Paper, error) {
+	err := s.paperService.Insert(userID, &paper, ctx)
+	if err != nil {
+		return imports.Paper{}, err
+	} else if paper.ID == 0 {
+		return imports.Paper{}, errors.New("id was not set when importing")
+	}
+
+	err = s.repository.Save(userID, paper.ID, paper.Source, paper.Reference)
+	if err != nil {
+		return imports.Paper{}, err
+	}
+
+	return paper, nil
 }
 
 func (s *ImportService) Search(
@@ -37,15 +59,15 @@ func (s *ImportService) Search(
 	sources []string,
 	ctx context.Context,
 ) (map[string]imports.SearchResults, error) {
-	// Select the importers
-	var importers []imports.Importer
+	// Select the searchers
+	var searchers []imports.Searcher
 	if len(sources) != 0 {
-		importers = make([]imports.Importer, len(sources))
+		searchers = make([]imports.Searcher, len(sources))
 		for i, source := range sources {
 			found := false
-			for _, importer := range s.importers {
-				if importer.Source() == source {
-					importers[i] = importer
+			for _, searcher := range s.searchers {
+				if searcher.Source() == source {
+					searchers[i] = searcher
 					found = true
 					break
 				}
@@ -56,20 +78,20 @@ func (s *ImportService) Search(
 			}
 		}
 	} else {
-		importers = s.importers
+		searchers = s.searchers
 	}
 
 	res := make(map[string]imports.SearchResults)
-	for _, importer := range importers {
-		// Use the importer to fetch the data
-		r, err := importer.Search(q, limit, offset, ctx)
+	for _, searcher := range searchers {
+		// Use the searcher to fetch the data
+		r, err := searcher.Search(q, limit, offset, ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		// Get the ids of each entry from the repository
 		for i, paper := range r.Papers {
-			id, err := s.repository.Get(userID, importer.Source(), paper.Reference)
+			id, err := s.repository.Get(userID, searcher.Source(), paper.Reference)
 			if err != nil {
 				return nil, err
 			}
@@ -78,7 +100,7 @@ func (s *ImportService) Search(
 			r.Papers[i] = paper
 		}
 
-		res[importer.Source()] = r
+		res[searcher.Source()] = r
 	}
 
 	return res, nil

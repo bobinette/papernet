@@ -20,6 +20,16 @@ func (m *mockMapping) Get(userID int, source, ref string) (int, error) {
 	return m.mapping[userID][source][ref], nil
 }
 
+type mockPaperService struct {
+	c int
+}
+
+func (m *mockPaperService) Insert(userID int, paper *imports.Paper, ctx context.Context) error {
+	m.c++
+	paper.ID = m.c
+	return nil
+}
+
 type mockImporter struct {
 	source  string
 	results imports.SearchResults
@@ -34,9 +44,6 @@ type mockImporter struct {
 func (m *mockImporter) Source() string { return m.source }
 func (m *mockImporter) Search(q string, limit, offset int, ctx context.Context) (imports.SearchResults, error) {
 	return m.results, nil
-}
-func (m *mockImporter) Import(ref string, ctx context.Context) (imports.Paper, error) {
-	return imports.Paper{}, nil
 }
 
 func TestSearchService_Search(t *testing.T) {
@@ -152,7 +159,7 @@ func TestSearchService_Search(t *testing.T) {
 		},
 	}
 
-	service := NewImportService(mapping, searcher1, searcher2)
+	service := NewImportService(mapping, &mockPaperService{}, searcher1, searcher2)
 	for name, tt := range tts {
 		res, err := service.Search(userID, "", 2, 0, tt.sources, context.Background())
 		assert.NoError(t, err, name)
@@ -173,7 +180,7 @@ func TestSearchService_Search(t *testing.T) {
 
 func TestSearchService_Search_UnknownSource(t *testing.T) {
 	tts := map[string]struct {
-		searchers []imports.Importer
+		searchers []imports.Searcher
 		sources   []string
 	}{
 		"no searchers": {
@@ -181,13 +188,13 @@ func TestSearchService_Search_UnknownSource(t *testing.T) {
 			sources:   []string{"source"},
 		},
 		"one searcher": {
-			searchers: []imports.Importer{
+			searchers: []imports.Searcher{
 				&mockImporter{source: "searcher"},
 			},
 			sources: []string{"source"},
 		},
 		"several searchers": {
-			searchers: []imports.Importer{
+			searchers: []imports.Searcher{
 				&mockImporter{source: "searcher 1"},
 				&mockImporter{source: "searcher 2"},
 			},
@@ -196,7 +203,7 @@ func TestSearchService_Search_UnknownSource(t *testing.T) {
 	}
 
 	for name, tt := range tts {
-		service := NewImportService(&mockMapping{}, tt.searchers...)
+		service := NewImportService(&mockMapping{}, &mockPaperService{}, tt.searchers...)
 		_, err := service.Search(1, "q", 20, 0, tt.sources, context.Background())
 		if assert.Error(t, err, name) {
 			errors.AssertCode(t, err, http.StatusBadRequest)

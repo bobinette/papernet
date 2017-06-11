@@ -2,16 +2,25 @@ package imports
 
 import (
 	"context"
+
+	"github.com/bobinette/papernet/errors"
+)
+
+var (
+	ErrNotFound = errors.New("paper not found")
 )
 
 type Paper struct {
 	ID int `json:"id"`
 
-	Reference string   `json:"reference"`
-	Title     string   `json:"title"`
-	Summary   string   `json:"summary"`
-	Tags      []string `json:"tags"`
-	Authors   []string `json:"authors"`
+	Source    string `json:"source"`
+	Reference string `json:"reference"`
+
+	Title      string   `json:"title"`
+	Summary    string   `json:"summary"`
+	Tags       []string `json:"tags"`
+	Authors    []string `json:"authors"`
+	References []string `json:"references"`
 }
 
 type PaperRepository interface {
@@ -30,9 +39,7 @@ type SearchResults struct {
 	Pagination Pagination `json:"pagination"`
 }
 
-type Importer interface {
+type Searcher interface {
 	Source() string
-
-	Import(ref string, ctx context.Context) (Paper, error)
 	Search(q string, limit, offset int, ctx context.Context) (SearchResults, error)
 }

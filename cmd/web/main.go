@@ -111,7 +111,7 @@ func main() {
 	kitoauth.Start(server, cfg.Oauth, logger, userService)
 
 	// Imports service
-	kitimports.Start(server, cfg.Imports, logger)
+	kitimports.Start(server, cfg.Imports, logger, userService)
 
 	// *************************************************
 	// Migration to go-kit
