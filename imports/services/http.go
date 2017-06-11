@@ -65,7 +65,7 @@ func (s *ImportService) RegisterHTTP(srv HTTPServer, jwtKey []byte) {
 	authenticationMiddleware := jwt.Middleware(jwtKey)
 
 	searchHandler := kithttp.NewServer(
-		authenticationMiddleware(makeSearchEndpoint(s)),
+		makeSearchEndpoint(s),
 		decodeSearchRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
