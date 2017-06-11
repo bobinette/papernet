@@ -53,10 +53,6 @@ func (s *PaperService) Insert(userID int, paper *imports.Paper, ctx context.Cont
 	}
 
 	defer res.Body.Close()
-	// data, err = ioutil.ReadAll(res.Body)
-	// fmt.Println(string(data))
-	// fmt.Println(err)
-
 	var p struct {
 		Data imports.Paper `json:"data"`
 	}

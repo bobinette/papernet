@@ -163,6 +163,10 @@ func (h *PaperHandler) Insert(req *Request) (interface{}, error) {
 		)
 	}
 
+	if paper.Title == "" {
+		return nil, errors.New("field title should not be empty", errors.BadRequest())
+	}
+
 	err = h.Store.Upsert(&paper)
 	if err != nil {
 		return nil, errors.New("error inserting paper", errors.WithCause(err))
