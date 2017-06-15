@@ -189,7 +189,7 @@ func (i *Importer) parsePapers(r response) []imports.Paper {
 
 		papers[n] = imports.Paper{
 			Source:    i.source,
-			Reference: extractReference(entry),
+			Reference: extractReference(entry.ID),
 
 			Title:   entry.Title,
 			Summary: summaryPipe(entry.Summary),
@@ -205,13 +205,11 @@ func (i *Importer) parsePapers(r response) []imports.Paper {
 	return papers
 }
 
-func extractReference(entry responseEntry) string {
-	ref := entry.ID
-
-	matches := refRegexp.FindAllStringSubmatch(entry.ID, -1)
+func extractReference(id string) string {
+	ref := id
+	matches := refRegexp.FindAllStringSubmatch(ref, -1)
 	if len(matches) > 0 && len(matches[0]) > 1 {
 		ref = matches[0][1]
 	}
-
 	return ref
 }

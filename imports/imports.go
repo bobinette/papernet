@@ -23,7 +23,7 @@ type Paper struct {
 	References []string `json:"references"`
 }
 
-type PaperRepository interface {
+type Repository interface {
 	Save(userID, paperID int, source, ref string) error
 	Get(userID int, source, ref string) (int, error)
 }

@@ -120,3 +120,20 @@ func TestCraftRefURL(t *testing.T) {
 		}
 	}
 }
+
+func TestExtractReference(t *testing.T) {
+	tts := map[string]struct {
+		input string
+		ref   string
+	}{
+		"abstract": {
+			input: "http://arxiv.org/abs/1234.5678v5",
+			ref:   "1234.5678",
+		},
+	}
+
+	for name, tt := range tts {
+		ref := extractReference(tt.input)
+		assert.Equal(t, tt.ref, ref, name)
+	}
+}

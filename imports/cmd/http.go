@@ -6,10 +6,10 @@ import (
 
 	"github.com/bobinette/papernet/log"
 
+	"github.com/bobinette/papernet/imports"
 	"github.com/bobinette/papernet/imports/arxiv"
 	"github.com/bobinette/papernet/imports/bolt"
 	"github.com/bobinette/papernet/imports/http"
-	"github.com/bobinette/papernet/imports/services"
 )
 
 type Configuration struct {
@@ -20,7 +20,7 @@ type Configuration struct {
 	} `toml:"bolt"`
 }
 
-func Start(srv services.HTTPServer, conf Configuration, logger log.Logger, us http.UserService) {
+func Start(srv imports.HTTPServer, conf Configuration, logger log.Logger, us http.UserService) {
 	// Load key from file
 	keyData, err := ioutil.ReadFile(conf.KeyPath)
 	if err != nil {
@@ -47,6 +47,6 @@ func Start(srv services.HTTPServer, conf Configuration, logger log.Logger, us ht
 	// Arxiv
 	arxivSearcher := arxiv.NewSearcher()
 
-	service := services.NewImportService(repo, paperService, arxivSearcher)
+	service := imports.NewService(repo, paperService, arxivSearcher)
 	service.RegisterHTTP(srv, []byte(key.Key))
 }

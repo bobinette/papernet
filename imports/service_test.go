@@ -1,4 +1,4 @@
-package services
+package imports
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/bobinette/papernet/errors"
-	"github.com/bobinette/papernet/imports"
 )
 
 type mockMapping struct {
@@ -24,7 +23,7 @@ type mockPaperService struct {
 	c int
 }
 
-func (m *mockPaperService) Insert(userID int, paper *imports.Paper, ctx context.Context) error {
+func (m *mockPaperService) Insert(userID int, paper *Paper, ctx context.Context) error {
 	m.c++
 	paper.ID = m.c
 	return nil
@@ -32,7 +31,7 @@ func (m *mockPaperService) Insert(userID int, paper *imports.Paper, ctx context.
 
 type mockImporter struct {
 	source  string
-	results imports.SearchResults
+	results SearchResults
 
 	calls []struct {
 		q      string
@@ -42,15 +41,15 @@ type mockImporter struct {
 }
 
 func (m *mockImporter) Source() string { return m.source }
-func (m *mockImporter) Search(q string, limit, offset int, ctx context.Context) (imports.SearchResults, error) {
+func (m *mockImporter) Search(q string, limit, offset int, ctx context.Context) (SearchResults, error) {
 	return m.results, nil
 }
 
 func TestSearchService_Search(t *testing.T) {
 	searcher1 := &mockImporter{
 		source: "searcher 1",
-		results: imports.SearchResults{
-			Papers: []imports.Paper{
+		results: SearchResults{
+			Papers: []Paper{
 				{
 					Reference: "Reference 1",
 					Title:     "Title 1",
@@ -66,7 +65,7 @@ func TestSearchService_Search(t *testing.T) {
 					Authors:   []string{"Authors 2"},
 				},
 			},
-			Pagination: imports.Pagination{
+			Pagination: Pagination{
 				Limit:  2,
 				Offset: 0,
 				Total:  4,
@@ -76,8 +75,8 @@ func TestSearchService_Search(t *testing.T) {
 
 	searcher2 := &mockImporter{
 		source: "searcher 2",
-		results: imports.SearchResults{
-			Papers: []imports.Paper{
+		results: SearchResults{
+			Papers: []Paper{
 				{
 					Reference: "Reference 1",
 					Title:     "Title 1",
@@ -86,7 +85,7 @@ func TestSearchService_Search(t *testing.T) {
 					Authors:   []string{"Authors 1"},
 				},
 			},
-			Pagination: imports.Pagination{
+			Pagination: Pagination{
 				Limit:  2,
 				Offset: 0,
 				Total:  1,
@@ -159,7 +158,7 @@ func TestSearchService_Search(t *testing.T) {
 		},
 	}
 
-	service := NewImportService(mapping, &mockPaperService{}, searcher1, searcher2)
+	service := NewService(mapping, &mockPaperService{}, searcher1, searcher2)
 	for name, tt := range tts {
 		res, err := service.Search(userID, "", 2, 0, tt.sources, context.Background())
 		assert.NoError(t, err, name)
@@ -180,7 +179,7 @@ func TestSearchService_Search(t *testing.T) {
 
 func TestSearchService_Search_UnknownSource(t *testing.T) {
 	tts := map[string]struct {
-		searchers []imports.Searcher
+		searchers []Searcher
 		sources   []string
 	}{
 		"no searchers": {
@@ -188,13 +187,13 @@ func TestSearchService_Search_UnknownSource(t *testing.T) {
 			sources:   []string{"source"},
 		},
 		"one searcher": {
-			searchers: []imports.Searcher{
+			searchers: []Searcher{
 				&mockImporter{source: "searcher"},
 			},
 			sources: []string{"source"},
 		},
 		"several searchers": {
-			searchers: []imports.Searcher{
+			searchers: []Searcher{
 				&mockImporter{source: "searcher 1"},
 				&mockImporter{source: "searcher 2"},
 			},
@@ -203,7 +202,7 @@ func TestSearchService_Search_UnknownSource(t *testing.T) {
 	}
 
 	for name, tt := range tts {
-		service := NewImportService(&mockMapping{}, &mockPaperService{}, tt.searchers...)
+		service := NewService(&mockMapping{}, &mockPaperService{}, tt.searchers...)
 		_, err := service.Search(1, "q", 20, 0, tt.sources, context.Background())
 		if assert.Error(t, err, name) {
 			errors.AssertCode(t, err, http.StatusBadRequest)

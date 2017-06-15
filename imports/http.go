@@ -1,4 +1,4 @@
-package services
+package imports
 
 import (
 	"context"
@@ -12,8 +12,6 @@ import (
 
 	"github.com/bobinette/papernet/errors"
 	"github.com/bobinette/papernet/jwt"
-
-	"github.com/bobinette/papernet/imports"
 )
 
 var (
@@ -57,7 +55,7 @@ func extractUserID(ctx context.Context) (int, error) {
 	return ppnClaims.UserID, nil
 }
 
-func (s *ImportService) RegisterHTTP(srv HTTPServer, jwtKey []byte) {
+func (s *Service) RegisterHTTP(srv HTTPServer, jwtKey []byte) {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(kitjwt.ToHTTPContext()),
@@ -91,7 +89,7 @@ func (s *ImportService) RegisterHTTP(srv HTTPServer, jwtKey []byte) {
 	srv.RegisterHandler("/imports/v2/import", "POST", importHandler)
 }
 
-func makeSourcesEndpoint(s *ImportService) endpoint.Endpoint {
+func makeSourcesEndpoint(s *Service) endpoint.Endpoint {
 	return func(_ context.Context, _ interface{}) (interface{}, error) {
 		return map[string]interface{}{
 			"sources": s.Sources(),
@@ -110,7 +108,7 @@ type searchRequest struct {
 	sources []string
 }
 
-func makeSearchEndpoint(s *ImportService) endpoint.Endpoint {
+func makeSearchEndpoint(s *Service) endpoint.Endpoint {
 	return func(ctx context.Context, r interface{}) (interface{}, error) {
 		req, ok := r.(searchRequest)
 		if !ok {
@@ -164,9 +162,9 @@ func decodeSearchRequest(_ context.Context, r *http.Request) (interface{}, error
 	}, nil
 }
 
-func makeImportEndpoint(s *ImportService) endpoint.Endpoint {
+func makeImportEndpoint(s *Service) endpoint.Endpoint {
 	return func(ctx context.Context, r interface{}) (interface{}, error) {
-		req, ok := r.(imports.Paper)
+		req, ok := r.(Paper)
 		if !ok {
 			return nil, errInvalidRequest
 		}
@@ -182,7 +180,7 @@ func makeImportEndpoint(s *ImportService) endpoint.Endpoint {
 
 func decodeImportRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	defer r.Body.Close()
-	var paper imports.Paper
+	var paper Paper
 	err := json.NewDecoder(r.Body).Decode(&paper)
 	if err != nil {
 		return nil, err
