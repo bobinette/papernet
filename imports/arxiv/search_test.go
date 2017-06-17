@@ -130,6 +130,18 @@ func TestExtractReference(t *testing.T) {
 			input: "http://arxiv.org/abs/1234.5678v5",
 			ref:   "1234.5678",
 		},
+		"pdf": {
+			input: "http://arxiv.org/pdf/1234.5678v2",
+			ref:   "1234.5678",
+		},
+		"physics...": {
+			input: "http://arxiv.org/abs/quant-ph/1234.5678v1",
+			ref:   "1234.5678",
+		},
+		"still extracts something even if invalid id": {
+			input: "http://arxiv.org/abs/not-an-id",
+			ref:   "not-an-id",
+		},
 	}
 
 	for name, tt := range tts {

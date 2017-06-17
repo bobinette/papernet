@@ -207,9 +207,9 @@ func (i *Importer) parsePapers(r response) []imports.Paper {
 
 func extractReference(id string) string {
 	ref := id
-	matches := refRegexp.FindAllStringSubmatch(ref, -1)
-	if len(matches) > 0 && len(matches[0]) > 1 {
-		ref = matches[0][1]
-	}
+
+	urlParts := strings.Split(ref, "/")
+	ref = strings.Split(urlParts[len(urlParts)-1], "v")[0] // Cut out version
+
 	return ref
 }
