@@ -34,8 +34,9 @@ var (
 	authConfig AuthConfiguration
 
 	// Other variables
-	userService *services.UserService
-	teamService *services.TeamService
+	userRepository auth.UserRepository
+	userService    *services.UserService
+	teamService    *services.TeamService
 )
 
 func init() {
@@ -97,7 +98,7 @@ var AuthCommand = cobra.Command{
 		if err != nil {
 			logger.Fatal("could not open user graph:", err)
 		}
-		userRepository := cayley.NewUserRepository(store)
+		userRepository = cayley.NewUserRepository(store)
 		teamRepository := cayley.NewTeamRepository(store)
 
 		// Create user service
