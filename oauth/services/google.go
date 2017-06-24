@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"sync"
 
@@ -74,7 +73,6 @@ func (s *GoogleService) LoginURL() string {
 	s.state[state] = struct{}{}
 	s.stateMutex.Unlock()
 
-	fmt.Println(state)
 	return s.config.AuthCodeURL(state)
 }
 

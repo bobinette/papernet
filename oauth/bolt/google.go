@@ -24,6 +24,11 @@ func (r *GoogleRepository) Get(googleID string) (int, error) {
 		bucket := tx.Bucket(googleBucket)
 
 		data := bucket.Get([]byte(googleID))
+		if data == nil {
+			id = 0
+			return nil
+		}
+
 		id = btoi(data)
 		return nil
 	})
