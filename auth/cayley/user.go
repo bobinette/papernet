@@ -46,14 +46,6 @@ func (r *UserRepository) Get(id int) (auth.User, error) {
 	return r.userFromStartingPoint(startingPoint)
 }
 
-// GetByGoogleID retrieves a user by its google id instead of its internal id.
-func (r *UserRepository) GetByGoogleID(googleID string) (auth.User, error) {
-	startingPoint := cayley.StartPath(r.store, quad.Raw(googleID)).In(googleIDEdge)
-	startingPoint = startingPoint.Except(startingPoint.HasReverse(deletedEdge, deletedNode))
-
-	return r.userFromStartingPoint(startingPoint)
-}
-
 func (r *UserRepository) GetByEmail(email string) (auth.User, error) {
 	startingPoint := cayley.StartPath(r.store, quad.Raw(email)).In(emailEdge)
 	startingPoint = startingPoint.Except(startingPoint.HasReverse(deletedEdge, deletedNode))
@@ -83,7 +75,6 @@ func (r *UserRepository) Upsert(user *auth.User) error {
 	// Update user profile
 	replaceTarget(tx, userQuad(user.ID), nameEdge, quad.Raw(oldUser.Name), quad.Raw(user.Name))
 	replaceTarget(tx, userQuad(user.ID), emailEdge, quad.Raw(oldUser.Email), quad.Raw(user.Email))
-	replaceTarget(tx, userQuad(user.ID), googleIDEdge, quad.Raw(oldUser.GoogleID), quad.Raw(user.GoogleID))
 	replaceTarget(tx, userQuad(user.ID), isAdminEdge, strconv.FormatBool(oldUser.IsAdmin), strconv.FormatBool(user.IsAdmin))
 
 	// Update user owned papers
@@ -174,8 +165,6 @@ func (r *UserRepository) userFromStartingPoint(startingPoint *path.Path) (auth.U
 	).SaveOptional(
 		emailEdge, "email",
 	).SaveOptional(
-		googleIDEdge, "googleID",
-	).SaveOptional(
 		isAdminEdge, "isAdmin",
 	)
 
@@ -206,11 +195,6 @@ func (r *UserRepository) userFromStartingPoint(startingPoint *path.Path) (auth.U
 				}
 			case "email":
 				user.Email, err = r.store.string(token)
-				if err != nil {
-					return auth.User{}, err
-				}
-			case "googleID":
-				user.GoogleID, err = r.store.string(token)
 				if err != nil {
 					return auth.User{}, err
 				}

@@ -49,7 +49,7 @@ func (s *UserService) Upsert(u auth.User) (auth.User, error) {
 		}
 	} else {
 		var err error
-		user, err = s.repository.GetByGoogleID(u.GoogleID)
+		user, err = s.repository.GetByEmail(u.Email)
 		if err != nil {
 			return auth.User{}, err
 		}
@@ -58,7 +58,6 @@ func (s *UserService) Upsert(u auth.User) (auth.User, error) {
 	// Update user details
 	user.Name = u.Name
 	user.Email = u.Email
-	user.GoogleID = u.GoogleID
 
 	// Because admin is always false from web, and we do not want to remove the privilege
 	// every time an admin logs in

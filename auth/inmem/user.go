@@ -31,19 +31,6 @@ func (r *InMemUserRepository) Get(userID int) (auth.User, error) {
 	return r.get(userID)
 }
 
-func (r *InMemUserRepository) GetByGoogleID(googleID string) (auth.User, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	for _, user := range r.users {
-		if user.GoogleID == googleID {
-			return r.get(user.ID)
-		}
-	}
-
-	return auth.User{}, nil
-}
-
 func (r *InMemUserRepository) GetByEmail(email string) (auth.User, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

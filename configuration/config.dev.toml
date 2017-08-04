@@ -27,7 +27,7 @@ file="configuration/oauth_google.json"
 # ----------------------------------------
 # Imports service
 [imports]
-paperURL="http://127.0.0.1:1705/papers"
+paperURL="http://127.0.0.1:1705/paper/v2/papers"
 key = "configuration/hs256.json"
 
 [imports.bolt]
@@ -36,7 +36,18 @@ store="data/imports.db"
 # ----------------------------------------
 
 # ----------------------------------------
-# legacy
+# Paper service
+[paper]
+key = "configuration/hs256.json"
+
+[paper.bolt]
+store = "data/paper.db"
+
+[paper.bleve]
+store = "data/paper.index"
+# Paper service
+# ----------------------------------------
+
 [bolt]
 store = "data/papernet.db"
 

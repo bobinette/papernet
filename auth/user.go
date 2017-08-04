@@ -5,6 +5,7 @@ type User struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 
+	// Kept to be able to run the migration command
 	GoogleID string `json:"googleID"`
 
 	IsAdmin bool `json:"isAdmin"`
@@ -18,7 +19,6 @@ type User struct {
 type UserRepository interface {
 	// User information
 	Get(int) (User, error)
-	GetByGoogleID(string) (User, error)
 	GetByEmail(string) (User, error)
 	List() ([]User, error)
 	Upsert(*User) error

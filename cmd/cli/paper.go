@@ -3,26 +3,66 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"strconv"
+	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/spf13/cobra"
 
-	"github.com/bobinette/papernet"
-	"github.com/bobinette/papernet/errors"
+	ppnBolt "github.com/bobinette/papernet/bolt"
+	"github.com/bobinette/papernet/jwt"
+
+	"github.com/bobinette/papernet/auth/cayley"
+	authServices "github.com/bobinette/papernet/auth/services"
+
+	"github.com/bobinette/papernet/papernet"
+	"github.com/bobinette/papernet/papernet/auth"
+	"github.com/bobinette/papernet/papernet/bleve"
+	"github.com/bobinette/papernet/papernet/bolt"
+	"github.com/bobinette/papernet/papernet/services"
+)
+
+type PaperConfig struct {
+	Paper struct {
+		Bolt struct {
+			Store string `toml:"store"`
+		} `toml:"bolt"`
+		Bleve struct {
+			Store string `toml:"store"`
+		} `toml:"bleve"`
+	} `toml:"paper"`
+	// Legacy
+	Bolt struct {
+		Store string `toml:"store"`
+	} `toml:"bolt"`
+}
+
+var (
+	paperConfig PaperConfig
+
+	paperRepository papernet.PaperRepository
+	paperIndex      papernet.PaperIndex
+
+	tagService   *services.TagService
+	paperService *services.PaperService
 )
 
 func init() {
-	PaperCommand.PersistentFlags().String("store", "data/papernet.db", "address of the bolt db file")
-	PaperCommand.PersistentFlags().String("index", "data/papernet.index", "address of the bolt db file")
-
-	SavePaperCommand.PersistentFlags().String("file", "", "filename to load the payload")
-	SearchCommand.PersistentFlags().String("file", "", "filename to load the payload")
 
 	PaperCommand.AddCommand(&SavePaperCommand)
-	PaperCommand.AddCommand(&PaperAllCommand)
 	PaperCommand.AddCommand(&DeletePaperCommand)
 	PaperCommand.AddCommand(&SearchCommand)
+	PaperCommand.AddCommand(&PaperMigrateCommand)
+	PaperCommand.AddCommand(&PaperIndexCommand)
+	PaperIndexCommand.AddCommand(&PaperIndexAllCommand)
+
+	inheritPersistentPreRun(&SavePaperCommand)
+	inheritPersistentPreRun(&DeletePaperCommand)
+	inheritPersistentPreRun(&SearchCommand)
+	inheritPersistentPreRun(&PaperMigrateCommand)
+	inheritPersistentPreRun(&PaperIndexCommand)
+	inheritPersistentPreRun(&PaperIndexAllCommand)
+	inheritPersistentPreRun(&PaperCommand)
 
 	RootCmd.AddCommand(&PaperCommand)
 }
@@ -31,70 +71,73 @@ var PaperCommand = cobra.Command{
 	Use:   "paper",
 	Short: "Find papers based on their IDs",
 	Long:  "Find papers based on their IDs",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return errors.New("This command expects ids as arguments")
-		}
-
-		if args[0] == "help" {
-			return cmd.Help()
-		}
-
-		ids, err := ints(args)
-		if err != nil {
-			return errors.New("ids should be integers", errors.WithCause(err))
-		}
-
-		addr := cmd.Flag("store").Value.String()
-		store, f, err := createStore(addr)
-		defer f()
-		if err != nil {
-			return errors.New("error opening db", errors.WithCause(err))
-		}
-
-		papers, err := store.Get(ids...)
-		if err != nil {
-			return errors.New("error getting papers", errors.WithCause(err))
-		}
-
-		pj, err := json.Marshal(papers)
-		if err != nil {
-			return errors.New("error marshalling results", errors.WithCause(err))
-		}
-
-		cmd.Println(string(pj))
-		return nil
-	},
-}
-
-var PaperAllCommand = cobra.Command{
-	Use:   "all",
-	Short: "List all the papers",
-	Long:  "List all the papers",
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) > 0 && args[0] == "help" {
-			cmd.Help()
-			return
-		}
-
-		addr := cmd.Flag("store").Value.String()
-		store, f, err := createStore(addr)
-		defer f()
+		cmd.Help()
+	},
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// Read configuration file
+		data, err := ioutil.ReadFile(configFile)
 		if err != nil {
-			log.Fatalln(errors.New("error opening db", errors.WithCause(err)))
+			logger.Fatal("could not read configuration file:", err)
 		}
 
-		papers, err := store.List()
+		// Load user service
+		err = toml.Unmarshal(data, &authConfig)
 		if err != nil {
-			log.Fatalln(errors.New("error getting papers", errors.WithCause(err)))
+			logger.Fatal("error unmarshalling configuration:", err)
 		}
 
-		data, err := json.Marshal(papers)
+		// Read key file
+		keyData, err := ioutil.ReadFile(authConfig.Auth.KeyPath)
 		if err != nil {
-			log.Fatalln(errors.New("error marshalling results", errors.WithCause(err)))
+			logger.Fatal("could not open key file:", err)
+		}
+		// Create token encoder
+		var key struct {
+			Key string `json:"k"`
+		}
+		err = json.Unmarshal(keyData, &key)
+		if err != nil {
+			logger.Fatal("could not read key file:", err)
+		}
+		tokenEncoder := jwt.NewEncodeDecoder([]byte(key.Key))
+
+		// Create user repository
+		store, err := cayley.NewStore(authConfig.Auth.Cayley.Store)
+		if err != nil {
+			logger.Fatal("could not open user graph:", err)
+		}
+		userRepository := cayley.NewUserRepository(store)
+		userService = authServices.NewUserService(userRepository, tokenEncoder)
+
+		// Load paper service
+		err = toml.Unmarshal(data, &paperConfig)
+		if err != nil {
+			logger.Fatal("error unmarshalling configuration:", err)
 		}
 
-		cmd.Println(string(data))
+		// Create paper repository and tag index
+		boltDriver := bolt.Driver{}
+		if boltDriver.Open(paperConfig.Paper.Bolt.Store); err != nil {
+			logger.Fatal("could not open bolt driver:", err)
+		}
+		paperRepo := bolt.PaperRepository{Driver: &boltDriver}
+		paperRepository = &paperRepo
+		tagIndex := bolt.TagIndex{Driver: &boltDriver}
+
+		// Create paper index
+		index := &bleve.PaperIndex{}
+		if err := index.Open(paperConfig.Paper.Bleve.Store); err != nil {
+			logger.Fatal("could not open paper index:", err)
+		}
+		paperIndex = index
+
+		// Create user client
+		authClient := auth.NewClient(userService)
+
+		// Create services
+		tagService = services.NewTagService(&tagIndex)
+		paperService = services.NewPaperService(paperRepository, paperIndex, authClient, tagService)
 	},
 }
 
@@ -102,48 +145,17 @@ var DeletePaperCommand = cobra.Command{
 	Use:   "delete",
 	Short: "Delete papers based on their IDs",
 	Long:  "Delete papers based on their IDs",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			return errors.New("This command expects ids as arguments")
+			logger.Fatal("This command expects ids as arguments")
 		}
 
 		if args[0] == "help" {
-			return cmd.Help()
+			cmd.Help()
+			return
 		}
 
-		ids, err := ints(args)
-		if err != nil {
-			return errors.New("ids should be integers", errors.WithCause(err))
-		}
-
-		addr := cmd.Flag("store").Value.String()
-		store, f, err := createStore(addr)
-		defer f()
-		if err != nil {
-			return errors.New("error opening db", errors.WithCause(err))
-		}
-
-		addr = cmd.Flag("index").Value.String()
-		index, f, err := createIndex(addr)
-		defer f()
-		if err != nil {
-			return errors.New("error opening index", errors.WithCause(err))
-		}
-
-		for _, id := range ids {
-			err = store.Delete(id)
-			if err != nil {
-				return errors.New("error deleting in store papers", errors.WithCause(err))
-			}
-
-			err = index.Delete(id)
-			if err != nil {
-				return errors.New("error deleting in index papers", errors.WithCause(err))
-			}
-
-			cmd.Printf("<Paper %d> deleted\n", id)
-		}
-		return nil
+		// @TODO: implement
 	},
 }
 
@@ -151,45 +163,44 @@ var SavePaperCommand = cobra.Command{
 	Use:   "save",
 	Short: "Save a paper",
 	Long:  "Insert or update a paper based on the argument payload or a file",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 1 && args[0] == "help" {
-			return cmd.Help()
+			cmd.Help()
+			return
 		}
 
-		addr := cmd.Flag("store").Value.String()
-		store, f, err := createStore(addr)
-		defer f()
-		if err != nil {
-			return errors.New("error opening db", errors.WithCause(err))
+		if len(args) != 1 {
+			logger.Fatal("when no filename is specified, the payload must be passed as argument")
 		}
 
-		filename := cmd.Flag("file").Value.String()
 		var data []byte
-		if filename != "" {
-			data, err = ioutil.ReadFile(filename)
+		if strings.HasPrefix(args[0], "@") {
+			d, err := ioutil.ReadFile(args[0][1:])
 			if err != nil {
-				return errors.New("error reading payload file", errors.WithCause(err))
+				logger.Fatal(err)
 			}
+			data = d
 		} else {
-			if len(args) != 1 {
-				return errors.New("when no filename is specified, the payload must be passed as argument")
-			}
 			data = []byte(args[0])
 		}
 
 		var paper papernet.Paper
-		err = json.Unmarshal(data, &paper)
+		err := json.Unmarshal(data, &paper)
 		if err != nil {
-			return errors.New("error unmarshalling payload", errors.WithCause(err))
+			logger.Fatal("error unmarshalling payload:", err)
 		}
 
-		err = store.Upsert(&paper)
-		if err != nil {
-			return errors.New("error saving paper", errors.WithCause(err))
+		if err := paperRepository.Upsert(&paper); err != nil {
+			logger.Errorf("error migrating paper %d: %v", paper.ID, err)
 		}
 
-		cmd.Println("done")
-		return nil
+		if err := paperIndex.Index(&paper); err != nil {
+			logger.Errorf("error indexing paper %d: %v", paper.ID, err)
+		}
+
+		logger.Printf("paper %d inserted", paper.ID)
+
+		cmd.Println(paper)
 	},
 }
 
@@ -197,62 +208,120 @@ var SearchCommand = cobra.Command{
 	Use:   "search",
 	Short: "Search papers",
 	Long:  "Search papers based on the argument payload or a file",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 1 && args[0] == "help" {
-			return cmd.Help()
+			cmd.Help()
+			return
 		}
 
-		addr := cmd.Flag("store").Value.String()
-		store, f, err := createStore(addr)
-		defer f()
+		// @TODO: implement
+	},
+}
+
+var PaperMigrateCommand = cobra.Command{
+	Use:   "migrate",
+	Short: "Migrate papers to v2",
+	Long:  "Migrate papers to v2",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 1 && args[0] == "help" {
+			cmd.Help()
+			return
+		}
+
+		driver := ppnBolt.Driver{}
+		defer driver.Close()
+		err := driver.Open(paperConfig.Bolt.Store)
 		if err != nil {
-			return errors.New("error opening db", errors.WithCause(err))
+			logger.Fatal("could not open db:", err)
 		}
+		paperStore := ppnBolt.PaperStore{Driver: &driver}
 
-		addr = cmd.Flag("index").Value.String()
-		index, f, err := createIndex(addr)
-		defer f()
+		papers, err := paperStore.List()
 		if err != nil {
-			return errors.New("error opening index", errors.WithCause(err))
+			logger.Fatal("could not get papers:", err)
 		}
 
-		filename := cmd.Flag("file").Value.String()
-		var data []byte
-		if filename != "" {
-			data, err = ioutil.ReadFile(filename)
+		for _, paper := range papers {
+			paperV2 := papernet.Paper{
+				ID:         paper.ID,
+				Title:      paper.Title,
+				Summary:    paper.Summary,
+				Authors:    paper.Authors,
+				Tags:       paper.Tags,
+				References: paper.References,
+				CreatedAt:  paper.CreatedAt,
+				UpdatedAt:  paper.UpdatedAt,
+			}
+
+			if err := paperRepository.Upsert(&paperV2); err != nil {
+				logger.Errorf("error migrating paper %d: %v", paper.ID, err)
+				continue
+			}
+
+			if err := paperIndex.Index(&paperV2); err != nil {
+				logger.Errorf("error indexing paper %d: %v", paper.ID, err)
+				continue
+			}
+
+			logger.Printf("paper %d migrated", paper.ID)
+		}
+	},
+}
+
+var PaperIndexCommand = cobra.Command{
+	Use:   "index",
+	Short: "Index a paper",
+	Long:  "Index a paper",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 1 && args[0] == "help" {
+			cmd.Help()
+			return
+		}
+
+		ids, err := ints(args)
+		if err != nil {
+			logger.Fatal("error reading ids:", err)
+		}
+
+		papers, err := paperRepository.Get(ids...)
+		if err != nil {
+			logger.Fatal("error retrieving papers:", err)
+		}
+
+		for _, paper := range papers {
+			err := paperIndex.Index(&paper)
 			if err != nil {
-				return errors.New("error reading payload file", errors.WithCause(err))
+				logger.Errorf("error indexing paper %d: %v", paper.ID, err)
 			}
-		} else {
-			if len(args) != 1 {
-				return errors.New("when no filename is specified, the payload must be passed as argument")
+
+			logger.Printf("indexed paper %d", paper.ID)
+		}
+	},
+}
+
+var PaperIndexAllCommand = cobra.Command{
+	Use:   "all",
+	Short: "Index all papers",
+	Long:  "Index all papers",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 1 && args[0] == "help" {
+			cmd.Help()
+			return
+		}
+
+		papers, err := paperRepository.List()
+		if err != nil {
+			logger.Fatal("error retrieving papers:", err)
+		}
+
+		for _, paper := range papers {
+			err := paperIndex.Index(&paper)
+			if err != nil {
+				logger.Errorf("error indexing paper %d: %v", paper.ID, err)
 			}
-			data = []byte(args[0])
-		}
 
-		var search papernet.PaperSearch
-		err = json.Unmarshal(data, &search)
-		if err != nil {
-			return errors.New("error unmarshalling payload", errors.WithCause(err))
+			logger.Printf("indexed paper %d", paper.ID)
 		}
-
-		res, err := index.Search(search)
-		if err != nil {
-			return errors.New("error querying index", errors.WithCause(err))
-		}
-
-		papers, err := store.Get(res.IDs...)
-		if err != nil {
-			return errors.New("error retrieving papers", errors.WithCause(err))
-		}
-
-		pj, err := json.Marshal(papers)
-		if err != nil {
-			return errors.New("error marshalling results", errors.WithCause(err))
-		}
-
-		cmd.Println(string(pj))
-		return nil
 	},
 }
 
