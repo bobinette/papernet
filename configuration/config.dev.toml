@@ -27,7 +27,7 @@ file="configuration/oauth_google.json"
 # ----------------------------------------
 # Imports service
 [imports]
-paperURL="http://127.0.0.1:1705/papers"
+paperURL="http://127.0.0.1:1705/paper/v2/papers"
 key = "configuration/hs256.json"
 
 [imports.bolt]
