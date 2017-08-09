@@ -50,3 +50,10 @@ func (d *Driver) Close() error {
 	}
 	return nil
 }
+
+func (d *Driver) ResetSequence(maxID int) error {
+	return d.store.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(paperBucket)
+		return bucket.SetSequence(uint64(maxID))
+	})
+}
