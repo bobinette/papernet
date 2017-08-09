@@ -33,8 +33,8 @@ notifications:
     on_failure: change
 
 # Build only the master branch. The PRs will still be built
-# branches:
-#   only:
-#     - master
-#     # Regex for tags, needed for releases
-#     - /^\d+\.\d+(\.\d+)?(-\S*)?$/
+branches:
+  only:
+    - master
+    # Regex for tags, needed for releases
+    - /^\d+\.\d+(\.\d+)?(-\S*)?$/

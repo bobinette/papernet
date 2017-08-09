@@ -40,6 +40,8 @@ type PaperConfig struct {
 var (
 	paperConfig PaperConfig
 
+	boltDriver *bolt.Driver
+
 	paperRepository papernet.PaperRepository
 	paperIndex      papernet.PaperIndex
 
@@ -53,6 +55,7 @@ func init() {
 	PaperCommand.AddCommand(&DeletePaperCommand)
 	PaperCommand.AddCommand(&SearchCommand)
 	PaperCommand.AddCommand(&PaperMigrateCommand)
+	PaperCommand.AddCommand(&PaperFixSequenceCommand)
 	PaperCommand.AddCommand(&PaperIndexCommand)
 	PaperIndexCommand.AddCommand(&PaperIndexAllCommand)
 
@@ -60,6 +63,7 @@ func init() {
 	inheritPersistentPreRun(&DeletePaperCommand)
 	inheritPersistentPreRun(&SearchCommand)
 	inheritPersistentPreRun(&PaperMigrateCommand)
+	inheritPersistentPreRun(&PaperFixSequenceCommand)
 	inheritPersistentPreRun(&PaperIndexCommand)
 	inheritPersistentPreRun(&PaperIndexAllCommand)
 	inheritPersistentPreRun(&PaperCommand)
@@ -117,13 +121,13 @@ var PaperCommand = cobra.Command{
 		}
 
 		// Create paper repository and tag index
-		boltDriver := bolt.Driver{}
+		boltDriver = &bolt.Driver{}
 		if boltDriver.Open(paperConfig.Paper.Bolt.Store); err != nil {
 			logger.Fatal("could not open bolt driver:", err)
 		}
-		paperRepo := bolt.PaperRepository{Driver: &boltDriver}
+		paperRepo := bolt.PaperRepository{Driver: boltDriver}
 		paperRepository = &paperRepo
-		tagIndex := bolt.TagIndex{Driver: &boltDriver}
+		tagIndex := bolt.TagIndex{Driver: boltDriver}
 
 		// Create paper index
 		index := &bleve.PaperIndex{}
@@ -265,6 +269,35 @@ var PaperMigrateCommand = cobra.Command{
 
 			logger.Printf("paper %d migrated", paper.ID)
 		}
+	},
+}
+
+var PaperFixSequenceCommand = cobra.Command{
+	Use:   "fix-sequence",
+	Short: "Fix id generation for papers v2",
+	Long:  "Fix id generation for papers v2",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 1 && args[0] == "help" {
+			cmd.Help()
+			return
+		}
+
+		papers, err := paperRepository.List()
+		if err != nil {
+			logger.Fatal("error retrieving papers:", err)
+		}
+
+		id := 0
+		for _, paper := range papers {
+			if paper.ID > id {
+				id = paper.ID
+			}
+		}
+		if err := boltDriver.ResetSequence(id); err != nil {
+			logger.Fatal("error resetting sequence:", err)
+		}
+
+		logger.Print("Done, sequence is now:", id)
 	},
 }
 
