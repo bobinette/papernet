@@ -9,7 +9,7 @@ import (
 )
 
 type Encoder interface {
-	Encode(int) (string, error)
+	Encode(userID int, isAdmin bool) (string, error)
 }
 
 type UserService struct {
@@ -157,7 +157,11 @@ func (s *UserService) Bookmark(callerID, paperID int, bookmark bool) (auth.User,
 }
 
 func (s *UserService) Token(userID int) (string, error) {
-	return s.encoder.Encode(userID)
+	user, err := s.Get(userID)
+	if err != nil {
+		return "", err
+	}
+	return s.encoder.Encode(user.ID, user.IsAdmin)
 }
 
 func (s *UserService) All() ([]auth.User, error) {
