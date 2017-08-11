@@ -1,5 +1,10 @@
 # Dev configuration
 
+[clients.auth]
+user = "papernet_admin"
+password = "papernet"
+baseURL = "http://127.0.0.1:1705"
+
 # ----------------------------------------
 # Auth service
 [auth]

@@ -14,6 +14,7 @@ import (
 	"github.com/bobinette/papernet/papernet/services"
 
 	authService "github.com/bobinette/papernet/auth/services"
+	authClient "github.com/bobinette/papernet/clients/auth"
 )
 
 type Configuration struct {
@@ -27,7 +28,7 @@ type Configuration struct {
 }
 
 // Start registers
-func Start(srv http.Server, conf Configuration, logger log.Logger, us *authService.UserService) *services.PaperService {
+func Start(srv http.Server, conf Configuration, logger log.Logger, us *authService.UserService, au *authClient.Client) *services.PaperService {
 	// Load key from file
 	keyData, err := ioutil.ReadFile(conf.KeyPath)
 	if err != nil {
@@ -67,8 +68,8 @@ func Start(srv http.Server, conf Configuration, logger log.Logger, us *authServi
 	paperService := services.NewPaperService(&paperRepository, &index, authClient, tagService)
 
 	// Register paper endpoints
-	http.RegisterPaperEndpoints(srv, paperService, []byte(key.Key), us)
-	http.RegisterTagEndpoints(srv, tagService, []byte(key.Key), us)
+	http.RegisterPaperEndpoints(srv, paperService, []byte(key.Key), au)
+	http.RegisterTagEndpoints(srv, tagService, []byte(key.Key), au)
 
 	return paperService
 }

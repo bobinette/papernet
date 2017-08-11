@@ -10,19 +10,19 @@ import (
 	"github.com/bobinette/papernet/jwt"
 	"github.com/bobinette/papernet/users"
 
+	"github.com/bobinette/papernet/clients/auth"
+
 	"github.com/bobinette/papernet/papernet/endpoints"
 	"github.com/bobinette/papernet/papernet/services"
-
-	auth "github.com/bobinette/papernet/auth/services"
 )
 
-func RegisterTagEndpoints(srv Server, service *services.TagService, jwtKey []byte, us *auth.UserService) {
+func RegisterTagEndpoints(srv Server, service *services.TagService, jwtKey []byte, au *auth.Client) {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(kitjwt.ToHTTPContext()),
 	}
 
-	authenticator := users.NewAuthenticator(us)
+	authenticator := users.NewAuthenticator(au)
 	jwtMiddleware := jwt.Middleware(jwtKey)
 
 	// Create endpoint

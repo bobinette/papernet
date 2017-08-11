@@ -10,7 +10,7 @@ import (
 	"github.com/bobinette/papernet/errors"
 	"github.com/bobinette/papernet/jwt"
 
-	"github.com/bobinette/papernet/auth/services"
+	"github.com/bobinette/papernet/clients/auth"
 )
 
 var (
@@ -56,17 +56,17 @@ func extractUserID(ctx context.Context) (int, bool, error) {
 }
 
 type Authenticator struct {
-	service *services.UserService
+	client *auth.Client
 }
 
-func NewAuthenticator(s *services.UserService) *Authenticator {
+func NewAuthenticator(c *auth.Client) *Authenticator {
 	return &Authenticator{
-		service: s,
+		client: c,
 	}
 }
 
 func (a *Authenticator) get(id int) (User, error) {
-	user, err := a.service.Get(id)
+	user, err := a.client.User(id)
 	if err != nil {
 		return User{}, err
 	}
