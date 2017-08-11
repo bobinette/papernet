@@ -3,6 +3,8 @@ package endpoints
 import (
 	"context"
 
+	"github.com/bobinette/papernet/errors"
+
 	"github.com/bobinette/papernet/auth/services"
 )
 
@@ -23,6 +25,26 @@ func (ep UserEndpoint) Me(ctx context.Context, _ interface{}) (interface{}, erro
 	}
 
 	return ep.service.Get(callerID)
+}
+
+func (ep UserEndpoint) User(ctx context.Context, r interface{}) (interface{}, error) {
+	callerID, err := extractUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if caller, err := ep.service.Get(callerID); err != nil {
+		return nil, err
+	} else if !caller.IsAdmin {
+		return nil, errors.New("admin route", errors.Forbidden())
+	}
+
+	userID, ok := r.(int)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	return ep.service.Get(userID)
 }
 
 type BookmarkRequest struct {
