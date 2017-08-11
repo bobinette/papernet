@@ -30,11 +30,14 @@ func Start(srv http.Server, cfg Configuration, logger log.Logger, userService oa
 		logger.Fatal("could not open bolt driver", err)
 	}
 
+	// This means that the email login API is available in prod, the enabled
+	// only controls wether it is displayed on the platform or not
+	repository := bolt.NewEmailRepository(boltDriver)
+	service := services.NewEmailService(repository, userClient)
+	http.RegisterEmailHTTPRoutes(srv, service)
+
 	// Basic email / password
 	if cfg.Email.Enabled {
-		repository := bolt.NewEmailRepository(boltDriver)
-		service := services.NewEmailService(repository, userClient)
-		http.RegisterEmailHTTPRoutes(srv, service)
 		providerService.Register("email")
 	}
 

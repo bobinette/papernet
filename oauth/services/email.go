@@ -1,8 +1,6 @@
 package services
 
 import (
-	"fmt"
-
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/bobinette/papernet/errors"
@@ -61,7 +59,6 @@ func (s *EmailService) SignUp(email, password string) (string, error) {
 
 func (s *EmailService) Login(email, password string) (string, error) {
 	user, err := s.repository.Get(email)
-	fmt.Println(user.Salt)
 	if err != nil {
 		return "", err
 	} else if user.ID == 0 {
