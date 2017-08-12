@@ -39,6 +39,13 @@ func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []b
 		opts...,
 	)
 
+	tokenHandler := kithttp.NewServer(
+		authenticationMiddleware(ep.Token),
+		decodeTokenRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+
 	bookmarkHandler := kithttp.NewServer(
 		authenticationMiddleware(ep.Bookmark),
 		decodeBookmarkRequest,
@@ -49,6 +56,7 @@ func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []b
 	// Routes
 	srv.RegisterHandler("/auth/v2/me", "GET", meHandler)
 	srv.RegisterHandler("/auth/v2/users/:id", "GET", userHandler)
+	srv.RegisterHandler("/auth/v2/users/:id/token", "GET", tokenHandler)
 	srv.RegisterHandler("/auth/v2/bookmarks", "POST", bookmarkHandler)
 }
 
@@ -58,6 +66,18 @@ func decodeMeRequest(ctx context.Context, r *http.Request) (interface{}, error) 
 }
 
 func decodeUserRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close() // Close body
+
+	params := ctx.Value("params").(map[string]string)
+	userID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		return nil, err
+	}
+
+	return userID, nil
+}
+
+func decodeTokenRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	defer r.Body.Close() // Close body
 
 	params := ctx.Value("params").(map[string]string)

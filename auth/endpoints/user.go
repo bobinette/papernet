@@ -19,7 +19,7 @@ func NewUserEndpoint(s *services.UserService) UserEndpoint {
 }
 
 func (ep UserEndpoint) Me(ctx context.Context, _ interface{}) (interface{}, error) {
-	callerID, err := extractUserID(ctx)
+	callerID, _, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -28,14 +28,12 @@ func (ep UserEndpoint) Me(ctx context.Context, _ interface{}) (interface{}, erro
 }
 
 func (ep UserEndpoint) User(ctx context.Context, r interface{}) (interface{}, error) {
-	callerID, err := extractUserID(ctx)
+	_, isAdmin, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if caller, err := ep.service.Get(callerID); err != nil {
-		return nil, err
-	} else if !caller.IsAdmin {
+	if !isAdmin {
 		return nil, errors.New("admin route", errors.Forbidden())
 	}
 
@@ -47,13 +45,35 @@ func (ep UserEndpoint) User(ctx context.Context, r interface{}) (interface{}, er
 	return ep.service.Get(userID)
 }
 
+func (ep UserEndpoint) Token(ctx context.Context, r interface{}) (interface{}, error) {
+	_, isAdmin, err := extractUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !isAdmin {
+		return nil, errors.New("admin route", errors.Forbidden())
+	}
+
+	userID, ok := r.(int)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	token, err := ep.service.Token(userID)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{"access_token": token}, nil
+}
+
 type BookmarkRequest struct {
 	PaperID  int
 	Bookmark bool
 }
 
 func (ep UserEndpoint) Bookmark(ctx context.Context, r interface{}) (interface{}, error) {
-	userID, err := extractUserID(ctx)
+	userID, _, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -55,3 +55,26 @@ func (c *Client) User(id int) (User, error) {
 
 	return user, nil
 }
+
+func (c *Client) Token(id int) (string, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/auth/v2/users/%d/token", c.baseURL, id), nil)
+	if err != nil {
+		return "", err
+	}
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+
+	var token struct {
+		AccessToken string `json:"access_token"`
+	}
+	err = json.NewDecoder(res.Body).Decode(&token)
+	if err != nil {
+		return "", err
+	}
+
+	return token.AccessToken, nil
+}

@@ -19,7 +19,7 @@ func NewTeamEndpoint(s *services.TeamService) TeamEndpoint {
 }
 
 func (ep TeamEndpoint) UserTeams(ctx context.Context, _ interface{}) (interface{}, error) {
-	userID, err := extractUserID(ctx)
+	userID, _, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func (ep TeamEndpoint) UserTeams(ctx context.Context, _ interface{}) (interface{
 }
 
 func (ep TeamEndpoint) Create(ctx context.Context, r interface{}) (interface{}, error) {
-	userID, err := extractUserID(ctx)
+	userID, _, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ type InviteRequest struct {
 }
 
 func (ep TeamEndpoint) Invite(ctx context.Context, r interface{}) (interface{}, error) {
-	callerID, err := extractUserID(ctx)
+	callerID, _, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ type KickRequest struct {
 }
 
 func (ep TeamEndpoint) Kick(ctx context.Context, r interface{}) (interface{}, error) {
-	callerID, err := extractUserID(ctx)
+	callerID, _, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ type ShareRequest struct {
 }
 
 func (ep TeamEndpoint) Share(ctx context.Context, r interface{}) (interface{}, error) {
-	callerID, err := extractUserID(ctx)
+	callerID, _, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ type DeleteTeamRequest struct {
 }
 
 func (ep TeamEndpoint) Delete(ctx context.Context, r interface{}) (interface{}, error) {
-	callerID, err := extractUserID(ctx)
+	callerID, _, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
