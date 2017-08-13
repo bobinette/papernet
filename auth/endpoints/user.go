@@ -49,9 +49,7 @@ func (ep UserEndpoint) Token(ctx context.Context, r interface{}) (interface{}, e
 	_, isAdmin, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	if !isAdmin {
+	} else if !isAdmin {
 		return nil, errors.New("admin route", errors.Forbidden())
 	}
 
@@ -65,6 +63,27 @@ func (ep UserEndpoint) Token(ctx context.Context, r interface{}) (interface{}, e
 		return nil, err
 	}
 	return map[string]string{"access_token": token}, nil
+}
+
+type PaperCreateRequest struct {
+	UserID  int
+	PaperID int
+}
+
+func (ep UserEndpoint) CreatePaper(ctx context.Context, r interface{}) (interface{}, error) {
+	_, isAdmin, err := extractUserID(ctx)
+	if err != nil {
+		return nil, err
+	} else if !isAdmin {
+		return nil, errors.New("admin route", errors.Forbidden())
+	}
+
+	req, ok := r.(PaperCreateRequest)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	return ep.service.CreatePaper(req.UserID, req.PaperID)
 }
 
 type BookmarkRequest struct {

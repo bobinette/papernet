@@ -7,13 +7,11 @@ import (
 	// "github.com/bobinette/papernet/jwt"
 	"github.com/bobinette/papernet/log"
 
-	"github.com/bobinette/papernet/papernet/auth"
 	"github.com/bobinette/papernet/papernet/bleve"
 	"github.com/bobinette/papernet/papernet/bolt"
 	"github.com/bobinette/papernet/papernet/http"
 	"github.com/bobinette/papernet/papernet/services"
 
-	authService "github.com/bobinette/papernet/auth/services"
 	authClient "github.com/bobinette/papernet/clients/auth"
 )
 
@@ -28,7 +26,7 @@ type Configuration struct {
 }
 
 // Start registers
-func Start(srv http.Server, conf Configuration, logger log.Logger, us *authService.UserService, au *authClient.Client) *services.PaperService {
+func Start(srv http.Server, conf Configuration, logger log.Logger, au *authClient.Client) *services.PaperService {
 	// Load key from file
 	keyData, err := ioutil.ReadFile(conf.KeyPath)
 	if err != nil {
@@ -60,12 +58,9 @@ func Start(srv http.Server, conf Configuration, logger log.Logger, us *authServi
 		logger.Fatalf("could not open bleve: %v", err)
 	}
 
-	// Create clients
-	authClient := auth.NewClient(us)
-
 	// Create services
 	tagService := services.NewTagService(&tagIndex)
-	paperService := services.NewPaperService(&paperRepository, &index, authClient, tagService)
+	paperService := services.NewPaperService(&paperRepository, &index, au, tagService)
 
 	// Register paper endpoints
 	http.RegisterPaperEndpoints(srv, paperService, []byte(key.Key), au)

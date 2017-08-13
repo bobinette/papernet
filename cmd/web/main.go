@@ -137,7 +137,7 @@ func main() {
 	kitoauth.Start(server, cfg.Oauth, logger, userService)
 
 	// Paper service
-	_ = kitpaper.Start(server, cfg.Paper, logger, userService, ac)
+	_ = kitpaper.Start(server, cfg.Paper, logger, ac)
 
 	// Imports service
 	kitimports.Start(server, cfg.Imports, logger, userService)

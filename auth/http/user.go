@@ -46,6 +46,13 @@ func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []b
 		opts...,
 	)
 
+	createPaperHandler := kithttp.NewServer(
+		authenticationMiddleware(ep.CreatePaper),
+		decodeCreatePaperRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+
 	bookmarkHandler := kithttp.NewServer(
 		authenticationMiddleware(ep.Bookmark),
 		decodeBookmarkRequest,
@@ -57,6 +64,7 @@ func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []b
 	srv.RegisterHandler("/auth/v2/me", "GET", meHandler)
 	srv.RegisterHandler("/auth/v2/users/:id", "GET", userHandler)
 	srv.RegisterHandler("/auth/v2/users/:id/token", "GET", tokenHandler)
+	srv.RegisterHandler("/auth/v2/users/:id/papers", "POST", createPaperHandler)
 	srv.RegisterHandler("/auth/v2/bookmarks", "POST", bookmarkHandler)
 }
 
@@ -89,12 +97,36 @@ func decodeTokenRequest(ctx context.Context, r *http.Request) (interface{}, erro
 	return userID, nil
 }
 
+func decodeCreatePaperRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close() // Close body
+
+	params := ctx.Value("params").(map[string]string)
+	userID, err := strconv.Atoi(params["id"])
+	if err != nil {
+		return nil, err
+	}
+
+	var body struct {
+		PaperID int `json:"paperID"`
+	}
+	err = json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		return nil, err
+	}
+
+	req := endpoints.PaperCreateRequest{
+		UserID:  userID,
+		PaperID: body.PaperID,
+	}
+	return req, nil
+}
+
 func decodeBookmarkRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	defer r.Body.Close()
 
 	var body struct {
 		PaperID  int  `json:"paperID"`
-		Bookmark bool `json"bookmark"`
+		Bookmark bool `json:"bookmark"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
