@@ -5,6 +5,7 @@ import (
 
 	"github.com/bobinette/papernet/errors"
 
+	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/auth/services"
 )
 
@@ -31,9 +32,7 @@ func (ep UserEndpoint) User(ctx context.Context, r interface{}) (interface{}, er
 	_, isAdmin, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	if !isAdmin {
+	} else if !isAdmin {
 		return nil, errors.New("admin route", errors.Forbidden())
 	}
 
@@ -43,6 +42,22 @@ func (ep UserEndpoint) User(ctx context.Context, r interface{}) (interface{}, er
 	}
 
 	return ep.service.Get(userID)
+}
+
+func (ep UserEndpoint) Upsert(ctx context.Context, r interface{}) (interface{}, error) {
+	_, isAdmin, err := extractUserID(ctx)
+	if err != nil {
+		return nil, err
+	} else if !isAdmin {
+		return nil, errors.New("admin route", errors.Forbidden())
+	}
+
+	user, ok := r.(auth.User)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	return ep.service.Upsert(user)
 }
 
 func (ep UserEndpoint) Token(ctx context.Context, r interface{}) (interface{}, error) {

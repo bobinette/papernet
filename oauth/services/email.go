@@ -3,6 +3,7 @@ package services
 import (
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/bobinette/papernet/clients/auth"
 	"github.com/bobinette/papernet/errors"
 
 	"github.com/bobinette/papernet/oauth"
@@ -10,13 +11,13 @@ import (
 
 type EmailService struct {
 	repository oauth.EmailRepository
-	userClient *oauth.UserClient
+	authClient *auth.Client
 }
 
-func NewEmailService(repo oauth.EmailRepository, userClient *oauth.UserClient) *EmailService {
+func NewEmailService(repo oauth.EmailRepository, authClient *auth.Client) *EmailService {
 	return &EmailService{
 		repository: repo,
-		userClient: userClient,
+		authClient: authClient,
 	}
 }
 
@@ -41,20 +42,24 @@ func (s *EmailService) SignUp(email, password string) (string, error) {
 	}
 	user.PasswordHash = string(hash)
 
-	upsertedUser, err := s.userClient.Upsert(user)
+	authUser := auth.User{
+		Name:  email,
+		Email: email,
+	}
+	authUser, err = s.authClient.Upsert(authUser)
 	if err != nil {
 		return "", err
-	} else if upsertedUser.ID == 0 {
+	} else if authUser.ID == 0 {
 		return "", errors.New("user got no id")
 	}
 
-	user.ID = upsertedUser.ID
+	user.ID = authUser.ID
 	err = s.repository.Insert(user)
 	if err != nil {
 		return "", err
 	}
 
-	return s.userClient.Token(user)
+	return s.authClient.Token(user.ID)
 }
 
 func (s *EmailService) Login(email, password string) (string, error) {
@@ -71,5 +76,5 @@ func (s *EmailService) Login(email, password string) (string, error) {
 	}
 
 	// Password is correct here
-	return s.userClient.Token(user)
+	return s.authClient.Token(user.ID)
 }

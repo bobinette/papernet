@@ -8,7 +8,9 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
+	"github.com/bobinette/papernet/clients/auth"
 	"github.com/bobinette/papernet/errors"
+
 	"github.com/bobinette/papernet/oauth"
 )
 
@@ -28,14 +30,14 @@ type googleUser struct {
 
 type GoogleService struct {
 	repository oauth.GoogleRepository
-	userClient *oauth.UserClient
+	authClient *auth.Client
 	config     oauth2.Config
 
 	stateMutex sync.Locker
 	state      map[string]struct{}
 }
 
-func NewGoogleService(repo oauth.GoogleRepository, configPath string, userClient *oauth.UserClient) (*GoogleService, error) {
+func NewGoogleService(repo oauth.GoogleRepository, configPath string, authClient *auth.Client) (*GoogleService, error) {
 	c, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return nil, err
@@ -53,7 +55,7 @@ func NewGoogleService(repo oauth.GoogleRepository, configPath string, userClient
 
 	return &GoogleService{
 		repository: repo,
-		userClient: userClient,
+		authClient: authClient,
 		config: oauth2.Config{
 			ClientID:     creds.ClientID,
 			ClientSecret: creds.ClientSecret,
@@ -111,20 +113,25 @@ func (s *GoogleService) Login(state, code string) (string, error) {
 	}
 
 	if user.ID == 0 {
-		user, err = s.userClient.Upsert(user)
+		authUser := auth.User{
+			Name:  user.Name,
+			Email: user.Email,
+		}
+		authUser, err = s.authClient.Upsert(authUser)
 		if err != nil {
 			return "", err
-		} else if user.ID == 0 {
+		} else if authUser.ID == 0 {
 			return "", errors.New("user got no id")
 		}
 
+		user.ID = authUser.ID
 		err = s.repository.Insert(gUser.GoogleID, user.ID)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return s.userClient.Token(user)
+	return s.authClient.Token(user.ID)
 }
 
 func (s *GoogleService) retrieveGoogleUser(tok *oauth2.Token) (googleUser, error) {

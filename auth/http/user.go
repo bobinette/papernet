@@ -9,6 +9,7 @@ import (
 	kitjwt "github.com/go-kit/kit/auth/jwt"
 	kithttp "github.com/go-kit/kit/transport/http"
 
+	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/auth/endpoints"
 	"github.com/bobinette/papernet/auth/services"
 	"github.com/bobinette/papernet/jwt"
@@ -39,6 +40,12 @@ func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []b
 		opts...,
 	)
 
+	userUpsertHandler := kithttp.NewServer(
+		authenticationMiddleware(ep.User),
+		decodeUserUpsertRequest,
+		kithttp.EncodeJSONResponse,
+	)
+
 	tokenHandler := kithttp.NewServer(
 		authenticationMiddleware(ep.Token),
 		decodeTokenRequest,
@@ -63,6 +70,7 @@ func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []b
 	// Routes
 	srv.RegisterHandler("/auth/v2/me", "GET", meHandler)
 	srv.RegisterHandler("/auth/v2/users/:id", "GET", userHandler)
+	srv.RegisterHandler("/auth/v2/users", "POST", userUpsertHandler)
 	srv.RegisterHandler("/auth/v2/users/:id/token", "GET", tokenHandler)
 	srv.RegisterHandler("/auth/v2/users/:id/papers", "POST", createPaperHandler)
 	srv.RegisterHandler("/auth/v2/bookmarks", "POST", bookmarkHandler)
@@ -83,6 +91,18 @@ func decodeUserRequest(ctx context.Context, r *http.Request) (interface{}, error
 	}
 
 	return userID, nil
+}
+
+func decodeUserUpsertRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	var user auth.User
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func decodeTokenRequest(ctx context.Context, r *http.Request) (interface{}, error) {

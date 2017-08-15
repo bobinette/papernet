@@ -110,3 +110,42 @@ func (c *Client) CreatePaper(userID, paperID int) error {
 
 	return nil
 }
+
+func (c *Client) Upsert(user User) (User, error) {
+	body := bytes.Buffer{}
+	err := json.NewEncoder(&body).Encode(user)
+	if err != nil {
+		return User{}, err
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth/v2/users", c.baseURL), &body)
+	if err != nil {
+		return User{}, err
+	}
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return User{}, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != 200 {
+		var callErr struct {
+			Message string `json:"message"`
+		}
+		err := json.NewDecoder(res.Body).Decode(&callErr)
+		if err != nil {
+			return User{}, err
+		}
+
+		return User{}, errors.New(fmt.Sprintf("error in call: %v", err), errors.WithCode(res.StatusCode))
+	}
+
+	var retrievedUser User
+	err = json.NewDecoder(res.Body).Decode(&retrievedUser)
+	if err != nil {
+		return User{}, err
+	}
+
+	return retrievedUser, nil
+}
