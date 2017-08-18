@@ -76,6 +76,8 @@ func (r *UserRepository) Upsert(user *auth.User) error {
 	replaceTarget(tx, userQuad(user.ID), nameEdge, quad.Raw(oldUser.Name), quad.Raw(user.Name))
 	replaceTarget(tx, userQuad(user.ID), emailEdge, quad.Raw(oldUser.Email), quad.Raw(user.Email))
 	replaceTarget(tx, userQuad(user.ID), isAdminEdge, strconv.FormatBool(oldUser.IsAdmin), strconv.FormatBool(user.IsAdmin))
+	replaceTarget(tx, userQuad(user.ID), saltEdge, quad.Raw(oldUser.Salt), quad.Raw(user.Salt))
+	replaceTarget(tx, userQuad(user.ID), passwordEdge, quad.Raw(oldUser.PasswordHash), quad.Raw(user.PasswordHash))
 
 	// Update user owned papers
 	for _, paperID := range oldUser.Owns {
@@ -160,13 +162,12 @@ func (r *UserRepository) List() ([]auth.User, error) {
 // Helpers
 
 func (r *UserRepository) userFromStartingPoint(startingPoint *path.Path) (auth.User, error) {
-	p := startingPoint.Clone().SaveOptional(
-		nameEdge, "name",
-	).SaveOptional(
-		emailEdge, "email",
-	).SaveOptional(
-		isAdminEdge, "isAdmin",
-	)
+	p := startingPoint.Clone().
+		SaveOptional(nameEdge, "name").
+		SaveOptional(emailEdge, "email").
+		SaveOptional(isAdminEdge, "isAdmin").
+		SaveOptional(saltEdge, "salt").
+		SaveOptional(passwordEdge, "password")
 
 	it := r.store.buildIterator(p)
 	defer it.Close()
@@ -204,6 +205,16 @@ func (r *UserRepository) userFromStartingPoint(startingPoint *path.Path) (auth.U
 					return auth.User{}, err
 				}
 				user.IsAdmin = isAdmin == "true"
+			case "salt":
+				user.Salt, err = r.store.string(token)
+				if err != nil {
+					return auth.User{}, err
+				}
+			case "password":
+				user.PasswordHash, err = r.store.string(token)
+				if err != nil {
+					return auth.User{}, err
+				}
 			default:
 				// Do nothing
 				fmt.Println("unsupported tag", tag)

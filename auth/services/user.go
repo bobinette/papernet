@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/errors"
 )
 
 type Encoder interface {
-	Encode(int) (string, error)
+	Encode(userID int, isAdmin bool) (string, error)
 }
 
 type UserService struct {
@@ -71,12 +73,12 @@ func (s *UserService) Upsert(u auth.User) (auth.User, error) {
 	return user, nil
 }
 
-func (s *UserService) CreatePaper(callerID, paperID int) (auth.User, error) {
-	user, err := s.repository.Get(callerID)
+func (s *UserService) CreatePaper(userID, paperID int) (auth.User, error) {
+	user, err := s.repository.Get(userID)
 	if err != nil {
 		return auth.User{}, err
 	} else if user.ID == 0 {
-		return auth.User{}, errUserNotFound(callerID)
+		return auth.User{}, errUserNotFound(userID)
 	}
 
 	ownerID, err := s.repository.PaperOwner(paperID)
@@ -84,7 +86,7 @@ func (s *UserService) CreatePaper(callerID, paperID int) (auth.User, error) {
 		return auth.User{}, err
 	}
 
-	if ownerID == callerID {
+	if ownerID == userID {
 		return user, nil
 	}
 	if ownerID != 0 {
@@ -156,8 +158,57 @@ func (s *UserService) Bookmark(callerID, paperID int, bookmark bool) (auth.User,
 	return user, nil
 }
 
+func (s *UserService) SignUp(email, password string) (string, error) {
+	user, err := s.repository.GetByEmail(email)
+	if err != nil {
+		return "", err
+	} else if user.ID != 0 {
+		return "", errors.New("email already exists", errors.BadRequest())
+	}
+
+	user = auth.User{
+		Name:  email,
+		Email: email,
+		Salt:  randToken(64),
+	}
+
+	// Generate "hash" to store from user password
+	hash, err := bcrypt.GenerateFromPassword([]byte(password+user.Salt), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	user.PasswordHash = string(hash)
+
+	err = s.repository.Upsert(&user)
+	if err != nil {
+		return "", err
+	}
+
+	return s.encoder.Encode(user.ID, user.IsAdmin)
+}
+
+func (s *UserService) Login(email, password string) (string, error) {
+	user, err := s.repository.GetByEmail(email)
+	if err != nil {
+		return "", err
+	} else if user.ID == 0 {
+		return "", errors.New("email or password incorrect", errors.BadRequest())
+	}
+
+	// Comparing the password with the hash
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password+user.Salt)); err != nil {
+		return "", errors.New("email or password incorrect", errors.BadRequest())
+	}
+
+	return s.encoder.Encode(user.ID, user.IsAdmin)
+}
+
 func (s *UserService) Token(userID int) (string, error) {
-	return s.encoder.Encode(userID)
+	user, err := s.Get(userID)
+	if err != nil {
+		return "", err
+	}
+	return s.encoder.Encode(user.ID, user.IsAdmin)
 }
 
 func (s *UserService) All() ([]auth.User, error) {

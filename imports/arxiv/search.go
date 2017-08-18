@@ -82,7 +82,6 @@ func (i *Importer) Source() string { return i.source }
 
 func (i *Importer) Import(ref string, ctx context.Context) (imports.Paper, error) {
 	u := craftRefURL(ref)
-	fmt.Println(u)
 	req, err := http.NewRequest("GET", u.String(), nil)
 	req = req.WithContext(ctx)
 	resp, err := i.client.Do(req)

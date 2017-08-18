@@ -3,7 +3,8 @@ package oauth
 import (
 	"github.com/bobinette/papernet/log"
 
-	"github.com/bobinette/papernet/oauth"
+	"github.com/bobinette/papernet/clients/auth"
+
 	"github.com/bobinette/papernet/oauth/bolt"
 	"github.com/bobinette/papernet/oauth/http"
 	"github.com/bobinette/papernet/oauth/services"
@@ -21,8 +22,7 @@ type Configuration struct {
 	} `toml:"google"`
 }
 
-func Start(srv http.Server, cfg Configuration, logger log.Logger, userService oauth.UserService) {
-	userClient := oauth.NewUserClient(userService)
+func Start(srv http.Server, cfg Configuration, logger log.Logger, authClient *auth.Client) {
 	providerService := services.NewProviderService()
 
 	boltDriver := &bolt.Driver{}
@@ -32,16 +32,13 @@ func Start(srv http.Server, cfg Configuration, logger log.Logger, userService oa
 
 	// Basic email / password
 	if cfg.Email.Enabled {
-		repository := bolt.NewEmailRepository(boltDriver)
-		service := services.NewEmailService(repository, userClient)
-		http.RegisterEmailHTTPRoutes(srv, service)
 		providerService.Register("email")
 	}
 
 	// Google
 	if cfg.Google.Enabled {
 		repository := bolt.NewGoogleRepository(boltDriver)
-		service, err := services.NewGoogleService(repository, cfg.Google.File, userClient)
+		service, err := services.NewGoogleService(repository, cfg.Google.File, authClient)
 		if err != nil {
 			logger.Fatal("could not instantiate google service", err)
 		}

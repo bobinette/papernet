@@ -3,6 +3,9 @@ package endpoints
 import (
 	"context"
 
+	"github.com/bobinette/papernet/errors"
+
+	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/auth/services"
 )
 
@@ -17,12 +20,116 @@ func NewUserEndpoint(s *services.UserService) UserEndpoint {
 }
 
 func (ep UserEndpoint) Me(ctx context.Context, _ interface{}) (interface{}, error) {
-	callerID, err := extractUserID(ctx)
+	callerID, _, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	return ep.service.Get(callerID)
+}
+
+func (ep UserEndpoint) User(ctx context.Context, r interface{}) (interface{}, error) {
+	_, isAdmin, err := extractUserID(ctx)
+	if err != nil {
+		return nil, err
+	} else if !isAdmin {
+		return nil, errors.New("admin route", errors.Forbidden())
+	}
+
+	userID, ok := r.(int)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	return ep.service.Get(userID)
+}
+
+func (ep UserEndpoint) Upsert(ctx context.Context, r interface{}) (interface{}, error) {
+	_, isAdmin, err := extractUserID(ctx)
+	if err != nil {
+		return nil, err
+	} else if !isAdmin {
+		return nil, errors.New("admin route", errors.Forbidden())
+	}
+
+	user, ok := r.(auth.User)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	return ep.service.Upsert(user)
+}
+
+type EmailPasswordRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (ep UserEndpoint) SignUp(ctx context.Context, r interface{}) (interface{}, error) {
+	req, ok := r.(EmailPasswordRequest)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	token, err := ep.service.SignUp(req.Email, req.Password)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{"access_token": token}, nil
+}
+
+func (ep UserEndpoint) Login(ctx context.Context, r interface{}) (interface{}, error) {
+	req, ok := r.(EmailPasswordRequest)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	token, err := ep.service.Login(req.Email, req.Password)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{"access_token": token}, nil
+}
+
+func (ep UserEndpoint) Token(ctx context.Context, r interface{}) (interface{}, error) {
+	_, isAdmin, err := extractUserID(ctx)
+	if err != nil {
+		return nil, err
+	} else if !isAdmin {
+		return nil, errors.New("admin route", errors.Forbidden())
+	}
+
+	userID, ok := r.(int)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	token, err := ep.service.Token(userID)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{"access_token": token}, nil
+}
+
+type PaperCreateRequest struct {
+	UserID  int
+	PaperID int
+}
+
+func (ep UserEndpoint) CreatePaper(ctx context.Context, r interface{}) (interface{}, error) {
+	_, isAdmin, err := extractUserID(ctx)
+	if err != nil {
+		return nil, err
+	} else if !isAdmin {
+		return nil, errors.New("admin route", errors.Forbidden())
+	}
+
+	req, ok := r.(PaperCreateRequest)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	return ep.service.CreatePaper(req.UserID, req.PaperID)
 }
 
 type BookmarkRequest struct {
@@ -31,7 +138,7 @@ type BookmarkRequest struct {
 }
 
 func (ep UserEndpoint) Bookmark(ctx context.Context, r interface{}) (interface{}, error) {
-	userID, err := extractUserID(ctx)
+	userID, _, err := extractUserID(ctx)
 	if err != nil {
 		return nil, err
 	}

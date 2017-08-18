@@ -14,7 +14,7 @@ type UserGetter interface {
 }
 
 type Decoder interface {
-	Decode(string) (int, error)
+	Decode(string) (int, bool, error)
 }
 
 type Authenticator struct {
@@ -29,7 +29,7 @@ func (a *Authenticator) Authenticate(next papernet.HandlerFunc) papernet.Handler
 			return nil, errors.New("no token found", errors.WithCode(http.StatusUnauthorized))
 		}
 
-		userID, err := a.Decoder.Decode(token[7:])
+		userID, _, err := a.Decoder.Decode(token[7:])
 		if err != nil {
 			return nil, errors.New("invalid token", errors.WithCode(http.StatusUnauthorized), errors.WithCause(err))
 		}

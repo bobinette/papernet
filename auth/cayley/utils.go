@@ -18,6 +18,8 @@ var (
 	isAdminEdge   = quad.Raw("isAdmin")
 	ownsEdge      = quad.Raw("owns")
 	bookmarksEdge = quad.Raw("bookmarks")
+	saltEdge      = quad.Raw("salt")
+	passwordEdge  = quad.Raw("password")
 
 	isAdminOfEdge  = quad.Raw("isAdminOf")
 	isMemberOfEdge = quad.Raw("isMemberOf")

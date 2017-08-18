@@ -10,7 +10,7 @@ import (
 	"github.com/bobinette/papernet/errors"
 	"github.com/bobinette/papernet/jwt"
 
-	"github.com/bobinette/papernet/auth/services"
+	"github.com/bobinette/papernet/clients/auth"
 )
 
 var (
@@ -41,32 +41,32 @@ func FromContext(ctx context.Context) (User, error) {
 	return user, nil
 }
 
-func extractUserID(ctx context.Context) (int, error) {
+func extractUserID(ctx context.Context) (int, bool, error) {
 	claims := ctx.Value(kitjwt.JWTClaimsContextKey)
 	if claims == nil {
-		return 0, errors.New("no user", errors.WithCode(http.StatusUnauthorized))
+		return 0, false, errors.New("no user", errors.WithCode(http.StatusUnauthorized))
 	}
 
 	ppnClaims, ok := claims.(*jwt.Claims)
 	if !ok {
-		return 0, errors.New("invalid claims", errors.WithCode(http.StatusUnauthorized))
+		return 0, false, errors.New("invalid claims", errors.WithCode(http.StatusUnauthorized))
 	}
 
-	return ppnClaims.UserID, nil
+	return ppnClaims.UserID, ppnClaims.IsAdmin, nil
 }
 
 type Authenticator struct {
-	service *services.UserService
+	client *auth.Client
 }
 
-func NewAuthenticator(s *services.UserService) *Authenticator {
+func NewAuthenticator(c *auth.Client) *Authenticator {
 	return &Authenticator{
-		service: s,
+		client: c,
 	}
 }
 
 func (a *Authenticator) get(id int) (User, error) {
-	user, err := a.service.Get(id)
+	user, err := a.client.User(id)
 	if err != nil {
 		return User{}, err
 	}
@@ -84,19 +84,19 @@ func (a *Authenticator) get(id int) (User, error) {
 
 func (a *Authenticator) Valid(next endpoint.Endpoint) endpoint.Endpoint {
 	return func(ctx context.Context, req interface{}) (interface{}, error) {
-		userID, err := extractUserID(ctx)
+		userID, isAdmin, err := extractUserID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		ctx = context.WithValue(ctx, contextKey, User{ID: userID})
+		ctx = context.WithValue(ctx, contextKey, User{ID: userID, IsAdmin: isAdmin})
 		return next(ctx, req)
 	}
 }
 
 func (a *Authenticator) Authenticated(next endpoint.Endpoint) endpoint.Endpoint {
 	return func(ctx context.Context, req interface{}) (interface{}, error) {
-		userID, err := extractUserID(ctx)
+		userID, _, err := extractUserID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -113,21 +113,16 @@ func (a *Authenticator) Authenticated(next endpoint.Endpoint) endpoint.Endpoint 
 
 func (a *Authenticator) Admin(next endpoint.Endpoint) endpoint.Endpoint {
 	return func(ctx context.Context, req interface{}) (interface{}, error) {
-		userID, err := extractUserID(ctx)
+		userID, isAdmin, err := extractUserID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		user, err := a.get(userID)
-		if err != nil {
-			return nil, err
-		}
-
-		if user.IsAdmin {
+		if !isAdmin {
 			return 0, errors.New("admin only", errors.WithCode(http.StatusForbidden))
 		}
 
-		ctx = context.WithValue(ctx, contextKey, user)
+		ctx = context.WithValue(ctx, contextKey, User{ID: userID, IsAdmin: isAdmin})
 		return next(ctx, req)
 	}
 }

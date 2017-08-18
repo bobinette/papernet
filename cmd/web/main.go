@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 
 	"github.com/BurntSushi/toml"
 
@@ -16,6 +17,10 @@ import (
 	"github.com/bobinette/papernet/log"
 	"github.com/bobinette/papernet/web"
 
+	"github.com/bobinette/papernet/clients"
+	authClient "github.com/bobinette/papernet/clients/auth"
+	paperClient "github.com/bobinette/papernet/clients/paper"
+
 	// packages used for migration to go-kit
 	"github.com/bobinette/papernet/jwt"
 
@@ -26,6 +31,14 @@ import (
 )
 
 type Configuration struct {
+	Clients struct {
+		Auth struct {
+			User     string `toml:"user"`
+			Password string `toml:"password"`
+			BaseURL  string `toml:"baseURL"`
+		} `toml:"auth"`
+	} `toml:"clients"`
+
 	Auth    kitauth.Configuration    `toml:"auth"`
 	Oauth   kitoauth.Configuration   `toml:"oauth"`
 	Imports kitimports.Configuration `toml:"imports"`
@@ -106,17 +119,27 @@ func main() {
 	// Migration to go-kit
 	// *************************************************
 
+	client := clients.NewClient(
+		cfg.Clients.Auth.User,
+		cfg.Clients.Auth.Password,
+		&http.Client{},
+		cfg.Clients.Auth.BaseURL,
+	)
+
+	ac := authClient.NewClient(client, cfg.Clients.Auth.BaseURL)
+	pc := paperClient.NewClient(client, cfg.Clients.Auth.BaseURL)
+
 	// Auth service
 	userService := kitauth.Start(server, cfg.Auth, logger)
 
 	// OAuth service
-	kitoauth.Start(server, cfg.Oauth, logger, userService)
+	kitoauth.Start(server, cfg.Oauth, logger, ac)
 
 	// Paper service
-	_ = kitpaper.Start(server, cfg.Paper, logger, userService)
+	_ = kitpaper.Start(server, cfg.Paper, logger, ac)
 
 	// Imports service
-	kitimports.Start(server, cfg.Imports, logger, userService)
+	kitimports.Start(server, cfg.Imports, logger, pc, ac)
 
 	// *************************************************
 	// Migration to go-kit

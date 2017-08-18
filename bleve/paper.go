@@ -1,7 +1,6 @@
 package bleve
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -159,7 +158,6 @@ func (s *PaperIndex) searchTitleQ(queryString string) query.Query {
 	analyzerName := s.index.Mapping().AnalyzerNameForPath(field)
 	analyzer := s.index.Mapping().AnalyzerNamed(analyzerName)
 	tokens := analyzer.Analyze([]byte(queryString))
-	fmt.Println(tokens)
 	if len(tokens) == 0 {
 		return nil
 	}

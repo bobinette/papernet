@@ -211,7 +211,6 @@ func (s *TeamService) Share(callerID, teamID, paperID int, canEdit bool) (auth.T
 	for _, canSeeID := range team.CanSee {
 		if canSeeID == paperID {
 			found = true
-			fmt.Println(team.CanSee, paperID)
 			break
 		}
 	}

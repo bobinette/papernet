@@ -2,11 +2,14 @@ package imports
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/bobinette/papernet/clients/paper"
 	"github.com/bobinette/papernet/errors"
 )
 
@@ -19,14 +22,15 @@ func (m *mockMapping) Get(userID int, source, ref string) (int, error) {
 	return m.mapping[userID][source][ref], nil
 }
 
-type mockPaperService struct {
-	c int
+func insertPaper(w http.ResponseWriter, req *http.Request) {
+	_ = json.NewEncoder(w).Encode(map[string]map[string]int{
+		"data": map[string]int{"id": 12},
+	})
 }
 
-func (m *mockPaperService) Insert(userID int, paper *Paper, ctx context.Context) error {
-	m.c++
-	paper.ID = m.c
-	return nil
+func mockPaperService(t *testing.T) *paper.Client {
+	srv := httptest.NewServer(http.HandlerFunc(insertPaper))
+	return paper.NewClient(&http.Client{}, srv.URL)
 }
 
 type mockImporter struct {
@@ -158,7 +162,8 @@ func TestSearchService_Search(t *testing.T) {
 		},
 	}
 
-	service := NewService(mapping, &mockPaperService{}, searcher1, searcher2)
+	client := mockPaperService(t)
+	service := NewService(mapping, client, searcher1, searcher2)
 	for name, tt := range tts {
 		res, err := service.Search(userID, "", 2, 0, tt.sources, context.Background())
 		assert.NoError(t, err, name)
@@ -202,7 +207,8 @@ func TestSearchService_Search_UnknownSource(t *testing.T) {
 	}
 
 	for name, tt := range tts {
-		service := NewService(&mockMapping{}, &mockPaperService{}, tt.searchers...)
+		client := mockPaperService(t)
+		service := NewService(&mockMapping{}, client, tt.searchers...)
 		_, err := service.Search(1, "q", 20, 0, tt.sources, context.Background())
 		if assert.Error(t, err, name) {
 			errors.AssertCode(t, err, http.StatusBadRequest)

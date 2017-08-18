@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
+	"github.com/bobinette/papernet/clients/auth"
+	"github.com/bobinette/papernet/clients/paper"
 	"github.com/bobinette/papernet/log"
 
 	"github.com/bobinette/papernet/imports"
 	"github.com/bobinette/papernet/imports/arxiv"
 	"github.com/bobinette/papernet/imports/bolt"
-	"github.com/bobinette/papernet/imports/http"
 )
 
 type Configuration struct {
@@ -20,7 +21,7 @@ type Configuration struct {
 	} `toml:"bolt"`
 }
 
-func Start(srv imports.HTTPServer, conf Configuration, logger log.Logger, us http.UserService) {
+func Start(srv imports.HTTPServer, conf Configuration, logger log.Logger, paperClient *paper.Client, authClient *auth.Client) {
 	// Load key from file
 	keyData, err := ioutil.ReadFile(conf.KeyPath)
 	if err != nil {
@@ -41,12 +42,11 @@ func Start(srv imports.HTTPServer, conf Configuration, logger log.Logger, us htt
 		logger.Fatal("error opening db:", err)
 	}
 	repo := bolt.NewPaperRepository(driver)
-	paperService := http.NewPaperService(us, conf.PaperURL)
 
 	// Searchers
 	// Arxiv
 	arxivSearcher := arxiv.NewSearcher()
 
-	service := imports.NewService(repo, paperService, arxivSearcher)
-	service.RegisterHTTP(srv, []byte(key.Key))
+	service := imports.NewService(repo, paperClient, arxivSearcher)
+	service.RegisterHTTP(srv, []byte(key.Key), authClient)
 }

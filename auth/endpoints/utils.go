@@ -25,16 +25,16 @@ func (s statusCoder) StatusCode() int { return s.code }
 
 // extractUserID returns the user id present in the context, or an error if there is
 // no user id or the claims are not correct.
-func extractUserID(ctx context.Context) (int, error) {
+func extractUserID(ctx context.Context) (int, bool, error) {
 	claims := ctx.Value(kitjwt.JWTClaimsContextKey)
 	if claims == nil {
-		return 0, errors.New("no user", errors.WithCode(http.StatusUnauthorized))
+		return 0, false, errors.New("no user", errors.WithCode(http.StatusUnauthorized))
 	}
 
 	ppnClaims, ok := claims.(*jwt.Claims)
 	if !ok {
-		return 0, errors.New("invalid claims", errors.WithCode(http.StatusForbidden))
+		return 0, false, errors.New("invalid claims", errors.WithCode(http.StatusForbidden))
 	}
 
-	return ppnClaims.UserID, nil
+	return ppnClaims.UserID, ppnClaims.IsAdmin, nil
 }
