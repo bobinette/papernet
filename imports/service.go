@@ -4,24 +4,21 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bobinette/papernet/clients/paper"
 	"github.com/bobinette/papernet/errors"
 )
 
-type PaperService interface {
-	Insert(userID int, paper *Paper, ctx context.Context) error
-}
-
 type Service struct {
-	repository   Repository
-	paperService PaperService
-	searchers    []Searcher
+	repository  Repository
+	paperClient *paper.Client
+	searchers   []Searcher
 }
 
-func NewService(repository Repository, paperService PaperService, searchers ...Searcher) *Service {
+func NewService(repository Repository, paperClient *paper.Client, searchers ...Searcher) *Service {
 	return &Service{
-		repository:   repository,
-		paperService: paperService,
-		searchers:    searchers,
+		repository:  repository,
+		paperClient: paperClient,
+		searchers:   searchers,
 	}
 }
 
@@ -34,20 +31,33 @@ func (s *Service) Sources() []string {
 	return sources
 }
 
-func (s *Service) Import(userID int, paper Paper, ctx context.Context) (Paper, error) {
-	err := s.paperService.Insert(userID, &paper, ctx)
+func (s *Service) Import(userID int, p Paper, ctx context.Context) (Paper, error) {
+	pp := paper.Paper{
+		ID:      p.ID,
+		Title:   p.Title,
+		Summary: p.Summary,
+		Tags:    p.Tags,
+
+		Authors:    p.Authors,
+		References: p.References,
+	}
+
+	var err error
+	pp, err = s.paperClient.Insert(ctx, pp)
 	if err != nil {
 		return Paper{}, err
-	} else if paper.ID == 0 {
+	} else if pp.ID == 0 {
 		return Paper{}, errors.New("id was not set when importing")
 	}
 
-	err = s.repository.Save(userID, paper.ID, paper.Source, paper.Reference)
+	p.ID = pp.ID
+
+	err = s.repository.Save(userID, p.ID, p.Source, p.Reference)
 	if err != nil {
 		return Paper{}, err
 	}
 
-	return paper, nil
+	return p, nil
 }
 
 func (s *Service) Search(

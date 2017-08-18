@@ -10,8 +10,10 @@ import (
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 
+	"github.com/bobinette/papernet/clients/auth"
 	"github.com/bobinette/papernet/errors"
 	"github.com/bobinette/papernet/jwt"
+	"github.com/bobinette/papernet/users"
 )
 
 var (
@@ -55,11 +57,14 @@ func extractUserID(ctx context.Context) (int, error) {
 	return ppnClaims.UserID, nil
 }
 
-func (s *Service) RegisterHTTP(srv HTTPServer, jwtKey []byte) {
+func (s *Service) RegisterHTTP(srv HTTPServer, jwtKey []byte, ac *auth.Client) {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(kitjwt.ToHTTPContext()),
 	}
+
+	authenticator := users.NewAuthenticator(ac)
+
 	authenticationMiddleware := jwt.Middleware(jwtKey)
 	optionalAuthenticationMiddleware := jwt.OptionalMiddleware(jwtKey)
 
@@ -78,7 +83,7 @@ func (s *Service) RegisterHTTP(srv HTTPServer, jwtKey []byte) {
 	)
 
 	importHandler := kithttp.NewServer(
-		authenticationMiddleware(makeImportEndpoint(s)),
+		authenticationMiddleware(authenticator.Valid(makeImportEndpoint(s))),
 		decodeImportRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
