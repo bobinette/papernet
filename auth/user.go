@@ -5,8 +5,8 @@ type User struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 
-	// Kept to be able to run the migration command
-	GoogleID string `json:"googleID"`
+	Salt         string `json:"-"`
+	PasswordHash string `json:"-"`
 
 	IsAdmin bool `json:"isAdmin"`
 

@@ -90,7 +90,7 @@ func (c *Client) authenticate() error {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/login", c.baseURL), &body)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth/v2/login", c.baseURL), &body)
 	if err != nil {
 		return err
 	}

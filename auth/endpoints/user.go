@@ -60,6 +60,37 @@ func (ep UserEndpoint) Upsert(ctx context.Context, r interface{}) (interface{}, 
 	return ep.service.Upsert(user)
 }
 
+type EmailPasswordRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (ep UserEndpoint) SignUp(ctx context.Context, r interface{}) (interface{}, error) {
+	req, ok := r.(EmailPasswordRequest)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	token, err := ep.service.SignUp(req.Email, req.Password)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{"access_token": token}, nil
+}
+
+func (ep UserEndpoint) Login(ctx context.Context, r interface{}) (interface{}, error) {
+	req, ok := r.(EmailPasswordRequest)
+	if !ok {
+		return nil, errInvalidRequest
+	}
+
+	token, err := ep.service.Login(req.Email, req.Password)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{"access_token": token}, nil
+}
+
 func (ep UserEndpoint) Token(ctx context.Context, r interface{}) (interface{}, error) {
 	_, isAdmin, err := extractUserID(ctx)
 	if err != nil {

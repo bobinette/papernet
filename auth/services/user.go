@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/bobinette/papernet/auth"
 	"github.com/bobinette/papernet/errors"
 )
@@ -154,6 +156,51 @@ func (s *UserService) Bookmark(callerID, paperID int, bookmark bool) (auth.User,
 	}
 
 	return user, nil
+}
+
+func (s *UserService) SignUp(email, password string) (string, error) {
+	user, err := s.repository.GetByEmail(email)
+	if err != nil {
+		return "", err
+	} else if user.ID != 0 {
+		return "", errors.New("email already exists", errors.BadRequest())
+	}
+
+	user = auth.User{
+		Name:  email,
+		Email: email,
+		Salt:  randToken(64),
+	}
+
+	// Generate "hash" to store from user password
+	hash, err := bcrypt.GenerateFromPassword([]byte(password+user.Salt), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	user.PasswordHash = string(hash)
+
+	err = s.repository.Upsert(&user)
+	if err != nil {
+		return "", err
+	}
+
+	return s.encoder.Encode(user.ID, user.IsAdmin)
+}
+
+func (s *UserService) Login(email, password string) (string, error) {
+	user, err := s.repository.GetByEmail(email)
+	if err != nil {
+		return "", err
+	} else if user.ID == 0 {
+		return "", errors.New("email or password incorrect", errors.BadRequest())
+	}
+
+	// Comparing the password with the hash
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password+user.Salt)); err != nil {
+		return "", errors.New("email or password incorrect", errors.BadRequest())
+	}
+
+	return s.encoder.Encode(user.ID, user.IsAdmin)
 }
 
 func (s *UserService) Token(userID int) (string, error) {

@@ -46,6 +46,20 @@ func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []b
 		kithttp.EncodeJSONResponse,
 	)
 
+	signUpHandler := kithttp.NewServer(
+		ep.SignUp,
+		decodeEmailPasswordRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+
+	loginHandler := kithttp.NewServer(
+		ep.Login,
+		decodeEmailPasswordRequest,
+		kithttp.EncodeJSONResponse,
+		opts...,
+	)
+
 	tokenHandler := kithttp.NewServer(
 		authenticationMiddleware(ep.Token),
 		decodeTokenRequest,
@@ -71,6 +85,8 @@ func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []b
 	srv.RegisterHandler("/auth/v2/me", "GET", meHandler)
 	srv.RegisterHandler("/auth/v2/users/:id", "GET", userHandler)
 	srv.RegisterHandler("/auth/v2/users", "POST", userUpsertHandler)
+	srv.RegisterHandler("/auth/v2/signup", "POST", signUpHandler)
+	srv.RegisterHandler("/auth/v2/login", "POST", loginHandler)
 	srv.RegisterHandler("/auth/v2/users/:id/token", "GET", tokenHandler)
 	srv.RegisterHandler("/auth/v2/users/:id/papers", "POST", createPaperHandler)
 	srv.RegisterHandler("/auth/v2/bookmarks", "POST", bookmarkHandler)
@@ -103,6 +119,18 @@ func decodeUserUpsertRequest(ctx context.Context, r *http.Request) (interface{},
 	}
 
 	return user, nil
+}
+
+func decodeEmailPasswordRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+
+	var req endpoints.EmailPasswordRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, err
 }
 
 func decodeTokenRequest(ctx context.Context, r *http.Request) (interface{}, error) {

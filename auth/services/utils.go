@@ -1,7 +1,9 @@
 package services
 
 import (
+	"encoding/base64"
 	"fmt"
+	"math/rand"
 
 	"github.com/bobinette/papernet/errors"
 )
@@ -24,4 +26,10 @@ func errTeamNotFound(id int) error {
 // errNotTeamAdmin returns a 403 for when team admin privilege is needed
 func errNotTeamAdmin(id int) error {
 	return errors.New(fmt.Sprintf("You are not an admin of team %d", id), errors.Forbidden())
+}
+
+func randToken(size int) string {
+	b := make([]byte, size)
+	rand.Read(b)
+	return base64.StdEncoding.EncodeToString(b)
 }
