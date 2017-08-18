@@ -19,6 +19,7 @@ import (
 
 	"github.com/bobinette/papernet/clients"
 	authClient "github.com/bobinette/papernet/clients/auth"
+	paperClient "github.com/bobinette/papernet/clients/paper"
 
 	// packages used for migration to go-kit
 	"github.com/bobinette/papernet/jwt"
@@ -125,10 +126,8 @@ func main() {
 		cfg.Clients.Auth.BaseURL,
 	)
 
-	ac := authClient.NewClient(
-		client,
-		cfg.Clients.Auth.BaseURL,
-	)
+	ac := authClient.NewClient(client, cfg.Clients.Auth.BaseURL)
+	pc := paperClient.NewClient(client, cfg.Clients.Auth.BaseURL)
 
 	// Auth service
 	userService := kitauth.Start(server, cfg.Auth, logger)
@@ -140,7 +139,7 @@ func main() {
 	_ = kitpaper.Start(server, cfg.Paper, logger, ac)
 
 	// Imports service
-	kitimports.Start(server, cfg.Imports, logger, userService)
+	kitimports.Start(server, cfg.Imports, logger, pc, ac)
 
 	// *************************************************
 	// Migration to go-kit

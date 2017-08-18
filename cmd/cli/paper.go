@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -15,8 +16,9 @@ import (
 	"github.com/bobinette/papernet/auth/cayley"
 	authServices "github.com/bobinette/papernet/auth/services"
 
+	"github.com/bobinette/papernet/clients/auth"
+
 	"github.com/bobinette/papernet/papernet"
-	"github.com/bobinette/papernet/papernet/auth"
 	"github.com/bobinette/papernet/papernet/bleve"
 	"github.com/bobinette/papernet/papernet/bolt"
 	"github.com/bobinette/papernet/papernet/services"
@@ -136,8 +138,7 @@ var PaperCommand = cobra.Command{
 		}
 		paperIndex = index
 
-		// Create user client
-		authClient := auth.NewClient(userService)
+		authClient := auth.NewClient(&http.Client{}, "http://127.0.0.1:1705")
 
 		// Create services
 		tagService = services.NewTagService(&tagIndex)
