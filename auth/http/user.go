@@ -20,30 +20,32 @@ func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []b
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(kitjwt.ToHTTPContext()),
 	}
-	authenticationMiddleware := jwt.Middleware(jwtKey)
+
+	jwtMiddleware := jwt.Middleware(jwtKey)
 
 	// Create endpoint
 	ep := endpoints.NewUserEndpoint(service)
 
 	// Me handler
 	meHandler := kithttp.NewServer(
-		authenticationMiddleware(ep.Me),
+		jwtMiddleware(ep.Me),
 		decodeMeRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
 
 	userHandler := kithttp.NewServer(
-		authenticationMiddleware(ep.User),
+		jwtMiddleware(ep.User),
 		decodeUserRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
 
 	userUpsertHandler := kithttp.NewServer(
-		authenticationMiddleware(ep.User),
+		jwtMiddleware(ep.Upsert),
 		decodeUserUpsertRequest,
 		kithttp.EncodeJSONResponse,
+		opts...,
 	)
 
 	signUpHandler := kithttp.NewServer(
@@ -61,21 +63,21 @@ func RegisterUserEndpoints(srv Server, service *services.UserService, jwtKey []b
 	)
 
 	tokenHandler := kithttp.NewServer(
-		authenticationMiddleware(ep.Token),
+		jwtMiddleware(ep.Token),
 		decodeTokenRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
 
 	createPaperHandler := kithttp.NewServer(
-		authenticationMiddleware(ep.CreatePaper),
+		jwtMiddleware(ep.CreatePaper),
 		decodeCreatePaperRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
 	)
 
 	bookmarkHandler := kithttp.NewServer(
-		authenticationMiddleware(ep.Bookmark),
+		jwtMiddleware(ep.Bookmark),
 		decodeBookmarkRequest,
 		kithttp.EncodeJSONResponse,
 		opts...,
