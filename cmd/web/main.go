@@ -25,6 +25,7 @@ import (
 	"github.com/bobinette/papernet/jwt"
 
 	kitauth "github.com/bobinette/papernet/auth/cmd"
+	kitgoogle "github.com/bobinette/papernet/google/cmd"
 	kitimports "github.com/bobinette/papernet/imports/cmd"
 	kitoauth "github.com/bobinette/papernet/oauth/cmd"
 	kitpaper "github.com/bobinette/papernet/papernet/cmd"
@@ -43,6 +44,7 @@ type Configuration struct {
 	Oauth   kitoauth.Configuration   `toml:"oauth"`
 	Imports kitimports.Configuration `toml:"imports"`
 	Paper   kitpaper.Configuration   `toml:"paper"`
+	Google  kitgoogle.Configuration  `toml:"google"`
 
 	Bolt struct {
 		Store string `toml:"store"`
@@ -133,13 +135,16 @@ func main() {
 	userService := kitauth.Start(server, cfg.Auth, logger)
 
 	// OAuth service
-	kitoauth.Start(server, cfg.Oauth, logger, ac)
+	kitoauth.Start(server, cfg.Oauth, logger)
 
 	// Paper service
-	_ = kitpaper.Start(server, cfg.Paper, logger, ac)
+	kitpaper.Start(server, cfg.Paper, logger, ac)
 
 	// Imports service
 	kitimports.Start(server, cfg.Imports, logger, pc, ac)
+
+	// Google service
+	kitgoogle.Start(server, cfg.Google, logger, ac)
 
 	// *************************************************
 	// Migration to go-kit

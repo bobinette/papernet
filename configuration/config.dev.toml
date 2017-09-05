@@ -18,16 +18,19 @@ store = "data/auth.graph"
 # ----------------------------------------
 # Oauth service
 [oauth]
-bolt="data/oauth.db"
-
-[oauth.email]
-enabled=true
-
-[oauth.google]
-enabled=true
-file="configuration/oauth_google.json"
+# bolt="data/oauth.db"
+# file="configuration/oauth_google.json"
+email = true
+google = true
 # Oauth service
 # ----------------------------------------
+
+# ----------------------------------------
+# Google service
+[google]
+bolt = "data/google.db"
+file = "configuration/oauth_google.json"
+key = "configuration/hs256.json"
 
 # ----------------------------------------
 # Imports service
@@ -36,7 +39,7 @@ paperURL="http://127.0.0.1:1705/paper/v2/papers"
 key = "configuration/hs256.json"
 
 [imports.bolt]
-store="data/imports.db"
+store = "data/imports.db"
 # Imports service
 # ----------------------------------------
 

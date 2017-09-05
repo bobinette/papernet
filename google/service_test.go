@@ -1,4 +1,4 @@
-package services
+package google
 
 import (
 	"net/url"
@@ -16,7 +16,7 @@ func TestGoogleService_LoginURL(t *testing.T) {
 	clientID := "client_id"
 	responseType := "code"
 
-	service := &GoogleService{
+	service := &Service{
 		config: oauth2.Config{
 			ClientID:     clientID,
 			ClientSecret: "",

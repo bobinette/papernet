@@ -135,7 +135,6 @@ func (c *Client) Upsert(user User) (User, error) {
 		if err != nil {
 			return User{}, err
 		}
-		fmt.Println(string(msg))
 
 		var callErr struct {
 			Message string `json:"error"`
