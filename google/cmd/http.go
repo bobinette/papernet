@@ -40,9 +40,11 @@ func Start(srv google.Server, cfg Configuration, logger log.Logger, authClient *
 		logger.Fatal("could not open bolt driver", err)
 	}
 
+	driverServiceFactory := google.NewGDriveService
+
 	repository := bolt.NewUserRepository(boltDriver)
 	userClient := google.NewUserClient(authClient)
-	service, err := google.NewService(repository, cfg.File, userClient)
+	service, err := google.NewService(repository, cfg.File, driverServiceFactory, userClient)
 	if err != nil {
 		logger.Fatal("could not instantiate google service", err)
 	}

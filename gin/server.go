@@ -54,7 +54,9 @@ func New(addr string, authenticator *auth.Authenticator) (*Server, error) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Accept-Language, Authorization, Content-Type")
+		c.Writer.Header().Set(
+			"Access-Control-Allow-Headers", "Accept-Language, Authorization, Content-Type, Content-Disposition",
+		)
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusOK)
 		}
