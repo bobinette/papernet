@@ -4,4 +4,4 @@ data/*
 oauth_*.json
 hs256.json
 
-vendor/*
+vendor/*/

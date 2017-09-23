@@ -1,8 +1,10 @@
-package http
+package google
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"math/rand"
 	"net/http"
 
 	"github.com/bobinette/papernet/errors"
@@ -11,6 +13,12 @@ import (
 var (
 	errInvalidRequest = errors.New("invalid request")
 )
+
+func randToken(size int) string {
+	b := make([]byte, size)
+	rand.Read(b)
+	return base64.StdEncoding.EncodeToString(b)
+}
 
 // Server defines the interface to register the http handlers.
 type Server interface {

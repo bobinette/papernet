@@ -1,50 +1,35 @@
 package oauth
 
 import (
+	"net/http"
+
 	"github.com/bobinette/papernet/log"
 
-	"github.com/bobinette/papernet/clients/auth"
-
-	"github.com/bobinette/papernet/oauth/bolt"
-	"github.com/bobinette/papernet/oauth/http"
-	"github.com/bobinette/papernet/oauth/services"
+	"github.com/bobinette/papernet/oauth"
 )
 
 type Configuration struct {
-	Provider string `toml:"provider"`
-	Bolt     string `toml:"bolt"`
-	Email    struct {
-		Enabled bool `toml:"enabled"`
-	} `toml:"email"`
-	Google struct {
-		Enabled bool   `toml:"enabled"`
-		File    string `toml:"file"`
-	} `toml:"google"`
+	Email  bool `toml:"email"`
+	Google bool `toml:"google"`
 }
 
-func Start(srv http.Server, cfg Configuration, logger log.Logger, authClient *auth.Client) {
-	providerService := services.NewProviderService()
+// Server defines the interface to register the http handlers.
+type Server interface {
+	RegisterHandler(path, method string, f http.Handler)
+}
 
-	boltDriver := &bolt.Driver{}
-	if err := boltDriver.Open(cfg.Bolt); err != nil {
-		logger.Fatal("could not open bolt driver", err)
-	}
+func Start(srv Server, cfg Configuration, logger log.Logger) {
+	providerService := oauth.NewProviderService()
 
 	// Basic email / password
-	if cfg.Email.Enabled {
+	if cfg.Email {
 		providerService.Register("email")
 	}
 
 	// Google
-	if cfg.Google.Enabled {
-		repository := bolt.NewGoogleRepository(boltDriver)
-		service, err := services.NewGoogleService(repository, cfg.Google.File, authClient)
-		if err != nil {
-			logger.Fatal("could not instantiate google service", err)
-		}
-		http.RegisterGoogleHTTPRoutes(srv, service)
+	if cfg.Google {
 		providerService.Register("google")
 	}
 
-	http.RegisterProviderHTTPRoutes(srv, providerService)
+	oauth.RegisterProviderHTTPRoutes(srv, providerService)
 }

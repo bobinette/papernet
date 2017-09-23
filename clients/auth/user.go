@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/bobinette/papernet/errors"
@@ -98,7 +99,7 @@ func (c *Client) CreatePaper(userID, paperID int) error {
 
 	if res.StatusCode != 200 {
 		var callErr struct {
-			Message string `json:"message"`
+			Message string `json:"error"`
 		}
 		err := json.NewDecoder(res.Body).Decode(&callErr)
 		if err != nil {
@@ -130,15 +131,20 @@ func (c *Client) Upsert(user User) (User, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		var callErr struct {
-			Message string `json:"message"`
-		}
-		err := json.NewDecoder(res.Body).Decode(&callErr)
+		msg, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			return User{}, err
 		}
 
-		return User{}, errors.New(fmt.Sprintf("error in call: %v", err), errors.WithCode(res.StatusCode))
+		var callErr struct {
+			Message string `json:"error"`
+		}
+		err = json.NewDecoder(bytes.NewReader(msg)).Decode(&callErr)
+		if err != nil {
+			return User{}, errors.New(string(msg))
+		}
+
+		return User{}, errors.New(fmt.Sprintf("error in call: %v", callErr), errors.WithCode(res.StatusCode))
 	}
 
 	var retrievedUser User

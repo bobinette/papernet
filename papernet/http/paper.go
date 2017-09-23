@@ -77,6 +77,7 @@ func RegisterPaperEndpoints(srv Server, service *services.PaperService, jwtKey [
 	srv.RegisterHandler("/paper/v2/papers", "POST", createPaperHandler)
 	srv.RegisterHandler("/paper/v2/papers/:id", "GET", getPaperHandler)
 	srv.RegisterHandler("/paper/v2/papers/:id", "PUT", updatePaperHandler)
+	srv.RegisterHandler("/paper/v2/papers/:id", "POST", updatePaperHandler)
 	srv.RegisterHandler("/paper/v2/papers/:id", "DELETE", deletePaperHandler)
 }
 
