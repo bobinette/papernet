@@ -29,6 +29,13 @@ type googleUser struct {
 	Email    string `json:"email"`
 }
 
+type originInfo struct {
+	fromURL string
+	scopes  []string
+
+	// @TODO: handle state expiration
+}
+
 type Service struct {
 	repository UserRepository
 	userClient *UserClient
@@ -41,7 +48,7 @@ type Service struct {
 	redirectURL  string
 
 	stateMutex sync.Locker
-	state      map[string]string
+	state      map[string]originInfo
 }
 
 func NewService(repo UserRepository, configPath string, dsf DriveServiceFactory, userClient *UserClient) (*Service, error) {
@@ -72,23 +79,17 @@ func NewService(repo UserRepository, configPath string, dsf DriveServiceFactory,
 		redirectURL:  creds.RedirectURL,
 
 		stateMutex: &sync.RWMutex{},
-		state:      make(map[string]string),
+		state:      make(map[string]originInfo),
 	}, nil
 }
 
 func (s *Service) LoginURL() string {
-	state := randToken(32)
-	s.stateMutex.Lock()
-	s.state[state] = ""
-	s.stateMutex.Unlock()
-
-	url := s.config(userInfoScope).AuthCodeURL(state, oauth2.AccessTypeOffline)
-	fmt.Println(url)
-	return url
+	state := s.generateState("", userInfoScope)
+	return s.config(userInfoScope).AuthCodeURL(state, oauth2.AccessTypeOffline)
 }
 
 func (s *Service) Login(state, code string) (string, string, error) {
-	fromURL, ok := s.checkState(state)
+	info, ok := s.checkState(state)
 	if !ok {
 		return "", "", errors.New("invalid state", errors.BadRequest())
 	}
@@ -114,7 +115,13 @@ func (s *Service) Login(state, code string) (string, string, error) {
 		user.GoogleID = gUser.GoogleID
 	}
 
-	user.Token = tok
+	if user.Tokens == nil {
+		user.Tokens = make(map[string]*oauth2.Token)
+	}
+
+	for _, scope := range info.scopes {
+		user.Tokens[scope] = tok
+	}
 
 	authUser := AuthUser{
 		User:  user,
@@ -141,7 +148,7 @@ func (s *Service) Login(state, code string) (string, string, error) {
 		return "", "", err
 	}
 
-	return token, fromURL, nil
+	return token, info.fromURL, nil
 }
 
 func (s *Service) hasDrive(userID int) (bool, error) {
@@ -150,7 +157,12 @@ func (s *Service) hasDrive(userID int) (bool, error) {
 		return false, err
 	}
 
-	client := s.config(drive.DriveFileScope).Client(oauth2.NoContext, user.Token)
+	token, ok := user.Tokens[drive.DriveFileScope]
+	if !ok {
+		return false, nil
+	}
+
+	client := s.config(drive.DriveFileScope).Client(oauth2.NoContext, token)
 	driveService, err := s.driveServiceFactory(client)
 	if err != nil {
 		return false, fmt.Errorf("unable to retrieve drive Client %v\n", err)
@@ -160,9 +172,9 @@ func (s *Service) hasDrive(userID int) (bool, error) {
 }
 
 func (s *Service) requireDrive(fromURL string) string {
-	state := s.generateState(fromURL)
-	config := s.config(userInfoScope, drive.DriveFileScope)
-	return config.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
+	state := s.generateState(fromURL, drive.DriveFileScope, userInfoScope)
+	config := s.config(drive.DriveFileScope, userInfoScope)
+	return config.AuthCodeURL(state, oauth2.AccessTypeOffline)
 }
 
 func (s *Service) inspectDrive(userID int, q string) ([]DriveFile, string, error) {
@@ -171,7 +183,8 @@ func (s *Service) inspectDrive(userID int, q string) ([]DriveFile, string, error
 		return nil, "", err
 	}
 
-	client := s.config(drive.DriveFileScope).Client(oauth2.NoContext, user.Token)
+	token := user.Tokens[drive.DriveFileScope]
+	client := s.config(drive.DriveFileScope).Client(oauth2.NoContext, token)
 	ds, err := s.driveServiceFactory(client)
 	if err != nil {
 		return nil, "", fmt.Errorf("unable to create drive Client %v\n", err)
@@ -191,7 +204,8 @@ func (s *Service) addFile(userID int, filename, filetype string, data []byte) (D
 		return DriveFile{}, err
 	}
 
-	client := s.config(drive.DriveFileScope).Client(oauth2.NoContext, user.Token)
+	token := user.Tokens[drive.DriveFileScope]
+	client := s.config(drive.DriveFileScope).Client(oauth2.NoContext, token)
 	ds, err := s.driveServiceFactory(client)
 	if err != nil {
 		return DriveFile{}, fmt.Errorf("unable to create drive Client %v\n", err)
@@ -247,10 +261,13 @@ func (s *Service) retrieveGoogleUser(tok *oauth2.Token) (googleUser, error) {
 	return user, nil
 }
 
-func (s *Service) generateState(fromURL string) string {
+func (s *Service) generateState(fromURL string, scopes ...string) string {
 	state := randToken(32)
 	s.stateMutex.Lock()
-	s.state[state] = fromURL
+	s.state[state] = originInfo{
+		fromURL: fromURL,
+		scopes:  scopes,
+	}
 	s.stateMutex.Unlock()
 
 	go func() {
@@ -263,10 +280,10 @@ func (s *Service) generateState(fromURL string) string {
 	return state
 }
 
-func (s *Service) checkState(state string) (string, bool) {
+func (s *Service) checkState(state string) (originInfo, bool) {
 	s.stateMutex.Lock()
-	fromURL, ok := s.state[state]
+	info, ok := s.state[state]
 	delete(s.state, state)
 	s.stateMutex.Unlock()
-	return fromURL, ok
+	return info, ok
 }

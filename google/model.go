@@ -10,7 +10,7 @@ type User struct {
 	ID       int    `json:"id"`
 	GoogleID string `json:"googleId"`
 
-	Token *oauth2.Token `json:"token"`
+	Tokens map[string]*oauth2.Token `json:"tokens"`
 }
 
 type UserRepository interface {

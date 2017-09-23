@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/googleapi"
@@ -37,7 +38,8 @@ func (ds *GDriveService) UserHasAllowedDrive() (bool, error) {
 
 	isInsufficientPermission := false
 	code := 500
-	if err, ok := err.(*googleapi.Error); ok {
+	switch err := err.(type) {
+	case *googleapi.Error:
 		code = err.Code
 		for _, e := range err.Errors {
 			if e.Reason == errInsufficientPermissions {
@@ -45,11 +47,14 @@ func (ds *GDriveService) UserHasAllowedDrive() (bool, error) {
 				break
 			}
 		}
+	case *url.Error:
+		// Let's pretend that token revoked is the only thing that can go through here
+		isInsufficientPermission = true
 	}
 
 	// The error is something else, returning to the caller
 	if !isInsufficientPermission {
-		return false, errors.New("unable to check permission: %v\n", errors.WithCause(err), errors.WithCode(code))
+		return false, errors.New("unable to check permission", errors.WithCause(err), errors.WithCode(code))
 	}
 
 	return false, nil
@@ -74,7 +79,7 @@ func (ds *GDriveService) ListFiles(folderID, name string) ([]DriveFile, string, 
 		if err, ok := err.(*googleapi.Error); ok {
 			fmt.Printf("%+v\n", err.Body)
 		}
-		return nil, "", fmt.Errorf("unable to retrieve files: %v\n", err)
+		return nil, "", errors.New("unable to retrieve files", errors.WithCause(err))
 	}
 
 	files := make([]DriveFile, len(r.Files))
