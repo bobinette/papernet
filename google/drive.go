@@ -49,6 +49,7 @@ func (ds *GDriveService) UserHasAllowedDrive() (bool, error) {
 		}
 	case *url.Error:
 		// Let's pretend that token revoked is the only thing that can go through here
+		// @TODO: check https://godoc.org/google.golang.org/api/oauth2/v2
 		isInsufficientPermission = true
 	}
 
@@ -65,8 +66,6 @@ func (ds *GDriveService) ListFiles(folderID, name string) ([]DriveFile, string, 
 	if name != "" {
 		q = fmt.Sprintf("%s and name contains '%s'", q, name)
 	}
-
-	fmt.Println(q)
 
 	r, err := ds.service.Files.
 		List().
@@ -91,7 +90,7 @@ func (ds *GDriveService) ListFiles(folderID, name string) ([]DriveFile, string, 
 			MimeType: file.MimeType,
 		}
 	}
-	return files, "", nil
+	return files, r.NextPageToken, nil
 }
 
 func (ds *GDriveService) CreateFile(name, typ, folderID string, data []byte) (DriveFile, error) {

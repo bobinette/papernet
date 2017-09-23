@@ -172,11 +172,11 @@ func makeGoogleDriveFilesHandler(s *Service) endpoint.Endpoint {
 			return nil, errInvalidRequest
 		}
 
-		files, pageToken, err := s.inspectDrive(user.ID, req.name)
+		files, nextPageToken, err := s.inspectDrive(user.ID, req.name)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{"data": files, "pageToken": pageToken}, nil
+		return map[string]interface{}{"data": files, "nextPageToken": nextPageToken}, nil
 	}
 }
 
