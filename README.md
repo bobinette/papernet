@@ -26,8 +26,8 @@ export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 ## Dependencies
 The dependencies are handled with `godep`:
 ```bash
-go get -u github.com/tools/godep
-dep ensure
+go get -u github.com/kardianos/govendor/...
+govendor sync
 ```
 
 ## Auth
