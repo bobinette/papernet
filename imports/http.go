@@ -125,7 +125,7 @@ func makeSearchEndpoint(s *Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		return s.Search(userID, req.q, req.limit, req.offset, req.sources, ctx)
+		return s.Search(ctx, userID, req.q, req.limit, req.offset, req.sources)
 	}
 }
 
@@ -179,7 +179,7 @@ func makeImportEndpoint(s *Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		return s.Import(userID, req, ctx)
+		return s.Import(ctx, userID, req)
 	}
 }
 

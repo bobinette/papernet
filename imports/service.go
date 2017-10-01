@@ -31,7 +31,7 @@ func (s *Service) Sources() []string {
 	return sources
 }
 
-func (s *Service) Import(userID int, p Paper, ctx context.Context) (Paper, error) {
+func (s *Service) Import(ctx context.Context, userID int, p Paper) (Paper, error) {
 	pp := paper.Paper{
 		ID:      p.ID,
 		Title:   p.Title,
@@ -61,12 +61,12 @@ func (s *Service) Import(userID int, p Paper, ctx context.Context) (Paper, error
 }
 
 func (s *Service) Search(
+	ctx context.Context,
 	userID int,
 	q string,
 	limit int,
 	offset int,
 	sources []string,
-	ctx context.Context,
 ) (map[string]SearchResults, error) {
 	// Select the searchers
 	var searchers []Searcher
@@ -93,7 +93,7 @@ func (s *Service) Search(
 	res := make(map[string]SearchResults)
 	for _, searcher := range searchers {
 		// Use the searcher to fetch the data
-		r, err := searcher.Search(q, limit, offset, ctx)
+		r, err := searcher.Search(ctx, q, limit, offset)
 		if err != nil {
 			return nil, err
 		}

@@ -41,5 +41,5 @@ type SearchResults struct {
 
 type Searcher interface {
 	Source() string
-	Search(q string, limit, offset int, ctx context.Context) (SearchResults, error)
+	Search(ctx context.Context, q string, limit, offset int) (SearchResults, error)
 }

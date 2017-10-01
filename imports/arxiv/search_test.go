@@ -26,7 +26,7 @@ func TestImporter_Search(t *testing.T) {
 	defer ts.Close()
 
 	apiURLStr = ts.URL
-	res, err := importer.Search("YOLO", 2, 1, context.Background())
+	res, err := importer.Search(context.Background(), "YOLO", 2, 1)
 	assert.NoError(t, err)
 
 	assert.Equal(t, imports.Pagination{Limit: 2, Offset: 1, Total: 7}, res.Pagination)

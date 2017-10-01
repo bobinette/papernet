@@ -14,9 +14,8 @@ import (
 )
 
 type Configuration struct {
-	KeyPath  string `toml:"key"`
-	PaperURL string `toml:"paperURL"`
-	Bolt     struct {
+	KeyPath string `toml:"key"`
+	Bolt    struct {
 		Store string `toml:"store"`
 	} `toml:"bolt"`
 }
