@@ -42,11 +42,13 @@ func init() {
 	AuthUserCommand.AddCommand(&AuthTokenCommand)
 	AuthUserCommand.AddCommand(&AuthAllUsersCommand)
 	AuthUserCommand.AddCommand(&AuthUpsertUserCommand)
+	AuthUserCommand.AddCommand(&AuthDeleteCommand)
 
 	inheritPersistentPreRun(&AuthCommand)
 	inheritPersistentPreRun(&AuthUserCommand)
 	inheritPersistentPreRun(&AuthTokenCommand)
 	inheritPersistentPreRun(&AuthUpsertUserCommand)
+	inheritPersistentPreRun(&AuthDeleteCommand)
 
 	inheritPersistentPreRun(&AuthAllUsersCommand)
 
@@ -158,6 +160,30 @@ var AuthTokenCommand = cobra.Command{
 		}
 
 		logger.Print(token)
+	},
+}
+
+var AuthDeleteCommand = cobra.Command{
+	Use: "delete",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) != 1 {
+			logger.Fatal("user token wants 1 argument: the id of the user")
+		}
+
+		if args[0] == "help" {
+			cmd.Help()
+			return
+		}
+
+		userID, err := strconv.Atoi(args[0])
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		err = userService.Delete(userID)
+		if err != nil {
+			logger.Fatal(err)
+		}
 	},
 }
 
