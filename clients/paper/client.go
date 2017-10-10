@@ -45,7 +45,7 @@ func (c *Client) Insert(ctx context.Context, p Paper) (Paper, error) {
 		return Paper{}, err
 	}
 
-	token, err := clients.UserToken(user.ID, c.client, c.baseURL)
+	token, err := internal.UserToken(user.ID, c.client, c.baseURL)
 	if err != nil {
 		return Paper{}, err
 	}
