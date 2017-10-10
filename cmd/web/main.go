@@ -19,12 +19,14 @@ import (
 
 	"github.com/bobinette/papernet/clients"
 	authClient "github.com/bobinette/papernet/clients/auth"
+	importsClient "github.com/bobinette/papernet/clients/imports"
 	paperClient "github.com/bobinette/papernet/clients/paper"
 
 	// packages used for migration to go-kit
 	"github.com/bobinette/papernet/jwt"
 
 	kitauth "github.com/bobinette/papernet/auth/cmd"
+	kitcron "github.com/bobinette/papernet/cron/cmd"
 	kitgoogle "github.com/bobinette/papernet/google/cmd"
 	kitimports "github.com/bobinette/papernet/imports/cmd"
 	kitoauth "github.com/bobinette/papernet/oauth/cmd"
@@ -45,6 +47,7 @@ type Configuration struct {
 	Imports kitimports.Configuration `toml:"imports"`
 	Paper   kitpaper.Configuration   `toml:"paper"`
 	Google  kitgoogle.Configuration  `toml:"google"`
+	Cron    kitcron.Configuration    `toml:"cron"`
 
 	Bolt struct {
 		Store string `toml:"store"`
@@ -130,6 +133,7 @@ func main() {
 
 	ac := authClient.NewClient(client, cfg.Clients.Auth.BaseURL)
 	pc := paperClient.NewClient(client, cfg.Clients.Auth.BaseURL)
+	ic := importsClient.NewClient(client, cfg.Clients.Auth.BaseURL)
 
 	// Auth service
 	userService := kitauth.Start(server, cfg.Auth, logger)
@@ -145,6 +149,9 @@ func main() {
 
 	// Google service
 	kitgoogle.Start(server, cfg.Google, logger, ac)
+
+	// Cron service
+	kitcron.Start(server, cfg.Cron, logger, ac, ic)
 
 	// *************************************************
 	// Migration to go-kit
