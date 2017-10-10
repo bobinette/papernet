@@ -27,6 +27,10 @@ type User struct {
 	Bookmarks []int
 }
 
+func AddToContext(ctx context.Context, user User) context.Context {
+	return context.WithValue(ctx, contextKey, user)
+}
+
 func FromContext(ctx context.Context) (User, error) {
 	v := ctx.Value(contextKey)
 	if v == nil {
