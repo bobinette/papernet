@@ -2,6 +2,7 @@ package imports
 
 import (
 	"context"
+	"time"
 
 	"github.com/bobinette/papernet/errors"
 )
@@ -21,6 +22,9 @@ type Paper struct {
 	Tags       []string `json:"tags"`
 	Authors    []string `json:"authors"`
 	References []string `json:"references"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type Repository interface {

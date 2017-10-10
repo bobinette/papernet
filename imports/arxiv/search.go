@@ -198,6 +198,9 @@ func (i *Importer) parsePapers(r response) []imports.Paper {
 				entry.Links[0].HRef, // link to arXiv
 				entry.Links[1].HRef, // PDF
 			},
+
+			CreatedAt: entry.Published,
+			UpdatedAt: entry.Updated,
 		}
 	}
 
