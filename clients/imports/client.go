@@ -12,28 +12,6 @@ import (
 	"github.com/bobinette/papernet/users"
 )
 
-type Paper struct {
-	ID int `json:"id"`
-
-	Source    string `json:"source"`
-	Reference string `json:"reference"`
-
-	Title      string   `json:"title"`
-	Summary    string   `json:"summary"`
-	Tags       []string `json:"tags"`
-	Authors    []string `json:"authors"`
-	References []string `json:"references"`
-}
-
-type SearchResults struct {
-	Papers     []Paper `json:"papers"`
-	Pagination struct {
-		Limit  uint `json:"limit"`
-		Offset uint `json:"offset"`
-		Total  uint `json:"total"`
-	} `json:"pagination"`
-}
-
 type HTTPClient interface {
 	Do(*http.Request) (*http.Response, error)
 }
