@@ -80,7 +80,7 @@ func NewSearcher() *Importer {
 
 func (i *Importer) Source() string { return i.source }
 
-func (i *Importer) Import(ref string, ctx context.Context) (imports.Paper, error) {
+func (i *Importer) Import(ctx context.Context, ref string) (imports.Paper, error) {
 	u := craftRefURL(ref)
 	req, err := http.NewRequest("GET", u.String(), nil)
 	req = req.WithContext(ctx)
@@ -108,7 +108,7 @@ func (i *Importer) Import(ref string, ctx context.Context) (imports.Paper, error
 	return papers[0], nil
 }
 
-func (i *Importer) Search(q string, limit, offset int, ctx context.Context) (imports.SearchResults, error) {
+func (i *Importer) Search(ctx context.Context, q string, limit, offset int) (imports.SearchResults, error) {
 	u := craftURL(q, limit, offset)
 	req, err := http.NewRequest("GET", u.String(), nil)
 	req = req.WithContext(ctx)
@@ -198,6 +198,9 @@ func (i *Importer) parsePapers(r response) []imports.Paper {
 				entry.Links[0].HRef, // link to arXiv
 				entry.Links[1].HRef, // PDF
 			},
+
+			CreatedAt: entry.Published,
+			UpdatedAt: entry.Updated,
 		}
 	}
 

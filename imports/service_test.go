@@ -45,7 +45,7 @@ type mockImporter struct {
 }
 
 func (m *mockImporter) Source() string { return m.source }
-func (m *mockImporter) Search(q string, limit, offset int, ctx context.Context) (SearchResults, error) {
+func (m *mockImporter) Search(ctx context.Context, q string, limit, offset int) (SearchResults, error) {
 	return m.results, nil
 }
 
@@ -165,7 +165,7 @@ func TestSearchService_Search(t *testing.T) {
 	client := mockPaperService(t)
 	service := NewService(mapping, client, searcher1, searcher2)
 	for name, tt := range tts {
-		res, err := service.Search(userID, "", 2, 0, tt.sources, context.Background())
+		res, err := service.Search(context.Background(), userID, "", 2, 0, tt.sources)
 		assert.NoError(t, err, name)
 
 		for source, expected := range tt.res {
@@ -209,7 +209,7 @@ func TestSearchService_Search_UnknownSource(t *testing.T) {
 	for name, tt := range tts {
 		client := mockPaperService(t)
 		service := NewService(&mockMapping{}, client, tt.searchers...)
-		_, err := service.Search(1, "q", 20, 0, tt.sources, context.Background())
+		_, err := service.Search(context.Background(), 1, "q", 20, 0, tt.sources)
 		if assert.Error(t, err, name) {
 			errors.AssertCode(t, err, http.StatusBadRequest)
 		}

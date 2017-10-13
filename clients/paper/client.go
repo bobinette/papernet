@@ -9,6 +9,8 @@ import (
 
 	"github.com/bobinette/papernet/errors"
 	"github.com/bobinette/papernet/users"
+
+	"github.com/bobinette/papernet/clients/internal"
 )
 
 type Paper struct {
@@ -43,7 +45,7 @@ func (c *Client) Insert(ctx context.Context, p Paper) (Paper, error) {
 		return Paper{}, err
 	}
 
-	token, err := c.userToken(user.ID)
+	token, err := internal.UserToken(user.ID, c.client, c.baseURL)
 	if err != nil {
 		return Paper{}, err
 	}
@@ -73,7 +75,7 @@ func (c *Client) Insert(ctx context.Context, p Paper) (Paper, error) {
 			return Paper{}, err
 		}
 
-		return Paper{}, errors.New(fmt.Sprintf("error in call: %v", err), errors.WithCode(res.StatusCode))
+		return Paper{}, errors.New(fmt.Sprintf("error in call: %v", callErr.Message), errors.WithCode(res.StatusCode))
 	}
 
 	var rp struct {

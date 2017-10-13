@@ -16,6 +16,20 @@ store = "data/auth.graph"
 # ----------------------------------------
 
 # ----------------------------------------
+# Cron service
+[cron]
+key = "configuration/hs256.json"
+
+[cron.mysql]
+host = "192.168.50.4"
+port = "3306"
+user = "root"
+password = "root"
+database = "cron"
+# Cron service
+# ----------------------------------------
+
+# ----------------------------------------
 # Oauth service
 [oauth]
 # bolt="data/oauth.db"
@@ -31,11 +45,12 @@ google = true
 bolt = "data/google.db"
 file = "configuration/oauth_google.json"
 key = "configuration/hs256.json"
+# Google service
+# ----------------------------------------
 
 # ----------------------------------------
 # Imports service
 [imports]
-paperURL="http://127.0.0.1:1705/paper/v2/papers"
 key = "configuration/hs256.json"
 
 [imports.bolt]

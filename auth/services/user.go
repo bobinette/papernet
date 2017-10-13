@@ -214,3 +214,7 @@ func (s *UserService) Token(userID int) (string, error) {
 func (s *UserService) All() ([]auth.User, error) {
 	return s.repository.List()
 }
+
+func (s *UserService) Delete(userID int) error {
+	return s.repository.Delete(userID)
+}
