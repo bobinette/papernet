@@ -23,6 +23,11 @@ type Configuration struct {
 		Password string `toml:"password"`
 		Database string `toml:"database"`
 	} `toml:"mysql"`
+	Mail struct {
+		Email    string `toml:"email"`
+		Password string `toml:"password"`
+		Server   string `toml:"server"`
+	}
 }
 
 func Start(
@@ -60,7 +65,8 @@ func Start(
 
 	repo := mysql.NewRepository(driver)
 	resultsRepo := mysql.NewResultsRepository(driver)
-	notifierFactory := mail.NewNotifierFactory(authClient)
+
+	notifierFactory := mail.NewNotifierFactory(authClient, conf.Mail.Email, conf.Mail.Password, conf.Mail.Server)
 
 	service := cron.NewService(repo, resultsRepo, notifierFactory, imporstClient, logger)
 	service.RegisterHTTP(srv, []byte(key.Key), authClient)

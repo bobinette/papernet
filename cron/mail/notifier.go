@@ -16,13 +16,21 @@ import (
 type MailNotifier struct {
 	authClient *auth.Client
 	cron       cron.Cron
+
+	email    string
+	password string
+	server   string
 }
 
-func NewNotifierFactory(authClient *auth.Client) cron.NotifierFactory {
+func NewNotifierFactory(authClient *auth.Client, email, password, server string) cron.NotifierFactory {
 	return func(cron cron.Cron) (cron.Notifier, error) {
 		return &MailNotifier{
 			authClient: authClient,
 			cron:       cron,
+
+			email:    email,
+			password: password,
+			server:   server,
 		}, nil
 	}
 }
@@ -38,9 +46,9 @@ func (n *MailNotifier) Notify(ctx context.Context, papers []cron.Paper) error {
 	// Set up authentication information.
 	auth := smtp.PlainAuth(
 		"",
-		"papernet@bobi.space",
-		"Haley7!Ernie",
-		"mail.gandi.net",
+		n.email,
+		n.password,
+		n.server,
 	)
 
 	body := struct {

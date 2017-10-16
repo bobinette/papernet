@@ -1,6 +1,7 @@
 data/*
 
 # Credentials
+config.dev.toml
 oauth_*.json
 hs256.json
 
