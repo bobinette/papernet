@@ -62,7 +62,6 @@ func (n *MailNotifier) Notify(ctx context.Context, papers []cron.Paper) error {
 		Q:       n.cron.Q,
 		Sources: strings.Join(n.cron.Sources, ","),
 	}
-	fmt.Println(user.Email)
 	return NewRequest([]string{user.Email}, "Your search got new results", "").
 		ParseTemplate("cron/mail/template.html", body).
 		SendEmail(auth)
