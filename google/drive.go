@@ -75,9 +75,6 @@ func (ds *GDriveService) ListFiles(folderID, name string) ([]DriveFile, string, 
 		OrderBy("name").
 		Do()
 	if err != nil {
-		if err, ok := err.(*googleapi.Error); ok {
-			fmt.Printf("%+v\n", err.Body)
-		}
 		return nil, "", errors.New("unable to retrieve files", errors.WithCause(err))
 	}
 

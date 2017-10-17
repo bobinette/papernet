@@ -20,6 +20,11 @@ store = "data/auth.graph"
 [cron]
 key = "configuration/hs256.json"
 
+[cron.mail]
+email="email"
+password="password"
+server="server"
+
 [cron.mysql]
 host = "192.168.50.4"
 port = "3306"
@@ -32,8 +37,6 @@ database = "cron"
 # ----------------------------------------
 # Oauth service
 [oauth]
-# bolt="data/oauth.db"
-# file="configuration/oauth_google.json"
 email = true
 google = true
 # Oauth service
