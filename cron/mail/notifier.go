@@ -20,9 +20,10 @@ type MailNotifier struct {
 	email    string
 	password string
 	server   string
+	port     int
 }
 
-func NewNotifierFactory(authClient *auth.Client, email, password, server string) cron.NotifierFactory {
+func NewNotifierFactory(authClient *auth.Client, email, password, server string, port int) cron.NotifierFactory {
 	return func(cron cron.Cron) (cron.Notifier, error) {
 		return &MailNotifier{
 			authClient: authClient,
@@ -31,6 +32,7 @@ func NewNotifierFactory(authClient *auth.Client, email, password, server string)
 			email:    email,
 			password: password,
 			server:   server,
+			port:     port,
 		}, nil
 	}
 }
@@ -45,7 +47,7 @@ func (n *MailNotifier) Notify(ctx context.Context, papers []cron.Paper) error {
 
 	// Set up authentication information.
 	auth := smtp.PlainAuth(
-		"",
+		n.email,
 		n.email,
 		n.password,
 		n.server,
@@ -62,7 +64,7 @@ func (n *MailNotifier) Notify(ctx context.Context, papers []cron.Paper) error {
 		Q:       n.cron.Q,
 		Sources: strings.Join(n.cron.Sources, ","),
 	}
-	return NewRequest([]string{user.Email}, "Your search got new results", "").
+	return NewRequest([]string{user.Email}, n.email, "Your search got new results", n.server, n.port).
 		ParseTemplate("cron/mail/template.html", body).
 		SendEmail(auth)
 }
@@ -73,16 +75,23 @@ type Request struct {
 	from    string
 	to      []string
 	subject string
-	body    string
+
+	body string
+
+	server string
+	port   int
 
 	err error
 }
 
-func NewRequest(to []string, subject, body string) *Request {
+func NewRequest(to []string, from, subject, server string, port int) *Request {
 	return &Request{
+		from:    from,
 		to:      to,
 		subject: subject,
-		body:    body,
+
+		server: server,
+		port:   port,
 	}
 }
 
@@ -91,21 +100,21 @@ func (r *Request) SendEmail(auth smtp.Auth) error {
 		return r.err
 	}
 
-	from := "From: \"Papernet\" <papernet@bobi.space>\n"
-	to := fmt.Sprintf("To %s\n", strings.Join(r.to, " "))
+	from := fmt.Sprintf("From: \"Papernet\" <%s>\n", r.from)
+	to := fmt.Sprintf("To: %s\n", strings.Join(r.to, " "))
 	subject := "Subject: " + r.subject + "!\n"
 	mime := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
 	msg := []byte(from + to + subject + mime + "\n" + r.body)
-	addr := "mail.gandi.net:25"
+	addr := fmt.Sprintf("%s:%d", r.server, r.port)
 
-	if err := smtp.SendMail(addr, auth, "papernet@bobi.space", r.to, msg); err != nil {
+	if err := smtp.SendMail(addr, auth, r.from, r.to, msg); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (r *Request) ParseTemplate(templateFileName string, data interface{}) *Request {
-	t, err := template.ParseFiles(templateFileName)
+	t, err := template.New("mail").Parse(mailTemplate)
 	if err != nil {
 		r.err = err
 		return r

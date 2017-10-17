@@ -1,3 +1,6 @@
+package mail
+
+const mailTemplate = `
 {{ define "link" }}<a href="{{.}}">{{.}}</a>{{end}}
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -13,3 +16,4 @@
         <p>Check them out at {{template "link" .Link}}.</p>
     </body>
 </html>
+`

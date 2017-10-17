@@ -2,7 +2,6 @@ package cron
 
 import (
 	"context"
-	"fmt"
 
 	"gopkg.in/robfig/cron.v2"
 
@@ -116,7 +115,6 @@ func (s *Service) RunCrons(ctx context.Context) error {
 			for _, paper := range sr.Papers {
 				// check the source to make sure last is not empty (can't compare to nil)
 				if last.Source != "" && (last.CreatedAt.After(paper.CreatedAt) || last.CreatedAt.Equal(paper.CreatedAt)) {
-					fmt.Println(last.CreatedAt, paper.CreatedAt)
 					continue
 				}
 
@@ -128,15 +126,17 @@ func (s *Service) RunCrons(ctx context.Context) error {
 				papers = append(papers, paper)
 			}
 
-			err = notifier.Notify(ctx, papers)
-			if err != nil {
-				return err
-			}
-
-			for _, paper := range papers {
-				err = s.resultRepo.Insert(ctx, cron.ID, paper)
+			if len(papers) > 0 {
+				err = notifier.Notify(ctx, papers)
 				if err != nil {
 					return err
+				}
+
+				for _, paper := range papers {
+					err = s.resultRepo.Insert(ctx, cron.ID, paper)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
